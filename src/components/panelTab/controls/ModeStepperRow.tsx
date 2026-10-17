@@ -72,10 +72,10 @@ const ModeStepperRow = <Value extends string>({
             disabled={!canStep}
             whileTap={canStep && !reduced ? { scale: 0.82, x: direction * 2 } : undefined}
             transition={kitTransition('fast', reduced)}
-            className="st-t-fast flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[color:var(--st-t3)] transition-colors hover:bg-[var(--st-fill)] hover:text-[color:var(--st-t1)] disabled:cursor-not-allowed disabled:opacity-40"
+            className="st-t-fast flex h-7 w-7 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 shrink-0 items-center justify-center rounded-lg text-[color:var(--st-t3)] transition-colors hover:bg-[var(--st-fill)] hover:text-[color:var(--st-t1)] disabled:cursor-not-allowed disabled:opacity-40"
             aria-label={`${caption} ${direction === -1 ? '−' : '+'}`}
         >
-            {direction === -1 ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
+            {direction === -1 ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
         </motion.button>
     );
 
