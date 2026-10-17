@@ -55,7 +55,15 @@ const LocalSongLyricMatch: React.FC<LocalSongLyricMatchProps> = ({ song, onClose
         return { title, artist, album, durationMs };
     }, [song]);
 
-    const search = useLyricMatchSearch(song, songInfo);
+    // On touchscreen web players the direct, unauthenticated AMLL TTML source is
+    // more useful as the first lyric match tab than an unconfigured NetEase API.
+    // The other sources remain available via the same tabs.
+    const preferDirectLyricSearch = typeof window !== 'undefined'
+        && !window.electron
+        && window.matchMedia('(pointer: coarse)').matches;
+    const search = useLyricMatchSearch(song, songInfo, {
+        initialSource: preferDirectLyricSearch ? 'amll' : undefined,
+    });
     const { source, selectedResult } = search;
 
     // A chosen result turns the lyrics switch to the match.
