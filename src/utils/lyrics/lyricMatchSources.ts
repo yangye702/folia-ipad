@@ -9,6 +9,7 @@ import { buildAmllDbSearchQueries, toAmllDbSongResults } from './amllDbCandidate
 import { applyChorusRangesByTime } from './chorusEffects';
 import { hasRenderableLyrics } from './validity';
 import { LYRIC_SOURCE_IDS, getLyricSource } from './lyricSources';
+import { searchLrclibLyrics, fetchLrclibLyrics } from './providers/lrclibProvider';
 
 // src/utils/lyrics/lyricMatchSources.ts
 // How each lyric source of lyricSources.ts is searched and fetched: for the match windows, for
@@ -83,7 +84,9 @@ export async function searchAmllDbLyricCandidates(
     for (const params of buildAmllDbSearchQueries(query)) {
         const items = await searchAmllDbSongs(params, AMLL_DB_SEARCH_PAGE_SIZE);
         if (items === null) {
-            return [];
+            // The AMLL client returns null for rate limits/network failures. Do not
+            // disguise a failed lookup as an unindexed song.
+            throw new Error('AMLL lyrics service is currently unreachable');
         }
         const candidates = toAmllDbSongResults(items);
         if (candidates.length > 0) {
@@ -136,6 +139,10 @@ const OWN_ACCESS: Partial<Record<LyricProviderSource, Partial<LyricSourceAccess>
     amll: {
         search: (query, _limit, target) => searchAmllDbLyricCandidates(query, target),
         fetch: song => fetchAmllDbCandidateLyrics(song),
+    },
+    lrclib: {
+        search: (query, limit) => searchLrclibLyrics(query, limit),
+        fetch: async song => ({ lyrics: await fetchLrclibLyrics(song), isPureMusic: false }),
     },
     // QQ's lyrics are read from QQ's own lyric service, which needs no QQ account and knows a
     // song by its mid.
