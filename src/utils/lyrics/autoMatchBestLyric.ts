@@ -411,7 +411,8 @@ async function matchUnderArtist(
             // passed over.
             const settled = getLyricSource(source).platform
                 ? await tryPlatformSource(source)
-                : source === 'amll' ? await tryAmllDb() : null;
+                : source === 'amll' ? await tryAmllDb()
+                : source === 'lrclib' ? await tryPlatformSource(source) : null;
             if (settled) return settled;
         } catch (error) {
             console.error(`[autoMatchBestLyric] ${source} search/fetch failed:`, error);
