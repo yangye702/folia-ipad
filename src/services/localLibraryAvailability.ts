@@ -15,7 +15,7 @@ export const getLocalLibraryAvailability = (): LocalLibraryAvailability => {
   if (!(currentLocation.protocol === 'https:' || isLocalhost) || !window.isSecureContext) {
     return { supported: false, reason: 'insecure-http' };
   }
-  if (!('showDirectoryPicker' in window) || typeof navigator.storage?.getDirectory !== 'function') {
+  if (typeof navigator.storage?.getDirectory !== 'function') {
     return { supported: false, reason: 'file-system-api-unavailable' };
   }
   return { supported: true, reason: null };

@@ -1,3 +1,4 @@
+import { writeOpfsFile } from '../utils/writeOpfsFile';
 import { isBlob } from '../utils/blobGuards';
 
 // src/services/binaryAssetStore.ts
@@ -118,14 +119,7 @@ export const writeCoverAsset = async (key: string, value: unknown): Promise<Bina
   const directory = await getOpfsCoverDirectory(true);
   if (!directory) return null;
   const handle = await directory.getFileHandle(await getAssetFileName(key), { create: true });
-  const writable = await handle.createWritable();
-  try {
-    await writable.write(value);
-    await writable.close();
-  } catch (error) {
-    await writable.abort().catch(() => undefined);
-    throw error;
-  }
+  await writeOpfsFile(handle, value);
   return { backend: 'opfs', mimeType, size: value.size, updatedAt };
 };
 

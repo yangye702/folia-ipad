@@ -1,3 +1,4 @@
+import { removeLocalFilesCopy } from './localFilesImport';
 import type { LocalLibrarySnapshot, LocalSong } from '../types';
 import type { MigrationResult } from '../utils/lyrics/renderHints';
 import { appDatabase } from './appDatabase';
@@ -244,6 +245,7 @@ export const clearAllData = async (): Promise<void> => {
     await cancelLocalCoverAssetMigration();
     await clearLocalCoverBinaries();
     resetLocalCoverAssetRuntime();
+    for (const handle of Object.values(await getDirHandles())) await removeLocalFilesCopy(handle);
     await appDatabase.delete();
     await appDatabase.open();
   } catch (error) {
@@ -262,6 +264,7 @@ export const getDirHandles = async (): Promise<Record<string, FileSystemDirector
 export const deleteDirHandle = async (rootFolderName: string): Promise<void> => {
   const handles = await getDirHandles();
   if (!(rootFolderName in handles)) return;
+  await removeLocalFilesCopy(handles[rootFolderName]);
   delete handles[rootFolderName];
   await saveDirHandles(handles);
 };

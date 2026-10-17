@@ -22,4 +22,16 @@ installMemorySampleFeed();
 // if (import.meta.env.DEV) installCoverSizeAudit();
 installGlobalVisualizerFrameRateLimiter();
 
+// iPadOS WebKit may silence Web Audio when Folia moves to the background.
+// Request the media-playback audio session before the player initialises.
+// Browsers without Audio Session API keep the existing playback path.
+try {
+    const mediaNavigator = navigator as Navigator & { audioSession?: { type: string } };
+    if (mediaNavigator.audioSession) {
+        mediaNavigator.audioSession.type = 'playback';
+    }
+} catch (error) {
+    console.warn('[AudioSession] Could not select playback session:', error);
+}
+
 void import('./bootstrap');
