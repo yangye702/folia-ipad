@@ -1634,6 +1634,7 @@ export default {
     "kugou": "Kugou Music",
     "spotify": "Spotify",
     "amll": "AMLLDB",
+    "lrclib": "LRCLIB (Synced Lyrics)",
   },
   "globalLyricOffset": {
     "title": "Global Timing Offset",
