@@ -209,7 +209,16 @@ export const LyricMatchWindow: React.FC<LyricMatchWindowProps> = ({
                             ) : results.length === 0 ? (
                                 <div className={`flex flex-col items-center justify-center h-40 opacity-50 ${textSecondary}`}>
                                     <Music size={40} className="mb-2" />
-                                    <p className="text-sm">{t('localMusic.noResults')}</p>
+                                    <p className="text-sm">{search.searchError ? t('localMusic.matchFailed') : t('localMusic.noResults')}</p>
+                                    {source === 'amll' && (
+                                        <button
+                                            type="button"
+                                            className="mt-3 min-h-11 rounded-lg border border-current px-3 py-2 text-sm"
+                                            onClick={() => search.setSource('lrclib')}
+                                        >
+                                            {t('localMusic.tryLrclib')}
+                                        </button>
+                                    )}
                                 </div>
                             ) : (
                                 <div className="space-y-1.5">
