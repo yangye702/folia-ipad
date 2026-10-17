@@ -1,3 +1,4 @@
+import { pickLocalFiles, copyLocalFiles } from './localFilesImport';
 import { LocalSong, LyricData, LocalLibrarySnapshot, LocalLibrarySnapshotFile, LocalLibrarySnapshotNode, type SongResult } from '../types';
 import { saveLocalSong, saveLocalSongs, deleteLocalSong as dbDeleteLocalSong, deleteLocalSongs as dbDeleteLocalSongs, saveDirHandles, getDirHandles, deleteDirHandle, getLocalSongs, getLocalLibrarySnapshot, saveLocalLibrarySnapshot, deleteLocalLibrarySnapshot } from './db';
 import { getLocalPlaylists, saveLocalPlaylists } from './localPlaylistService';
@@ -161,13 +162,13 @@ async function getImportDirectoryHandle(expectedRootName?: string): Promise<File
         }
 
         const permissionAwareHandle = persistedHandle as FileSystemDirectoryHandle & {
-            queryPermission: (descriptor: { mode: 'read' | 'readwrite'; }) => Promise<PermissionState>;
-            requestPermission: (descriptor: { mode: 'read' | 'readwrite'; }) => Promise<PermissionState>;
+            queryPermission?: (descriptor: { mode: 'read' | 'readwrite'; }) => Promise<PermissionState>;
+            requestPermission?: (descriptor: { mode: 'read' | 'readwrite'; }) => Promise<PermissionState>;
         };
 
-        let permission = await permissionAwareHandle.queryPermission({ mode: 'read' });
+        let permission = (await permissionAwareHandle.queryPermission?.({ mode: 'read' })) ?? 'granted';
         if (permission !== 'granted') {
-            permission = await permissionAwareHandle.requestPermission({ mode: 'read' });
+            permission = (await permissionAwareHandle.requestPermission?.({ mode: 'read' })) ?? 'denied';
         }
 
         if (permission !== 'granted') {
@@ -179,6 +180,8 @@ async function getImportDirectoryHandle(expectedRootName?: string): Promise<File
 
     const availability = getLocalLibraryAvailability();
     if (!availability.supported) throw new Error(`Local library unavailable: ${availability.reason}`);
+
+    if (!('showDirectoryPicker' in window)) return await copyLocalFiles(await pickLocalFiles());
 
     // @ts-ignore - showDirectoryPicker is not in all TypeScript definitions
     return await window.showDirectoryPicker();
@@ -1549,9 +1552,9 @@ async function recoverFileHandleFromPersistedDirectory(song: LocalSong): Promise
     }
 
     const permissionAwareHandle = rootDirHandle as FileSystemDirectoryHandle & {
-        queryPermission: (descriptor: { mode: 'read' | 'readwrite'; }) => Promise<PermissionState>;
+        queryPermission?: (descriptor: { mode: 'read' | 'readwrite'; }) => Promise<PermissionState>;
     };
-    const permission = await permissionAwareHandle.queryPermission({ mode: 'read' });
+    const permission = (await permissionAwareHandle.queryPermission?.({ mode: 'read' })) ?? 'granted';
     if (permission !== 'granted') {
         return null;
     }

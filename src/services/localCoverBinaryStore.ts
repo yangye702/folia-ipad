@@ -1,3 +1,4 @@
+import { writeOpfsFile } from '../utils/writeOpfsFile';
 import type { LocalCoverAssetBackend } from '../types/localCover';
 import { isBlob } from '../utils/blobGuards';
 
@@ -125,26 +126,16 @@ export const writeLocalCoverBinary = async (
   if (!directory || !names) return null;
   const dataHandle = await directory.getFileHandle(names.data, { create: true });
   const metadataHandle = await directory.getFileHandle(names.metadata, { create: true });
-  const dataWritable = await dataHandle.createWritable();
-  try {
-    await dataWritable.write(value);
-    await dataWritable.close();
-  } catch (error) {
-    await dataWritable.abort().catch(() => undefined);
-    throw error;
-  }
+  await writeOpfsFile(dataHandle, value);
   const descriptor: LocalCoverFileDescriptor = {
     id: assetId,
     mimeType,
     size: value.size,
     updatedAt: Date.now(),
   };
-  const metadataWritable = await metadataHandle.createWritable();
   try {
-    await metadataWritable.write(JSON.stringify(descriptor));
-    await metadataWritable.close();
+    await writeOpfsFile(metadataHandle, JSON.stringify(descriptor));
   } catch (error) {
-    await metadataWritable.abort().catch(() => undefined);
     await directory.removeEntry(names.data).catch(() => undefined);
     throw error;
   }
