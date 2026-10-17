@@ -10,7 +10,7 @@ import {
 import { resolveVisualizerBackgroundMode } from '../../../stores/visualizerSettingsPersistence';
 import { useVisualizerModeStepper } from '../../../hooks/useVisualizerModeStepper';
 import { QuickControlChip, QuickControlToggle } from '../../shared/QuickControlChip';
-import { WholeWord } from 'lucide-react';
+import { WholeWord, Sparkles } from 'lucide-react';
 import { openCommandPaletteCommand } from '../../../stores/useAppViewStore';
 import { useLyricSegmentationStore } from '../../../stores/useLyricSegmentationStore';
 import { LYRIC_SEGMENTATION_COMMAND_ID } from '../../command-palette/commands/lyricSegmentationCommand';
@@ -54,6 +54,21 @@ interface AppearanceSectionProps {
 
 const ANIMATION_INTENSITIES: Theme['animationIntensity'][] = ['calm', 'normal', 'chaotic'];
 
+// No new rendering engine: quick iPad scenes only pair two registered Folia
+// effects. The existing effect picker and individual settings remain intact.
+const IPAD_SCENES: Array<{
+    id: string;
+    labelZh: string;
+    labelEn: string;
+    mode: VisualizerMode;
+    background: VisualizerBackgroundMode;
+    intensity: Theme['animationIntensity'];
+}> = [
+    { id: 'glow', labelZh: '流光', labelEn: 'Glow', mode: 'classic', background: 'latent', intensity: 'normal' },
+    { id: 'stage', labelZh: '舞台', labelEn: 'Stage', mode: 'lumiere', background: 'common', intensity: 'normal' },
+    { id: 'pv', labelZh: '文字 PV', labelEn: 'Lyric PV', mode: 'sonnet', background: 'sora', intensity: 'normal' },
+];
+
 const drawStyle = (mode: VisualizerMode, state: PictureState) => <LyricStylePicture mode={mode} {...state} />;
 const drawBackground = (mode: VisualizerBackgroundMode, state: PictureState) => <BackgroundPicture mode={mode} {...state} />;
 const drawStyleGlyph = (mode: VisualizerMode) => <VisualizerModeGlyph mode={mode} size={18} />;
@@ -73,7 +88,7 @@ const AppearanceSection: React.FC<AppearanceSectionProps> = ({
     onToggleTransparentPlayerBackground,
     onClosePanel,
 }) => {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const openSettings = useSettingsModalStore(state => state.openSettings);
     // Only the modes whose typography is built from word segmentation get the chip; the registry
     // says which, so adding such a mode does not mean editing a list here.
@@ -154,6 +169,16 @@ const AppearanceSection: React.FC<AppearanceSectionProps> = ({
         });
     };
 
+    const chooseIpadScene = (scene: (typeof IPAD_SCENES)[number]) => {
+        onVisualizerModeChange(scene.mode);
+        setVisualizerBackgroundMode(scene.background);
+        if (theme.animationIntensity !== scene.intensity) {
+            onThemeChange({ ...theme, animationIntensity: scene.intensity });
+        }
+        changeOpenPicker(null);
+        onClosePanel?.();
+    };
+
     const backgroundQuickControls = getVisualizerBackgroundRegistryEntry(resolvedBackgroundMode).renderQuickControls?.({
         // The backgrounds' tunings as they are saved, and the store's actions for them (an action needs no subscription).
         config: { ...pictureBackground, common: { ...pictureBackground.common, useCoverColorBg } },
@@ -168,6 +193,32 @@ const AppearanceSection: React.FC<AppearanceSectionProps> = ({
 
     return (
         <div>
+            {/* Original Folia visualizer modes, combined as optional one-tap scenes.
+                This row is visible only on touch devices, never a new default. */}
+            <div className="hidden [@media(pointer:coarse)]:block mb-3 rounded-xl border border-[var(--st-line)] bg-[var(--st-fill)]/30 p-3">
+                <div className="mb-2 flex items-center gap-2 text-xs font-medium text-[color:var(--st-t2)]">
+                    <Sparkles size={15} aria-hidden="true" />
+                    <span>{i18n.resolvedLanguage?.startsWith('zh') ? 'iPad 氛围速切' : 'iPad visual scenes'}</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                    {IPAD_SCENES.map(scene => {
+                        const active = visualizerMode === scene.mode && resolvedBackgroundMode === scene.background;
+                        return (
+                            <button
+                                key={scene.id}
+                                type="button"
+                                aria-pressed={active}
+                                onClick={() => chooseIpadScene(scene)}
+                                className={`min-h-11 rounded-lg border px-2 py-2 text-center text-xs font-medium transition-[background-color,border-color] active:scale-[0.98] ${active
+                                    ? 'border-[color:var(--st-t2)] bg-[var(--st-fill2)] text-[color:var(--st-t1)]'
+                                    : 'border-[var(--st-line)] bg-transparent text-[color:var(--st-t2)]'}`}
+                            >
+                                {i18n.resolvedLanguage?.startsWith('zh') ? scene.labelZh : scene.labelEn}
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
             {/* 思索「歌词样式」的埋点：两行一起算，因为那一章讲的就是歌词和背景各选各的。 */}
             <div data-ponder="lyric-style">
                 <LyricPreviewProvider
