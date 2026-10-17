@@ -44,6 +44,7 @@ export const useLyricMatchSearch = (
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<SongResult[]>([]);
     const [isSearching, setIsSearching] = useState(false);
+    const [searchError, setSearchError] = useState(false);
     const [selectedResult, setSelectedResult] = useState<SongResult | null>(null);
     const requestIdRef = useRef(0);
     const searchedSourceRef = useRef(source);
@@ -61,6 +62,7 @@ export const useLyricMatchSearch = (
                 setIsSearching(false);
                 setResults([]);
                 setSelectedResult(null);
+                setSearchError(false);
             }
             return;
         }
@@ -69,6 +71,7 @@ export const useLyricMatchSearch = (
         setIsSearching(true);
         setResults([]);
         setSelectedResult(null);
+        setSearchError(false);
 
         try {
             const found = await searchLyricsByMatchSource(activeSource, text, songInfo);
@@ -78,6 +81,7 @@ export const useLyricMatchSearch = (
             setSelectedResult(pickResult?.(found) ?? null);
         } catch (error) {
             console.error('[LyricMatch] Search failed:', error);
+            if (requestId === requestIdRef.current) setSearchError(true);
         } finally {
             if (requestId === requestIdRef.current) {
                 setIsSearching(false);
@@ -111,6 +115,7 @@ export const useLyricMatchSearch = (
         setQuery,
         results,
         isSearching,
+        searchError,
         selectedResult,
         setSelectedResult,
         /** Searches the text in the box on the source the window is on. */
