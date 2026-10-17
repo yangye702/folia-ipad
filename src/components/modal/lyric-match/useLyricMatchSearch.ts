@@ -22,23 +22,25 @@ export interface LyricMatchSearchOptions {
      * the person typed is searched on the new source too.
      */
     resetsQueryOnSourceChange?: boolean;
+    /** When a local-only browser prefers an independently accessible lyric source. */
+    initialSource?: LyricProviderSource;
 }
 
 // The source the window is on, with the sources it offers: it opens on the first one. An account
 // can be signed out under the open window: its tab goes, and the window is then on the first
 // source that is left.
-const useLyricMatchSourceChoice = (): [LyricProviderSource, (source: LyricProviderSource) => void, LyricProviderSource[]] => {
+const useLyricMatchSourceChoice = (initialSource?: LyricProviderSource): [LyricProviderSource, (source: LyricProviderSource) => void, LyricProviderSource[]] => {
     const offered = useLyricMatchSources();
-    const [chosen, setChosen] = useState<LyricProviderSource>(LYRIC_SOURCES[0].id);
+    const [chosen, setChosen] = useState<LyricProviderSource>(initialSource ?? LYRIC_SOURCES[0].id);
     return [offered.includes(chosen) ? chosen : offered[0], setChosen, offered];
 };
 
 export const useLyricMatchSearch = (
     song: unknown,
     songInfo: LyricMatchSongInfo,
-    { pickResult, resetsQueryOnSourceChange }: LyricMatchSearchOptions = {},
+    { pickResult, resetsQueryOnSourceChange, initialSource }: LyricMatchSearchOptions = {},
 ) => {
-    const [source, setSource, sources] = useLyricMatchSourceChoice();
+    const [source, setSource, sources] = useLyricMatchSourceChoice(initialSource);
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<SongResult[]>([]);
     const [isSearching, setIsSearching] = useState(false);
