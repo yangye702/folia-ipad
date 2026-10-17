@@ -3436,6 +3436,7 @@ export default {
     "forceServer": "Force Server",
     "skipOnlineMatch": "Skip Online Match",
     "saving": "Saving...",
+    "tryLrclib": "Try LRCLIB synced lyrics",
     "matchFailed": "Failed to fetch lyrics for selected song",
     "noLyricsAvailable": "No lyrics available",
     "dontUseOnlineMetadata": "Don't use online metadata",
