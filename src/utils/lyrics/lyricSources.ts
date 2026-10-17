@@ -38,6 +38,7 @@ interface LyricSourceEntry {
 const ENTRIES = [
     { id: 'netease', labelKey: 'lyricProvider.netease', platform: true },
     { id: 'amll', labelKey: 'lyricProvider.amll', platform: false },
+    { id: 'lrclib', labelKey: 'lyricProvider.lrclib', platform: false, linesOnly: true },
     { id: 'qq', labelKey: 'lyricProvider.qq', platform: true },
     { id: 'kugou', labelKey: 'lyricProvider.kugou', platform: true },
     { id: 'spotify', labelKey: 'lyricProvider.spotify', platform: true, needsAccount: true, linesOnly: true },
