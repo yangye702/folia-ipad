@@ -3,7 +3,7 @@ import type { FumeBackgroundScene } from './FumeBackground';
 import type { CameraRetargetState, CameraTarget, CameraViewTarget, FumeArticleLayout, ViewportSize } from './fumeTypes';
 import { clamp, easeInOutCubic, easeOutCubic, mix, quadraticBezier } from './fumeMath';
 import { resolvePrintedGraphemeCount, resolvePrintedGraphemeProgress } from './fumeReveal';
-import { CAMERA_SCALE_MAX, CAMERA_SCALE_MIN, OVERVIEW_CAMERA_SOURCE, resolveBlockEntryFocusPoint, resolveCameraRetargetDuration, resolveCameraScaleForBlock, resolveFocusBlock, resolveOverviewFlightBridge, resolveOverviewRetargetDuration, resolveSmoothBlockFocusPoint, resolveSteppedBlockFocusPoint } from './fumeCamera';
+import { CAMERA_SCALE_MAX, CAMERA_SCALE_MIN, OVERVIEW_CAMERA_SOURCE, resolveBlockEntryFocusPoint, resolveCameraRetargetDuration, resolveCameraScaleForBlock, isCompactFumeViewport, resolveFocusBlock, resolveOverviewFlightBridge, resolveOverviewRetargetDuration, resolveSmoothBlockFocusPoint, resolveSteppedBlockFocusPoint } from './fumeCamera';
 
 // src/components/visualizer/fume/fumeCameraStep.ts
 // The fume camera's per-frame motion, independent of the renderer: pick the target (focus block, the
@@ -150,9 +150,19 @@ export const stepFumeCamera = (state: FumeCameraState, input: FumeCameraStepInpu
                 ),
             );
         entryFocusPoint = resolveBlockEntryFocusPoint(focusBlock);
+        targetCameraScale = resolveCameraScaleForBlock(focusBlock, viewport);
         targetCameraX = focusPoint.x;
         targetCameraY = focusPoint.y;
-        targetCameraScale = resolveCameraScaleForBlock(focusBlock, viewport);
+        // When a compact landscape shot fits the full printed line, anchor the
+        // camera at its midpoint rather than letting it drift towards the right
+        // edge as the last characters are revealed.
+        if (isCompactFumeViewport(viewport) && focusBlock.renderLines.length > 0) {
+            const left = Math.min(...focusBlock.renderLines.map(line => focusBlock.x + line.left));
+            const right = Math.max(...focusBlock.renderLines.map(line => focusBlock.x + line.left + line.width));
+            if ((right - left) * targetCameraScale <= viewport.width * 0.88) {
+                targetCameraX = (left + right) * 0.5;
+            }
+        }
 
         if (state.retarget.sourceLineIndex !== focusBlock.sourceLineIndex) {
             state.retarget = {
