@@ -139,13 +139,32 @@ export const resolveBlockEntryFocusPoint = (
     };
 };
 
+// Folia's original Fume uses deliberate editorial close-ups. On a compact
+// landscape viewport, hold back the zoom so a Chinese lyric line can actually
+// be read before the camera follows the next character.
+export const isCompactFumeViewport = (viewport: ViewportSize): boolean => (
+    viewport.width <= 1180 && viewport.height <= 850
+);
+
 export const resolveCameraScaleForBlock = (
     block: FumeBlock,
     viewport: ViewportSize,
 ) => {
     const minViewportSide = Math.max(Math.min(viewport.width, viewport.height), 1);
-    const targetLineHeight = clamp(minViewportSide * 0.115, 64, 124);
-    return clamp(targetLineHeight / Math.max(block.lineHeight, 1), 0.88, 2.2);
+    const compact = isCompactFumeViewport(viewport);
+    const targetLineHeight = compact
+        ? clamp(minViewportSide * 0.091, 43, 78)
+        : clamp(minViewportSide * 0.115, 64, 124);
+    const expressiveScale = clamp(
+        targetLineHeight / Math.max(block.lineHeight, 1),
+        compact ? 0.62 : 0.88,
+        compact ? 1.78 : 2.2,
+    );
+    if (!compact || block.renderLines.length === 0) return expressiveScale;
+    const longestLineWidth = Math.max(...block.renderLines.map(line => line.width), 1);
+    const fitScale = (viewport.width * 0.86) / longestLineWidth;
+    // Preserve the signature camera sweep for exceptionally long lines.
+    return clamp(Math.min(expressiveScale, fitScale), 0.62, 1.78);
 };
 
 export const resolveCameraRetargetDuration = (line: Line) => {
