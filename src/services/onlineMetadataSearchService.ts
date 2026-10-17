@@ -87,7 +87,9 @@ export const normalizeLyricMatchMetadataCandidate = (
     result: SongResult,
     target: OnlineMetadataSearchTarget,
 ): OnlineMetadataCandidate => {
-    const source: OnlineMetadataSource = lyricSource === 'amll'
+    // Non-platform lyric databases never have their metadata applied to the local song.
+    // Use a platform-shaped candidate only to satisfy the match window's common contract.
+    const source: OnlineMetadataSource = lyricSource === 'amll' || lyricSource === 'lrclib'
         ? result.amllDbPlatform === 'qq' ? 'qq' : 'netease'
         : lyricSource;
     return normalizeOnlineMetadataCandidate(source, result, target);
