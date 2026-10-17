@@ -3435,6 +3435,7 @@ export default {
     "forceServer": "强制回退服务器歌词",
     "skipOnlineMatch": "不使用在线匹配",
     "saving": "保存...",
+    "tryLrclib": "试试 LRCLIB 同步歌词",
     "matchFailed": "获取歌词失败",
     "noLyricsAvailable": "无可用歌词",
     "dontUseOnlineMetadata": "不使用在线数据",
