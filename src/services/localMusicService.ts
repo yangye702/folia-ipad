@@ -1,4 +1,4 @@
-import { pickLocalFiles, copyLocalFiles, getCopiedLocalFilesDirectory } from './localFilesImport';
+import { pickLocalFiles, copyLocalFiles, getCopiedLocalFilesDirectory, readCopiedLocalAudio } from './localFilesImport';
 import { LocalSong, LyricData, LocalLibrarySnapshot, LocalLibrarySnapshotFile, LocalLibrarySnapshotNode, type SongResult } from '../types';
 import { saveLocalSong, saveLocalSongs, deleteLocalSong as dbDeleteLocalSong, deleteLocalSongs as dbDeleteLocalSongs, saveDirHandles, getDirHandles, deleteDirHandle, getLocalSongs, getLocalLibrarySnapshot, saveLocalLibrarySnapshot, deleteLocalLibrarySnapshot } from './db';
 import { getLocalPlaylists, saveLocalPlaylists } from './localPlaylistService';
@@ -1612,6 +1612,11 @@ async function cleanupDirHandleIfUnused(rootFolderName: string): Promise<void> {
 // Get audio blob from local song using fileHandle
 // Returns blob URL if fileHandle exists, null otherwise
 export async function getAudioFromLocalSong(song: LocalSong): Promise<string | null> {
+    // OPFS imports are our own files, not external Files-app handles. Reopen by
+    // the persisted path even when Safari has dropped the IDB directory handle.
+    const copiedFile = await readCopiedLocalAudio(getRootFolderName(song) ?? '', song.filePath);
+    if (copiedFile) return getAudioFromFile(copiedFile);
+
     const fileHandle = await getAccessibleFileHandle(song);
 
     if (fileHandle) {
@@ -1643,6 +1648,8 @@ export async function getAudioFromLocalSong(song: LocalSong): Promise<string | n
 
 /** Resolves the current File for playback recovery without changing the song or minting a URL. */
 export async function getFileFromLocalSong(song: LocalSong): Promise<File | null> {
+    const copiedFile = await readCopiedLocalAudio(getRootFolderName(song) ?? '', song.filePath);
+    if (copiedFile) return copiedFile;
     const fileHandle = await getAccessibleFileHandle(song);
     if (fileHandle) {
         try {
@@ -1673,6 +1680,8 @@ export async function getFileFromLocalSong(song: LocalSong): Promise<File | null
  * but returns the ArrayBuffer. Null when no handle can be reached - permission not restored, or moved.
  */
 export async function getLocalSongArrayBuffer(song: LocalSong): Promise<ArrayBuffer | null> {
+    const copiedFile = await readCopiedLocalAudio(getRootFolderName(song) ?? '', song.filePath);
+    if (copiedFile) return copiedFile.arrayBuffer();
     const fileHandle = await getAccessibleFileHandle(song);
     if (!fileHandle) {
         console.warn(`[LocalMusic] No accessible handle for song ${song.id} (automix bytes)`);
