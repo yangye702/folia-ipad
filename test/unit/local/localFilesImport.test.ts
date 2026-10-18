@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import { copyLocalFiles, getCopiedLocalFilesDirectory } from '../../../src/services/localFilesImport';
+import { copyLocalFiles, getCopiedLocalFilesDirectory, readCopiedLocalAudio } from '../../../src/services/localFilesImport';
 
 // Verify failed imports release their private copy and do not silently swallow quota failures.
 afterEach(() => vi.unstubAllGlobals());
@@ -42,4 +42,25 @@ it('does not probe arbitrary folders or create new folders when restoring', asyn
     expect(await getCopiedLocalFilesDirectory('Files-00000000-0000-4000-8000-000000000001')).toBeNull();
     expect(root.getDirectoryHandle).toHaveBeenCalledWith('folia-file-imports');
     expect(root.getDirectoryHandle).not.toHaveBeenCalledWith('folia-file-imports', { create: true });
+});
+
+it('reads copied OPFS audio directly when no serialized directory handle exists', async () => {
+    const rootName = 'Files-00000000-0000-4000-8000-000000000001';
+    const file = new File(['local-audio'], 'song.m4a', { type: 'audio/mp4' });
+    const songHandle = { getFile: vi.fn().mockResolvedValue(file) };
+    const importedFolder = { getFileHandle: vi.fn().mockResolvedValue(songHandle) };
+    const imports = { getDirectoryHandle: vi.fn().mockResolvedValue(importedFolder) };
+    vi.stubGlobal('navigator', { storage: {
+        getDirectory: vi.fn().mockResolvedValue({ getDirectoryHandle: vi.fn().mockResolvedValue(imports) }),
+    } });
+    const reopened = await readCopiedLocalAudio(rootName, `${rootName}/song.m4a`);
+    expect(reopened?.size).toBe(file.size);
+    expect(importedFolder.getFileHandle).toHaveBeenCalledWith('song.m4a');
+});
+
+it('never reads outside the private import root', async () => {
+    const getDirectory = vi.fn();
+    vi.stubGlobal('navigator', { storage: { getDirectory } });
+    expect(await readCopiedLocalAudio('outside', '../secret.mp3')).toBeNull();
+    expect(getDirectory).not.toHaveBeenCalled();
 });
