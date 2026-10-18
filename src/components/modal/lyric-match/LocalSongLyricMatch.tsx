@@ -161,7 +161,8 @@ const LocalSongLyricMatch: React.FC<LocalSongLyricMatchProps> = ({ song, onClose
         <button
             onClick={onToggle}
             disabled={disabled}
-            className="flex items-center gap-1.5 group disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex items-center gap-1.5 group rounded-lg [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:px-2 disabled:opacity-40 disabled:cursor-not-allowed"
+            aria-pressed={isOn}
             title={label}
         >
             <div className={`w-2 h-2 rounded-full transition-all duration-200 ${isOn ? dotActive + ' shadow-sm shadow-blue-400/50' : dotBase} group-hover:scale-150`} />
