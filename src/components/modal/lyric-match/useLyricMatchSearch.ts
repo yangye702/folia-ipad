@@ -82,20 +82,35 @@ export const useLyricMatchSearch = (
                 // One tap instead of manually switching sources and retyping the
                 // same song. Parallel lookup bounds latency to the slower public
                 // service rather than the sum of both providers' timeouts.
-                const [amll, lrclib] = await Promise.allSettled([
-                    searchLyricsByMatchSource('amll', text, songInfo),
-                    searchLyricsByMatchSource('lrclib', text, songInfo),
-                ]);
-                if (amll.status === 'fulfilled' && amll.value.length) {
-                    found = amll.value;
-                } else if (lrclib.status === 'fulfilled' && lrclib.value.length) {
-                    found = lrclib.value;
-                    resultSource = 'lrclib';
-                } else if (amll.status === 'rejected' && lrclib.status === 'rejected') {
-                    throw new Error('AMLL and LRCLIB are both unavailable');
+                type PublicResult = { source: 'amll' | 'lrclib'; songs: SongResult[]; failed: boolean };
+                const lookup = (lookupSource: 'amll' | 'lrclib'): Promise<PublicResult> => (
+                    searchLyricsByMatchSource(lookupSource, text, songInfo)
+                        .then(songs => ({ source: lookupSource, songs, failed: false }),
+                            () => ({ source: lookupSource, songs: [], failed: true }))
+                );
+                const amll = lookup('amll');
+                const lrclib = lookup('lrclib');
+                const first = await Promise.race([amll, lrclib]);
+                let picked: PublicResult;
+                if (first.source === 'amll' && first.songs.length) {
+                    picked = first; // high-quality per-word TTML, no delay
+                } else if (first.source === 'lrclib' && first.songs.length) {
+                    // Use already-found synced lyrics promptly instead of waiting
+                    // for AMLL's full timeout. Give AMLL a brief grace window to
+                    // win with superior word-by-word timing when it's responsive.
+                    const gracefulAmll = await Promise.race([
+                        amll,
+                        new Promise<null>(resolve => window.setTimeout(() => resolve(null), 900)),
+                    ]);
+                    picked = gracefulAmll?.songs.length ? gracefulAmll : first;
                 } else {
-                    found = [];
+                    picked = first.source === 'amll' ? await lrclib : await amll;
+                    if (!picked.songs.length && first.failed && picked.failed) {
+                        throw new Error('AMLL and LRCLIB are both unavailable');
+                    }
                 }
+                found = picked.songs;
+                if (found.length) resultSource = picked.source;
             } else {
                 found = await searchLyricsByMatchSource(activeSource, text, songInfo);
             }
