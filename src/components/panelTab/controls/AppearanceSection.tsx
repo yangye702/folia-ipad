@@ -10,7 +10,7 @@ import {
 import { resolveVisualizerBackgroundMode } from '../../../stores/visualizerSettingsPersistence';
 import { useVisualizerModeStepper } from '../../../hooks/useVisualizerModeStepper';
 import { QuickControlChip, QuickControlToggle } from '../../shared/QuickControlChip';
-import { WholeWord, Sparkles } from 'lucide-react';
+import { WholeWord, Sparkles, Eye, EyeOff } from 'lucide-react';
 import { openCommandPaletteCommand } from '../../../stores/useAppViewStore';
 import { useLyricSegmentationStore } from '../../../stores/useLyricSegmentationStore';
 import { LYRIC_SEGMENTATION_COMMAND_ID } from '../../command-palette/commands/lyricSegmentationCommand';
@@ -28,6 +28,7 @@ import { useTypographySettingsStore } from '../../../stores/useTypographySetting
 import { useVisualizerSettingsStore } from '../../../stores/useVisualizerSettingsStore';
 import { useSettingsModalStore } from '../../../stores/useSettingsModalStore';
 import { selectDisplayPlayerState, usePlaybackStore } from '../../../stores/usePlaybackStore';
+import { usePlayerChromeSettingsStore } from '../../../stores/usePlayerChromeSettingsStore';
 import { usePonderStore } from '../../../stores/usePonderStore';
 import { Toggle, type PictureState } from '../../modal/settings/kit';
 
@@ -67,6 +68,7 @@ const IPAD_SCENES: Array<{
     { id: 'glow', labelZh: '流光', labelEn: 'Glow', mode: 'classic', background: 'latent', intensity: 'normal' },
     { id: 'stage', labelZh: '舞台', labelEn: 'Stage', mode: 'lumiere', background: 'common', intensity: 'normal' },
     { id: 'pv', labelZh: '文字 PV', labelEn: 'Lyric PV', mode: 'sonnet', background: 'sora', intensity: 'normal' },
+    { id: 'cover', labelZh: '封面律动', labelEn: 'Cover Beat', mode: 'classic', background: 'latent', intensity: 'normal' },
 ];
 
 const drawStyle = (mode: VisualizerMode, state: PictureState) => <LyricStylePicture mode={mode} {...state} />;
@@ -96,6 +98,9 @@ const AppearanceSection: React.FC<AppearanceSectionProps> = ({
     const hasSavedSegmentation = useLyricSegmentationStore(state => Boolean(state.record));
     const visualizerBackgroundMode = useVisualizerSettingsStore(state => state.visualizerBackgroundMode);
     const setVisualizerBackgroundMode = useVisualizerSettingsStore(state => state.handleSetVisualizerBackgroundMode);
+    const setLatentBackgroundTuning = useVisualizerSettingsStore(state => state.handleSetLatentBackgroundTuning);
+    const hideProgressBar = usePlayerChromeSettingsStore(state => state.hidePlayerProgressBar);
+    const setHideProgressBar = usePlayerChromeSettingsStore(state => state.handleToggleHidePlayerProgressBar);
 
     const visualizerOptions = useMemo(
         () => VISUALIZER_REGISTRY.map(entry => ({
@@ -171,6 +176,15 @@ const AppearanceSection: React.FC<AppearanceSectionProps> = ({
 
     const chooseIpadScene = (scene: (typeof IPAD_SCENES)[number]) => {
         onVisualizerModeChange(scene.mode);
+        if (scene.id === 'cover') {
+            // Original Latent shader follows embedded or local cover colors.
+            // Without cover art it falls back to the existing theme palette.
+            setLatentBackgroundTuning({
+                colorSource: 'cover-only',
+                displayMode: 'both',
+                enhancedBeatResponse: true,
+            });
+        }
         setVisualizerBackgroundMode(scene.background);
         if (theme.animationIntensity !== scene.intensity) {
             onThemeChange({ ...theme, animationIntensity: scene.intensity });
@@ -200,7 +214,7 @@ const AppearanceSection: React.FC<AppearanceSectionProps> = ({
                     <Sparkles size={15} aria-hidden="true" />
                     <span>{i18n.resolvedLanguage?.startsWith('zh') ? 'iPad 氛围速切' : 'iPad visual scenes'}</span>
                 </div>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                     {IPAD_SCENES.map(scene => {
                         const active = visualizerMode === scene.mode && resolvedBackgroundMode === scene.background;
                         return (
@@ -218,6 +232,25 @@ const AppearanceSection: React.FC<AppearanceSectionProps> = ({
                         );
                     })}
                 </div>
+                <button
+                    type="button"
+                    aria-pressed={hideProgressBar}
+                    onClick={() => {
+                        setHideProgressBar(!hideProgressBar);
+                        onClosePanel?.();
+                    }}
+                    className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-[var(--st-line)] px-3 py-2 text-xs font-medium text-[color:var(--st-t2)] transition-colors hover:bg-[var(--st-fill)]"
+                >
+                    {hideProgressBar ? <Eye size={16} aria-hidden="true" /> : <EyeOff size={16} aria-hidden="true" />}
+                    {i18n.resolvedLanguage?.startsWith('zh')
+                        ? (hideProgressBar ? '恢复播放控制条' : '纯净画面 · 隐藏进度条')
+                        : (hideProgressBar ? 'Show playback bar' : 'Focus view · hide playback bar')}
+                </button>
+                <p className="mt-1.5 text-[10px] text-[color:var(--st-t3)]">
+                    {i18n.resolvedLanguage?.startsWith('zh')
+                        ? '可从右下角重新打开面板恢复控制条；使用主屏幕 App 可隐藏 Safari 地址栏。'
+                        : 'Reopen the right panel to restore controls; Home Screen app hides Safari chrome.'}
+                </p>
             </div>
             {/* 思索「歌词样式」的埋点：两行一起算，因为那一章讲的就是歌词和背景各选各的。 */}
             <div data-ponder="lyric-style">
