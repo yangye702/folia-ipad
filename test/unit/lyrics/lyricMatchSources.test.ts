@@ -127,7 +127,7 @@ describe('lyricMatchSources', () => {
         it('stops without the title-only retry when the request fails', async () => {
             searchAmllDbSongsMock.mockResolvedValue(null);
 
-            await expect(searchAmllDbLyricCandidates('Song Title - Artist Name', target)).resolves.toEqual([]);
+            await expect(searchAmllDbLyricCandidates('Song Title - Artist Name', target)).rejects.toThrow('AMLL service unavailable');
             expect(searchAmllDbSongsMock).toHaveBeenCalledTimes(1);
         });
     });
