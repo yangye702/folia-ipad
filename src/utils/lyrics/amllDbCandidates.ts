@@ -51,7 +51,7 @@ export function buildAmllDbSearchQueries(query: string): AmllApiSearchParams[] {
     const artistName = artist.split(ARTIST_SEPARATOR)[0]?.trim();
     const artists = artistName ? lyricChineseVariants(artistName) : [];
     const queries: AmllApiSearchParams[] = [];
-    if (artists.length) {
+    if (artistName && artists.length) {
         // Preserve the exact artist when stripping e.g. (TV Size) / 【Live】:
         // a Japanese title/artist must not suddenly become simplified Chinese.
         const originalTitles = [...new Set([musicName, baseName])];
