@@ -184,6 +184,17 @@ const AppearanceSection: React.FC<AppearanceSectionProps> = ({
                 colorSource: 'cover-only',
                 displayMode: 'both',
                 enhancedBeatResponse: true,
+                // A clearly perceptible iPad preset: slow ambient drift at rest
+                // and stronger, but bounded, shader motion with live audio.
+                // Reuses Folia's original shader/audio bands, without a new loop.
+                ditheringSpeed: 0.25,
+                ditheringAudioSpeed: 1.8,
+                ditheringOpacity: 0.48,
+                ditheringSize: 2.5,
+                meshSpeed: 0.18,
+                meshAudioSpeed: 1.9,
+                meshDistortion: 0.74,
+                meshSwirl: 0.56,
             });
         } else if (scene.id === 'glow') {
             // Make the paired cover scene reversible when returning to Glow.
