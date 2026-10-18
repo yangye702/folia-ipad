@@ -2,6 +2,25 @@ import { writeOpfsFile } from '../utils/writeOpfsFile';
 
 // Imports Files-app selections into device-only OPFS for the existing directory scanner.
 const IMPORTS_DIRECTORY = 'folia-file-imports';
+const IMPORTED_ROOT_NAME = /^Files-[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+
+/**
+ * Safari can reopen our origin-private import folder directly, even if the
+ * FileSystemDirectoryHandle persisted in IndexedDB was not restored.
+ * Only resolve Folia-created UUID roots; never scan arbitrary device files.
+ */
+export async function getCopiedLocalFilesDirectory(rootFolderName: string): Promise<FileSystemDirectoryHandle | null> {
+    if (!IMPORTED_ROOT_NAME.test(rootFolderName)) return null;
+    if (typeof navigator === 'undefined' || typeof navigator.storage?.getDirectory !== 'function') return null;
+    try {
+        const root = await navigator.storage.getDirectory();
+        const imports = await root.getDirectoryHandle(IMPORTS_DIRECTORY);
+        return await imports.getDirectoryHandle(rootFolderName);
+    } catch (error) {
+        console.warn('[LocalFiles] OPFS imported folder unavailable:', rootFolderName, error);
+        return null;
+    }
+}
 
 export function pickLocalFiles(): Promise<File[]> {
     return new Promise((resolve, reject) => {
