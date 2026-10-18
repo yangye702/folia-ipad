@@ -237,6 +237,7 @@ const AppearanceSection: React.FC<AppearanceSectionProps> = ({
                         renderGlyph={drawStyleGlyph}
                         renderPicture={drawStyle}
                         caption={t('ui.animationMode')}
+                        swipeHint={i18n.resolvedLanguage?.startsWith('zh') ? '左右滑动切换' : 'Swipe to switch'}
                         moreLabel={t('ui.moreSettings')}
                         onOpenMore={openVisualizerSettings}
                         open={openPicker === 'style'}
@@ -274,6 +275,7 @@ const AppearanceSection: React.FC<AppearanceSectionProps> = ({
                         renderGlyph={drawBackgroundGlyph}
                         renderPicture={drawBackground}
                         caption={t('options.visualizerBackgroundMode')}
+                        swipeHint={i18n.resolvedLanguage?.startsWith('zh') ? '左右滑动切换' : 'Swipe to switch'}
                         moreLabel={t('ui.moreSettings')}
                         onOpenMore={openBackgroundSettings}
                         open={openPicker === 'background'}
