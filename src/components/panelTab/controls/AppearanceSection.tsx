@@ -99,6 +99,7 @@ const AppearanceSection: React.FC<AppearanceSectionProps> = ({
     const visualizerBackgroundMode = useVisualizerSettingsStore(state => state.visualizerBackgroundMode);
     const setVisualizerBackgroundMode = useVisualizerSettingsStore(state => state.handleSetVisualizerBackgroundMode);
     const setLatentBackgroundTuning = useVisualizerSettingsStore(state => state.handleSetLatentBackgroundTuning);
+    const latentColorSource = useVisualizerSettingsStore(state => state.latentBackgroundTuning.colorSource);
     const hideProgressBar = usePlayerChromeSettingsStore(state => state.hidePlayerProgressBar);
     const setHideProgressBar = usePlayerChromeSettingsStore(state => state.handleToggleHidePlayerProgressBar);
 
@@ -184,6 +185,9 @@ const AppearanceSection: React.FC<AppearanceSectionProps> = ({
                 displayMode: 'both',
                 enhancedBeatResponse: true,
             });
+        } else if (scene.id === 'glow') {
+            // Make the paired cover scene reversible when returning to Glow.
+            setLatentBackgroundTuning({ colorSource: 'cover-theme' });
         }
         setVisualizerBackgroundMode(scene.background);
         if (theme.animationIntensity !== scene.intensity) {
@@ -216,7 +220,10 @@ const AppearanceSection: React.FC<AppearanceSectionProps> = ({
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                     {IPAD_SCENES.map(scene => {
-                        const active = visualizerMode === scene.mode && resolvedBackgroundMode === scene.background;
+                        const active = visualizerMode === scene.mode
+                            && resolvedBackgroundMode === scene.background
+                            && (scene.id === 'cover' ? latentColorSource === 'cover-only'
+                                : scene.id === 'glow' ? latentColorSource !== 'cover-only' : true);
                         return (
                             <button
                                 key={scene.id}
