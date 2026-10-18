@@ -51,13 +51,20 @@ export function buildAmllDbSearchQueries(query: string): AmllApiSearchParams[] {
     const artistName = artist.split(ARTIST_SEPARATOR)[0]?.trim();
     const artists = artistName ? lyricChineseVariants(artistName) : [];
     const queries: AmllApiSearchParams[] = [];
-    // Original title + artist, followed by normalized title + artist.
     if (artists.length) {
-        names.forEach((name, i) => {
-            queries.push({ musicName: name, artistName: artists[i] ?? artists[0] });
-        });
+        // Preserve the exact artist when stripping e.g. (TV Size) / 【Live】:
+        // a Japanese title/artist must not suddenly become simplified Chinese.
+        const originalTitles = [...new Set([musicName, baseName])];
+        originalTitles.forEach(name => queries.push({ musicName: name, artistName }));
+        // For converted song titles, use the corresponding script version of
+        // the artist; do not reorder the user's original spelling.
+        for (const name of names) {
+            if (originalTitles.includes(name)) continue;
+            const variantIndex = Math.max(originalNames.indexOf(name), baseNames.indexOf(name));
+            queries.push({ musicName: name, artistName: artists[variantIndex] ?? artistName });
+        }
     }
-    // Only drop the artist after trying the title's normalized variants.
+    // The least restrictive search drops the artist, but retains script variants.
     baseNames.forEach(name => queries.push({ musicName: name }));
     return queries;
 }
