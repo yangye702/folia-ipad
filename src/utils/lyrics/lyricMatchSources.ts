@@ -81,18 +81,39 @@ export async function searchAmllDbLyricCandidates(
     query: string,
     target: LyricMatchSearchTarget,
 ): Promise<SongResult[]> {
-    for (const params of buildAmllDbSearchQueries(query)) {
-        const items = await searchAmllDbSongs(params, AMLL_DB_SEARCH_PAGE_SIZE);
-        if (items === null) {
-            // The AMLL client returns null for rate limits/network failures. Do not
-            // disguise a failed lookup as an unindexed song.
-            throw new Error('AMLL lyrics service is currently unreachable');
+    const queries = buildAmllDbSearchQueries(query);
+    // Respect the relevance ordering: specific title+artist, title alone, then
+    // the broad lyric-body text query. Script variants inside each group run
+    // concurrently so 簡/简 does not add a second 5-second wait.
+    const paired = queries.filter(q => 'musicName' in q && Boolean(q.artistName));
+    const titleOnly = queries.filter(q => 'musicName' in q && !q.artistName);
+    const broad = queries.filter(q => 'q' in q);
+    let hadSuccessfulRequest = false;
+    let lastFailure: unknown = null;
+    for (const group of [paired, titleOnly, broad]) {
+        if (!group.length) continue;
+        const settled = await Promise.allSettled(group.map(params => searchAmllDbSongs(params, AMLL_DB_SEARCH_PAGE_SIZE)));
+        const candidates: SongResult[] = [];
+        for (const response of settled) {
+            if (response.status === 'fulfilled' && response.value !== null) {
+                hadSuccessfulRequest = true;
+                candidates.push(...toAmllDbSongResults(response.value));
+            } else {
+                lastFailure = response.status === 'rejected' ? response.reason : new Error('AMLL service unavailable');
+            }
         }
-        const candidates = toAmllDbSongResults(items);
-        if (candidates.length > 0) {
-            return sortByMatchScore(candidates, target).slice(0, AMLL_DB_MAX_RESULTS);
+        if (candidates.length) {
+            const ids = new Set<string>();
+            const distinct = candidates.filter(song => {
+                const key = `${song.amllDbPlatform}:${song.id}`;
+                if (ids.has(key)) return false;
+                ids.add(key);
+                return true;
+            });
+            return sortByMatchScore(distinct, target).slice(0, AMLL_DB_MAX_RESULTS);
         }
     }
+    if (!hadSuccessfulRequest) throw lastFailure ?? new Error('AMLL service unavailable');
     return [];
 }
 
@@ -165,12 +186,39 @@ export const getLyricSourceAccess = (source: LyricProviderSource): LyricSourceAc
     accessBySource.get(source) as LyricSourceAccess
 );
 
-export async function searchLyricsByMatchSource(
+const matchSearchCache = new Map<string, { until: number; value: SongResult[] }>();
+const pendingMatchSearches = new Map<string, Promise<SongResult[]>>();
+const MAX_MATCH_SEARCH_CACHE = 80;
+
+export function searchLyricsByMatchSource(
     source: LyricProviderSource,
     query: string,
     target: LyricMatchSearchTarget,
 ): Promise<SongResult[]> {
-    return sortByMatchScore(await getLyricSourceAccess(source).search(query, MATCH_WINDOW_SEARCH_LIMIT, target), target);
+    // Provider accounts can change: cache only account-free lyric databases.
+    if (source !== 'amll' && source !== 'lrclib') {
+        return getLyricSourceAccess(source).search(query, MATCH_WINDOW_SEARCH_LIMIT, target)
+            .then(songs => sortByMatchScore(songs, target));
+    }
+    const key = JSON.stringify([source, query.trim().normalize('NFC'), target.title, target.artist, target.album, target.durationMs]);
+    const cached = matchSearchCache.get(key);
+    if (cached && Date.now() < cached.until) return Promise.resolve(cached.value);
+    const active = pendingMatchSearches.get(key);
+    if (active) return active;
+    const task = getLyricSourceAccess(source).search(query, MATCH_WINDOW_SEARCH_LIMIT, target)
+        .then(songs => {
+            const sorted = sortByMatchScore(songs, target);
+            matchSearchCache.set(key, { until: Date.now() + (sorted.length ? 90_000 : 12_000), value: sorted });
+            while (matchSearchCache.size > MAX_MATCH_SEARCH_CACHE) {
+                const oldest = matchSearchCache.keys().next().value;
+                if (oldest === undefined) break;
+                matchSearchCache.delete(oldest);
+            }
+            return sorted;
+        })
+        .finally(() => { pendingMatchSearches.delete(key); });
+    pendingMatchSearches.set(key, task);
+    return task;
 }
 
 export async function fetchLyricsForMatchSource(
