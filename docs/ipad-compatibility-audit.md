@@ -66,3 +66,41 @@
 - 上述 P0 场景由 iPad Safari + 主屏幕 App 各做一次实测；关键用户场景无明显故障。
 - 对无法支持的功能给出具体浏览器/权限边界；不假装“所有桌面功能都可以完美移植”。
 - 审核 PR #3 的累计改动及回退路径之后，用户同意再合并稳定主分支；测试阶段不污染现有固定站点存储。
+
+
+## 2026-10-18 回归与原版能力专项复核
+
+### 回归检查（有执行证据）
+
+- GitHub Actions **PR Unit Tests** 最终通过，工作流运行 [39098990547](https://github.com/yangye702/folia-ipad/actions/runs/39098990547)，提交 `ff1cb126de86181e4dd0f5c2b131da5f3589d13b`。
+- 主项目 TypeScript 类型检查：PASS。
+- sync-server TypeScript 类型检查：PASS。
+- Vitest：**9,538 passed，2 skipped，0 failed**（838 个测试文件通过、1 文件跳过，合计 839）。
+- PR #3 目前仍为 Draft，未合并 `main`。
+- **未运行** WebKit 真机 / Playwright 浏览器端到端测试，不能将 Vitest 的全绿视为 iPad 全面兼容。
+
+### 代码复核：锁屏与系统媒体控制
+
+- `src/hooks/useMediaSessionBridge.ts` 已绑定 Web Media Session 的 `play`、`pause`、`previoustrack`、`nexttrack`，并发布歌曲标题、歌手、专辑、封面及播放状态。
+- `src/utils/mediaSessionSync.ts` 会检查音频来源及时间轴，防止旧歌曲事件覆盖新歌锁屏信息；单元测试 `test/unit/utils/mediaSessionSync.test.ts` 覆盖元数据、时间轴和封面 URL 规则。
+- **仍未核实** iPadOS 锁屏切歌/进度/封面、耳机控制和 Safari-PWA 后台切换。Web Media Session 接口存在不代表每一种控制在所有 iPadOS 版本都可靠。
+
+### 代码复核：本地歌单与收藏
+
+- `src/services/localPlaylistService.ts` 保存本地歌单 ID 列表，处理重复导入时的 canonical ID，避免重复文件在收藏或歌单中表现为不同歌曲。
+- `src/services/localPlaylistFileService.ts` 支持 M3U 解析、按现有本地曲库路径匹配与导出；`test/unit/services/localPlaylistService.test.ts`、`test/unit/services/localPlaylistFileService.test.ts` 均纳入本轮全量单元测试。
+- **仍未核实** iPad 上从界面创建歌单、保存/重新打开后恢复、M3U 文件导入与分享导出。测试使用模拟数据，不等于真机文件选择器验证。
+
+### 代码复核：视觉引擎
+
+- `test/unit/visualizer/builtinModeLists.test.ts` 断言静态模式 ID 和动态 registry 一致；`test/unit/visualizer/backgroundRegistry.test.ts` 检查 6 种背景的注册/渲染入口。
+- `src/components/visualizer/VisualizerRenderer.tsx` 使用延迟切换 + Suspense 与过渡层，目标是切换时保留旧画面直至新引擎加载，但浏览器真机 GPU 占用和帧率**尚未测量**。
+- 因此 14 种歌词样式、6 种背景应在 iPad 横屏下逐项试运行；对黑屏、字体截断、页面冻结、显著卡顿单独记录模式名称，不先改渲染架构。
+
+### 下一步最低成本真机验收
+
+1. **锁屏/耳机媒体控制**：在已经导入的歌曲上播放 → 锁屏 → 观察标题/封面，试暂停、下一首，再解锁继续；不重新导入。
+2. **本地歌单持久化**：新建测试歌单 → 添加两首现有 MP3 → 关闭 Safari 标签再从固定测试 URL 打开 → 查看歌单与歌曲是否仍在。
+3. **视觉快速巡检**：横屏逐一切换歌词样式和背景，记录是否黑屏/卡顿；只有确认存在具体问题才修改源码。
+4. 完成以上后再评估 Playwright WebKit E2E 与 30–60 分钟长时间播放测试；它们没有被本轮 CI 代替。
+
