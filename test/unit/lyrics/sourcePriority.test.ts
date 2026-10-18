@@ -26,6 +26,6 @@ describe('lyric source priority', () => {
         expect(migratePreferredLyricSource(null, 'amll')).toBe('amll');
         expect(migratePreferredLyricSource(null, 'qq')).toBe('qq');
         expect(migratePreferredLyricSource(null, 'kugou')).toBe('kugou');
-        expect(migratePreferredLyricSource('netease', 'lrclib', 'qq')).toBe('netease');
+        expect(migratePreferredLyricSource('netease', 'qq')).toBe('netease');
     });
 });
