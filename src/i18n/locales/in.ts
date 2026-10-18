@@ -1,6 +1,7 @@
 
 
 export default {
+  "qqLyricSearch": {"network": "Permintaan pencarian QQ gagal. Coba lagi.", "http": "Proksi pencarian QQ mengembalikan kesalahan HTTP.", "upstream": "QQ Music menolak pencarian.", "invalid-response": "Format respons pencarian QQ tidak sesuai.", "diagnostics": "Diagnostik pencarian lirik QQ", "hint": "Khusus debug: 30 pencarian terakhir, kueri, status HTTP proksi, kode QQ dan jumlah hasil. HTTP sukses tidak membuktikan QQ menerima permintaan. Tanpa kredensial atau respons mentah. Pilih teks jika penyalinan gagal. Hapus qqLyricDebug dari URL untuk menyembunyikan panel.", "copy": "Salin diagnostik", "select": "Pilih teks diagnostik"},
   "mediaDiagnostics": {"controlCenter": "Pusat Kontrol", "lockScreen": "Layar Kunci", "entry": "Diagnostik media", "close": "Tutup", "copy": "Salin log", "disable": "Nonaktifkan dan hapus diagnostik", "select": "Pilih log"},
   "libraryBravais": {
     "suiteName": "Dinding Bravais",

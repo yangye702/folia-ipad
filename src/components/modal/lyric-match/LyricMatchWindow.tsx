@@ -1,3 +1,4 @@
+import { SourceSearchDiagnostics } from './SourceSearchDiagnostics';
 import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Check, FileAudio, Loader2, Music, Search, X } from 'lucide-react';
@@ -198,6 +199,7 @@ export const LyricMatchWindow: React.FC<LyricMatchWindowProps> = ({
                                     {isSearching ? <Loader2 size={16} className="animate-spin" /> : t('localMusic.search')}
                                 </button>
                             </form>
+                            <SourceSearchDiagnostics source={source} />
                         </div>
 
                         {/* Results List */}
@@ -209,7 +211,7 @@ export const LyricMatchWindow: React.FC<LyricMatchWindowProps> = ({
                             ) : results.length === 0 ? (
                                 <div className={`flex flex-col items-center justify-center h-40 opacity-50 ${textSecondary}`}>
                                     <Music size={40} className="mb-2" />
-                                    <p className="text-sm">{search.searchError ? t('localMusic.matchFailed') : t('localMusic.noResults')}</p>
+                                    <p className="text-sm">{search.searchError ? (search.searchFailureMessageKey ? t(search.searchFailureMessageKey) : t('localMusic.matchFailed')) : t('localMusic.noResults')}</p>
                                     {source === 'amll' && (
                                         <button
                                             type="button"

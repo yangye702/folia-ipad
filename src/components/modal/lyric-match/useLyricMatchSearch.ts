@@ -1,3 +1,4 @@
+import { LyricSearchFailure } from '../../../utils/lyrics/lyricSearchFailure';
 import { useEffect, useRef, useState } from 'react';
 import type { LyricProviderSource, SongResult } from '../../../types';
 import { useLyricMatchSources } from '../../../hooks/useLyricMatchSources';
@@ -47,6 +48,7 @@ export const useLyricMatchSearch = (
     const [results, setResults] = useState<SongResult[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [searchError, setSearchError] = useState(false);
+    const [searchFailureMessageKey, setSearchFailureMessageKey] = useState<string | null>(null);
     const [selectedResult, setSelectedResult] = useState<SongResult | null>(null);
     const requestIdRef = useRef(0);
     const searchedSourceRef = useRef(source);
@@ -65,6 +67,7 @@ export const useLyricMatchSearch = (
                 setResults([]);
                 setSelectedResult(null);
                 setSearchError(false);
+                setSearchFailureMessageKey(null);
             }
             return;
         }
@@ -74,6 +77,7 @@ export const useLyricMatchSearch = (
         setResults([]);
         setSelectedResult(null);
         setSearchError(false);
+        setSearchFailureMessageKey(null);
 
         try {
             let found: SongResult[];
@@ -126,7 +130,10 @@ export const useLyricMatchSearch = (
             setSelectedResult(pickResult?.(found) ?? null);
         } catch (error) {
             console.error('[LyricMatch] Search failed:', error);
-            if (requestId === requestIdRef.current) setSearchError(true);
+            if (requestId === requestIdRef.current) {
+                setSearchError(true);
+                setSearchFailureMessageKey(error instanceof LyricSearchFailure ? error.searchFailureMessageKey : null);
+            }
         } finally {
             if (requestId === requestIdRef.current) {
                 setIsSearching(false);
@@ -161,6 +168,7 @@ export const useLyricMatchSearch = (
         results,
         isSearching,
         searchError,
+        searchFailureMessageKey,
         selectedResult,
         setSelectedResult,
         /** Searches the text in the box on the source the window is on. */

@@ -1,5 +1,7 @@
 # QQ 歌词搜索专项诊断
 
+> 以下为 f1cef8c0 的历史诊断记录；后续错误处理与真机操作见 [错误分类修复说明](qq-lyric-search-fix.md)。
+
 ## 基线和改动边界
 
 开始时本地与远程 `feat/ipad-lyrics-visual-touch-v1` 均为 `db13895e3f434355a2de35cb3f87b10597c5d1c3`，无新增上游差异。

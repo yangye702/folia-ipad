@@ -7,7 +7,7 @@ import { useLyricMatchSearch } from '@/components/modal/lyric-match/useLyricMatc
 // Drive the real hook used by the source tab; only the external network response is controlled.
 vi.mock('@/hooks/useLyricMatchSources', () => ({ useLyricMatchSources: () => ['lrclib', 'qq'] }));
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
-it('switching to QQ starts its anonymous network request, while refusal still leaves searchError false', async () => {
+it('switching to QQ starts its anonymous network request, and refusal is shown as an error', async () => {
     (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
     vi.spyOn(console, 'error').mockImplementation(() => {});
     const qqRequests: any[] = [];
@@ -35,7 +35,8 @@ it('switching to QQ starts its anonymous network request, while refusal still le
         expect(qqRequests[0].payload.request.param.query).toBe('幸福不远 - 郭书瑶');
         expect(search!.source).toBe('qq');
         expect(search!.results).toEqual([]);
-        expect(search!.searchError).toBe(false);
+        expect(search!.searchError).toBe(true);
+        expect(search!.searchFailureMessageKey).toBe('qqLyricSearch.upstream');
         expect(search!.isSearching).toBe(false);
     } finally { await act(async () => root.unmount()); }
 });

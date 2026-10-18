@@ -1,6 +1,7 @@
 
 
 export default {
+  "qqLyricSearch": {"network": "QQ 搜索请求失败，请重试。", "http": "QQ 搜索代理返回 HTTP 错误。", "upstream": "QQ 音乐拒绝了搜索请求。", "invalid-response": "QQ 搜索响应格式异常。", "diagnostics": "QQ 歌词搜索诊断", "hint": "仅调试：最近 30 次歌词搜索，包含输入关键词、代理 HTTP 状态、QQ 响应码和结果数量。HTTP 成功不代表 QQ 接受了请求。不含凭据或完整响应。复制失败时请选择文本并使用“拷贝”。移除 URL 的 qqLyricDebug 参数可隐藏面板。", "copy": "复制诊断", "select": "选择诊断文本"},
   "mediaDiagnostics": {"controlCenter": "标记：控制中心", "lockScreen": "标记：锁屏", "entry": "媒体诊断", "close": "关闭面板", "copy": "复制日志", "disable": "停用并清除诊断", "select": "选择日志"},
   "libraryBravais": {
     "suiteName": "Bravais 墙面",

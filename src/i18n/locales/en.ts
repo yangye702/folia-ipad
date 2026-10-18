@@ -1,6 +1,7 @@
 
 
 export default {
+  "qqLyricSearch": {"network": "QQ search request failed. Please retry.", "http": "QQ search proxy returned an HTTP error.", "upstream": "QQ Music rejected the search request.", "invalid-response": "QQ search returned an unexpected response format.", "diagnostics": "QQ lyric search diagnostics", "hint": "Debug only: latest 30 lyric searches, including typed query, proxy HTTP status, QQ codes and result count. HTTP alone does not prove QQ accepted the request. No credentials or raw responses. If copying fails, select the text and use Copy. Remove qqLyricDebug from the URL to hide this panel.", "copy": "Copy diagnostics", "select": "Select diagnostics"},
   "mediaDiagnostics": {"controlCenter": "Control Center", "lockScreen": "Lock Screen", "entry": "Media diagnostics", "close": "Close", "copy": "Copy logs", "disable": "Disable and clear diagnostics", "select": "Select logs"},
   "libraryBravais": {
     "suiteName": "Bravais wall",

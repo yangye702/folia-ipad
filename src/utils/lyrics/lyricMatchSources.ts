@@ -3,7 +3,8 @@ import { useOnlineProviderAccountStore } from '../../stores/useOnlineProviderAcc
 import type { AmllDbPlatform, LyricData, LyricProviderSource, SongResult } from '../../types';
 import type { ChorusRange, ProviderLyricsResult } from '../../types/onlineMusic';
 import { calculateMatchScore } from './matchScore';
-import { searchQQLyrics, fetchQQLyrics } from '../../services/onlineMusic/qq/qqLyricProvider';
+import { qqLyricMatchAccess } from '../../services/onlineMusic/qq/qqLyricMatchAccess';
+import type { LyricSearchDiagnostics } from '../../types/lyricSearchDiagnostics';
 import { fetchAmllDbLyrics, getAmllDbMusicIds, searchAmllDbSongs } from './providers/amllDbProvider';
 import { buildAmllDbSearchQueries, toAmllDbSongResults } from './amllDbCandidates';
 import { applyChorusRangesByTime } from './chorusEffects';
@@ -18,8 +19,6 @@ import { searchLrclibLyrics, fetchLrclibLyrics } from './providers/lrclibProvide
 const AMLL_DB_SEARCH_PAGE_SIZE = 50;
 const AMLL_DB_MAX_RESULTS = 20;
 const MATCH_WINDOW_SEARCH_LIMIT = 50;
-// QQ's search has only ever been asked for one page of 20 songs at most.
-const QQ_SEARCH_PAGE_MAX = 20;
 
 export type LyricMatchSearchTarget = {
     title: string;
@@ -38,6 +37,7 @@ export type LyricMatchFetchResult = {
 export type LyricSourceLyrics = ProviderLyricsResult & { matchedLyricsProviderPlatform?: AmllDbPlatform };
 
 export interface LyricSourceAccess {
+    diagnostics?: LyricSearchDiagnostics;
     /**
      * The source's songs for `query`, `limit` of them at most. `target` is the song being matched,
      * for a source that has to choose its candidates itself.
@@ -170,14 +170,7 @@ const OWN_ACCESS: Partial<Record<LyricProviderSource, Partial<LyricSourceAccess>
         search: (query, limit) => searchLrclibLyrics(query, limit),
         fetch: async song => ({ lyrics: await fetchLrclibLyrics(song), isPureMusic: false }),
     },
-    // QQ's lyrics are read from QQ's own lyric service, which needs no QQ account and knows a
-    // song by its mid.
-    qq: {
-        search: (query, limit) => searchQQLyrics(query, 1, Math.min(limit, QQ_SEARCH_PAGE_MAX)),
-        fetch: async (song, lent) => ({ lyrics: await fetchQQLyrics(song, lent) ?? null, isPureMusic: false }),
-        songKey: song => String(song.qqMid ?? song.id),
-        marksChorusOnFetch: true,
-    },
+    qq: qqLyricMatchAccess,
     kugou: {
         songKey: song => String(song.kgHash ?? song.id).toUpperCase(),
     },

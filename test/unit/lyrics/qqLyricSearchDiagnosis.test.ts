@@ -2,7 +2,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { searchQQLyrics, searchQQSongs } from '@/services/onlineMusic/qq/qqLyricProvider';
 import handler from '../../../api-ts/lyric-proxy';
 
-// Characterizes existing behavior; controlled replies are not live QQ search evidence.
+// Regression coverage for separating failed QQ searches from legitimate zero matches.
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 const response = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 
@@ -21,30 +21,30 @@ it.each(['幸福不远 - 郭书瑶', '幸福不远', '幸福不遠'])('sends exa
 });
 
 it.each([
-    ['HTTP refusal', () => response({ code: 403 }, 403)],
-    ['top-level refusal', () => response({ code: 2001 })],
-    ['method-level refusal', () => response({ code: 0, request: { code: 2001 } })],
-    ['invalid JSON', () => new Response('<html>upstream error</html>')],
-    ['network failure', () => { throw new TypeError('controlled network failure'); }],
-])('turns %s into the same empty result as a successful zero-match search', async (_name, answer) => {
+    ['http', () => response({ code: 403 }, 403)],
+    ['upstream', () => response({ code: 2001 })],
+    ['upstream', () => response({ code: 0, request: { code: 2001 } })],
+    ['invalid-response', () => new Response('<html>upstream error</html>')],
+    ['network', () => { throw new TypeError('controlled network failure'); }],
+])('reports %s failures instead of returning zero matches', async (_name, answer) => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => answer()));
-    await expect(searchQQLyrics('幸福不远')).resolves.toEqual([]);
+    await expect(searchQQLyrics('幸福不远')).rejects.toMatchObject({ kind: _name });
 });
 
 it.each([
     {}, { body: {} }, { body: { item_song: null } },
-])('silently treats a missing/null song list as an empty result: %j', async data => {
+])('rejects missing/null song lists as invalid responses: %j', async data => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response({ code: 0, request: { code: 0, data } })));
-    expect(await searchQQLyrics('幸福不远')).toEqual([]);
+    await expect(searchQQLyrics('幸福不远')).rejects.toMatchObject({ kind: 'invalid-response' });
     expect(error).not.toHaveBeenCalled();
 });
-it('catches a non-array list map error and returns an empty result', async () => {
+it('rejects a non-array song list as an invalid response', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response({ code: 0, request: { code: 0, data: { body: { item_song: {} } } } })));
-    expect(await searchQQLyrics('幸福不远')).toEqual([]);
-    expect(error).toHaveBeenCalled();
+    await expect(searchQQLyrics('幸福不远')).rejects.toMatchObject({ kind: 'invalid-response' });
+    expect(error).not.toHaveBeenCalled();
 });
 it('the underlying song search does preserve refusal as an exception', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response({ code: 0, request: { code: 2001 } })));

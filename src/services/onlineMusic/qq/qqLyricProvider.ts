@@ -13,13 +13,14 @@ import { applyDetectedChorusEffects, applyChorusRangesByTime } from '../../../ut
 import type { ChorusRange } from '../../../utils/lyrics/chorusEffects';
 import { getOriginalCoverUrl } from '../../../utils/coverUrl';
 import { lyricProxyWebUrl } from '../../lyricProxy';
+import { beginQqSearchDiagnostic, emptyQqSearchSummary, QqLyricSearchError, readQqSearchResponse, type QqSearchSummary } from './qqLyricSearchStatus';
 
 const isElectron = typeof window !== 'undefined' && (window as any).electron;
 
 /**
  * Sends a POST request to u.y.qq.com via proxy or directly in Electron.
  */
-async function requestQQ(method: string, module: string, param: any): Promise<any> {
+async function requestQQ(method: string, module: string, param: any, observeSearch?: (summary: QqSearchSummary) => void): Promise<any> {
   const payload = {
     comm: {
       ct: 11,
@@ -43,16 +44,24 @@ async function requestQQ(method: string, module: string, param: any): Promise<an
   const targetUrl = 'https://u.y.qq.com/cgi-bin/musicu.fcg';
   const url = isElectron ? targetUrl : lyricProxyWebUrl(targetUrl);
 
-  const response = await fetch(url, {
-    method: 'POST',
-    credentials: isElectron ? 'omit' : 'same-origin',
-    headers: {
-      'Content-Type': 'application/json',
-      'Cookie': 'tmeLoginType=-1;',
-      'User-Agent': 'okhttp/3.14.9',
-    },
-    body: JSON.stringify(payload),
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      credentials: isElectron ? 'omit' : 'same-origin',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': 'tmeLoginType=-1;',
+        'User-Agent': 'okhttp/3.14.9',
+      },
+      body: JSON.stringify(payload),
+    });
+
+  } catch (error) {
+    if (observeSearch) throw new QqLyricSearchError('network', emptyQqSearchSummary());
+    throw error;
+  }
+  if (observeSearch) return await readQqSearchResponse(response, observeSearch);
 
   if (!response.ok) {
     throw new Error(`QQ Music API request failed: ${response.status}`);
@@ -91,7 +100,7 @@ function detectIsQrc(content: string): boolean {
 /**
  * Searches songs on QQ Music anonymously and throws on upstream refusal (e.g. the frequent code 2001).
  */
-export async function searchQQSongs(keyword: string, page = 1, pageSize = 20): Promise<SongResult[]> {
+export async function searchQQSongs(keyword: string, page = 1, pageSize = 20, diagnoseLyrics = false): Promise<SongResult[]> {
   const safeKeyword = keyword.trim();
   if (!safeKeyword) return [];
 
@@ -113,8 +122,16 @@ export async function searchQQSongs(keyword: string, page = 1, pageSize = 20): P
     grp: 1,
   };
 
-  const data = await requestQQ("DoSearchForQQMusicLite", "music.search.SearchCgiService", param);
-  const songs = data?.body?.item_song || [];
+  const update = beginQqSearchDiagnostic(param.query, isElectron ? 'direct' : '/api/lyric-proxy', diagnoseLyrics);
+  let data: any;
+  try {
+    data = await requestQQ("DoSearchForQQMusicLite", "music.search.SearchCgiService", param, summary => update(summary));
+    update({ outcome: 'success' });
+  } catch (error) {
+    update({ ...(error instanceof QqLyricSearchError ? error.summary : {}), outcome: error instanceof QqLyricSearchError ? error.kind : 'invalid-response' });
+    throw error;
+  }
+  const songs = data.body.item_song;
 
   return songs.map((info: any) => {
     const artists = (info.singer || []).map((s: any, idx: number) => ({
@@ -143,15 +160,10 @@ export async function searchQQSongs(keyword: string, page = 1, pageSize = 20): P
 }
 
 /**
- * Searches songs on QQ Music for lyric and metadata matching: a refused search is just "no candidates".
+ * Searches anonymously for lyric matching. Failures propagate; only a valid empty list means no candidates.
  */
 export async function searchQQLyrics(keyword: string, page = 1, pageSize = 20): Promise<SongResult[]> {
-  try {
-    return await searchQQSongs(keyword, page, pageSize);
-  } catch (error) {
-    console.error('[QQMusic] Search failed:', error);
-    return [];
-  }
+  return await searchQQSongs(keyword, page, pageSize, true);
 }
 
 /**
