@@ -44,15 +44,21 @@ export const nextShownLayers = <T>(
     animate: boolean,
     waits: boolean,
 ): readonly ShownLayer<T>[] => {
-    const current = layers[layers.length - 1];
+    const top = layers[layers.length - 1];
+    // A reversed switch leaves its cancelled incoming layer above the restored one.
+    const below = top.leaving && layers.length > 1 ? layers.slice(0, -1) : layers;
+    const current = below[below.length - 1];
     if (current.value === value) {
         if (!animate) return layers.length === 1 && !current.waits ? layers : [{ ...current, waits: false }];
         return current.waits && !waits ? started(layers) : layers;
     }
-    const next: ShownLayer<T> = { key: current.key + 1, value, leaving: false, comesIn: animate, waits: animate && waits };
+    const next: ShownLayer<T> = { key: top.key + 1, value, leaving: false, comesIn: animate, waits: animate && waits };
     if (!animate) return [next];
-    if (!current.waits) return [{ ...current, leaving: true, waits: next.waits }, next];
-    const onScreen = layers.length > 1 ? layers[layers.length - 2] : null;
+    const onScreen = below.length > 1 ? below[below.length - 2] : null;
+    if (!current.waits) {
+        if (onScreen?.value === value) return [{ ...onScreen, leaving: false, waits: false }, { ...current, leaving: true, waits: false }];
+        return [{ ...current, leaving: true, waits: next.waits }, next];
+    }
     if (!onScreen) return [next];
     if (onScreen.value === value) return [{ ...onScreen, leaving: false, waits: false }];
     return [{ ...onScreen, waits: next.waits }, next];
@@ -140,17 +146,19 @@ export const useLayerAnimation = (
         }
         if (waits) return undefined;
         const coming = comingRef.current;
-        if (coming?.playState === 'running') {
-            // Called away while still coming in: it leaves from where it got to.
-            try {
-                coming.commitStyles();
-            } catch {
-                // Not rendered: it leaves from its full look.
+        let from: Keyframe = { offset: 0 };
+        if (coming?.playState === 'running' || coming?.playState === 'paused') {
+            // Preserve the current look in this animation only. commitStyles() would leave partial
+            // opacity/blur on the element forever if a rapid switch restores this layer.
+            const computed = window.getComputedStyle(element);
+            for (const property of Object.keys(transition.leave.to)) {
+                const value = computed.getPropertyValue(property.replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`));
+                if (value) from[property] = value;
             }
             coming.cancel();
         }
         const { to, ...timing } = transition.leave;
-        const animation = element.animate([{ ...to, offset: 1 }], { ...timing, fill: 'forwards' });
+        const animation = element.animate([from, { ...to, offset: 1 }], { ...timing, fill: 'forwards' });
         animation.onfinish = () => onLeft(key);
         // The finish event waits while the window is hidden, and never comes for an animation cancelled
         // from outside; either way the layer (maybe a WebGL context) would stay mounted. The timer

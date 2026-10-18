@@ -72,6 +72,12 @@ export default defineVisualizerBackground({
                     title={`${t('options.latentDisplayMode')}: ${displayLabel}`}
                     onClick={cycleDisplayMode}
                 />
+                <QuickControlChip
+                    isDaylight={isDaylight}
+                    label={t(tuning.colorSource === 'cover-only' ? 'options.latentColorSourceCoverOnly' : 'options.latentColorSourceCoverTheme')}
+                    title={`${t('options.latentColorSource')}: ${t(tuning.colorSource === 'cover-only' ? 'options.latentColorSourceCoverOnly' : 'options.latentColorSourceCoverTheme')}`}
+                    onClick={() => actions?.latent?.onTuningChange?.({ colorSource: tuning.colorSource === 'cover-only' ? 'cover-theme' : 'cover-only' })}
+                />
                 <QuickControlToggle
                     active={tuning.overlayEnabled}
                     theme={theme}

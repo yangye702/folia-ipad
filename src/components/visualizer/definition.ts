@@ -128,6 +128,9 @@ export interface VisualizerSettingsPanelProps<T = any> {
     onSliderCommit?: () => void;
 }
 
+/** Compact mode-owned controls; changes use the existing stored tuning action. */
+export type VisualizerQuickControlsProps<T = any> = Pick<VisualizerSettingsPanelProps<T>, 't' | 'isDaylight' | 'theme' | 'tuning' | 'onTuningChange'>;
+
 export interface VisualizerRegistryEntry {
     mode: VisualizerMode;
     order: number;
@@ -162,6 +165,7 @@ export interface VisualizerRegistryEntry {
     renderSettingsPanel?: (props: VisualizerSettingsPanelProps) => React.ReactNode;
     /** For a style that sizes its own lyrics: the notice (an i18n key) the settings window shows where it switches the font size off. */
     ownFontSizeNoticeKey?: string;
+    renderQuickControls?: (props: VisualizerQuickControlsProps) => React.ReactNode;
     /*
      * True when this mode's layout atoms come from whole-line word segmentation
      * (utils/lyrics/wordSegmentation), so the user's saved split for a song changes what it draws.

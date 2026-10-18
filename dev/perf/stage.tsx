@@ -134,6 +134,8 @@ interface PerfApi {
     startWindow: () => void;
     endWindowAfter: (seconds: number, options?: { swapSongAfterSeconds?: number }) => Promise<WindowReport>;
     benchmark: () => number;
+    /** Browser compatibility rig: use the real settings actions, without touching song state. */
+    appearance: (style: string, background: string) => void;
     /** In shot mode only. */
     shot?: ShotApi;
 }
@@ -357,7 +359,7 @@ const Stage: React.FC<{ bridge: React.ReactNode }> = ({ bridge }) => {
         >
             <div className="absolute inset-0 z-0" data-testid="player-visual-surface" data-perf-stage="">
                 <PlayerBottomBarLayoutContext.Provider value>
-                    <VisualizerRenderer {...model} />
+                    <VisualizerRenderer {...model} animateStyleSwitch />
                 </PlayerBottomBarLayoutContext.Provider>
             </div>
         </AppShell>
@@ -409,6 +411,7 @@ const benchmark = () => {
 const createWindowRecorder = () => {
     const stamps: number[] = [];
     let recording = false;
+    let frame = 0;
     let longFrames: PerformanceEntry[] = [];
     let observer: PerformanceObserver | null = null;
     const tick = (now: number) => {
@@ -416,10 +419,11 @@ const createWindowRecorder = () => {
             return;
         }
         stamps.push(now);
-        window.requestAnimationFrame(tick);
+        frame = window.requestAnimationFrame(tick);
     };
     return {
         start: () => {
+            window.cancelAnimationFrame(frame);
             stamps.length = 0;
             longFrames = [];
             recording = true;
@@ -429,10 +433,11 @@ const createWindowRecorder = () => {
             } catch {
                 observer = null;
             }
-            window.requestAnimationFrame(tick);
+            frame = window.requestAnimationFrame(tick);
         },
         stop: (): WindowReport => {
             recording = false;
+            window.cancelAnimationFrame(frame);
             if (observer) {
                 longFrames.push(...observer.takeRecords());
                 observer.disconnect();
@@ -498,7 +503,7 @@ const start = async () => {
     setDuration(songFile.durationSeconds);
 
     let bridge: React.ReactNode = null;
-    let api: Omit<PerfApi, 'ready' | 'info' | 'benchmark'>;
+    let api: Omit<PerfApi, 'ready' | 'info' | 'benchmark' | 'appearance'>;
     const unavailable = (name: string) => () => { throw new Error(`[perf] ${name} is not available in this mode`); };
 
     if (isShot) {
@@ -760,6 +765,12 @@ const start = async () => {
         ...api,
         ready,
         benchmark,
+        appearance: (style, background) => {
+            if (!isBuiltinVisualizerMode(style) || !isBuiltinVisualizerBackgroundMode(background)) throw new Error('[perf] invalid appearance');
+            const settings = useVisualizerSettingsStore.getState();
+            settings.handleSetVisualizerMode(style);
+            settings.handleSetVisualizerBackgroundMode(background);
+        },
         info: () => ({
             style: useVisualizerSettingsStore.getState().visualizerMode,
             background: useVisualizerSettingsStore.getState().visualizerBackgroundMode,

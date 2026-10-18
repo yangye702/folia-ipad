@@ -1,4 +1,8 @@
 import React from 'react';
+import { Disc3 } from 'lucide-react';
+import { QuickControlChip, QuickControlToggle } from '../../shared/QuickControlChip';
+import type { VisualizerQuickControlsProps } from '../definition';
+import { DEFAULT_PENDOLO_TUNING, type PendoloTuning } from '../../../types';
 import { defineVisualizer } from '../definition';
 import PendoloSettingsPanel from './PendoloSettingsPanel';
 
@@ -30,5 +34,15 @@ export default defineVisualizer({
     seeksOnLineClick: true,
     // The song-scoped seed resets Pendolo's lyric rail state before the next track starts.
     render: props => <VisualizerPendolo key={props.seed} {...props} />,
+    renderQuickControls: ({ t, isDaylight, theme, tuning = DEFAULT_PENDOLO_TUNING, onTuningChange }: VisualizerQuickControlsProps<PendoloTuning>) => {
+        const gears = ['none', 'subtle', 'full'] as const;
+        const labels = { none: 'options.decorNone', subtle: 'options.decorSubtle', full: 'options.decorFull' };
+        const gearLabel = t(labels[tuning.showGearDecor]);
+        const showCover = tuning.showCoverOnWatchFace ?? false;
+        return <>
+            <QuickControlToggle active={showCover} theme={theme} label={t('options.pendoloShowCoverOnWatchFace')} onToggle={() => onTuningChange({ showCoverOnWatchFace: !showCover })}><Disc3 size={14} /></QuickControlToggle>
+            <QuickControlChip isDaylight={isDaylight} label={gearLabel} title={`${t('options.pendoloShowGearDecor')}: ${gearLabel}`} onClick={() => onTuningChange({ showGearDecor: gears[(gears.indexOf(tuning.showGearDecor) + 1) % gears.length] })} />
+        </>;
+    },
     renderSettingsPanel: props => <PendoloSettingsPanel {...props} />,
 });

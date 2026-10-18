@@ -21,7 +21,7 @@ import BackgroundPicture from '../../visualizer/preview/BackgroundPicture';
 import { LyricPreviewProvider, type LyricPreviewLook } from '../../visualizer/preview/LyricPreviewContext';
 import LyricStylePicture from '../../visualizer/preview/LyricStylePicture';
 import { usePreviewClock } from '../../visualizer/preview/usePreviewClock';
-import { backgroundTuningActions } from '../../visualizer/tuningRegistry';
+import { backgroundTuningActions, getVisualizerTuning } from '../../visualizer/tuningRegistry';
 import { useVisualizerBackgroundConfig } from '../../visualizer/useVisualizerBackgroundConfig';
 import { useVisualizerTunings } from '../../visualizer/useVisualizerTunings';
 import { useTypographySettingsStore } from '../../../stores/useTypographySettingsStore';
@@ -208,6 +208,19 @@ const AppearanceSection: React.FC<AppearanceSectionProps> = ({
         onClosePanel?.();
     };
 
+    const tuningAdapter = getVisualizerTuning(visualizerMode);
+    const visualizerQuickControls = tuningAdapter && getVisualizerRegistryEntry(visualizerMode).renderQuickControls?.({
+        t,
+        isDaylight,
+        theme,
+        tuning: (visualizerTunings as unknown as Record<string, unknown>)[visualizerMode],
+        onTuningChange: patch => {
+            const settings = useVisualizerSettingsStore.getState() as unknown as Record<string, unknown>;
+            const setter = settings[tuningAdapter.settingsSetterKey];
+            if (typeof setter === 'function') setter(patch);
+        },
+    });
+
     const backgroundQuickControls = getVisualizerBackgroundRegistryEntry(resolvedBackgroundMode).renderQuickControls?.({
         // The backgrounds' tunings as they are saved, and the store's actions for them (an action needs no subscription).
         config: { ...pictureBackground, common: { ...pictureBackground.common, useCoverColorBg } },
@@ -301,6 +314,7 @@ const AppearanceSection: React.FC<AppearanceSectionProps> = ({
                                     title={`${t('ui.animationIntensity')}: ${t(`animation.${theme.animationIntensity}`)}`}
                                     onClick={cycleAnimationIntensity}
                                 />
+                                {visualizerQuickControls}
                                 {usesWordSegmentation && (
                                     <QuickControlToggle
                                         active={hasSavedSegmentation}
