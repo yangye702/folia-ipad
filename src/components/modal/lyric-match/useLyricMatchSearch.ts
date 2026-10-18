@@ -24,6 +24,8 @@ export interface LyricMatchSearchOptions {
     resetsQueryOnSourceChange?: boolean;
     /** When a local-only browser prefers an independently accessible lyric source. */
     initialSource?: LyricProviderSource;
+    /** Search both public lyric databases for a local iPad song, preferring AMLL. */
+    autoPublicSources?: boolean;
 }
 
 // The source the window is on, with the sources it offers: it opens on the first one. An account
@@ -38,7 +40,7 @@ const useLyricMatchSourceChoice = (initialSource?: LyricProviderSource): [LyricP
 export const useLyricMatchSearch = (
     song: unknown,
     songInfo: LyricMatchSongInfo,
-    { pickResult, resetsQueryOnSourceChange, initialSource }: LyricMatchSearchOptions = {},
+    { pickResult, resetsQueryOnSourceChange, initialSource, autoPublicSources = false }: LyricMatchSearchOptions = {},
 ) => {
     const [source, setSource, sources] = useLyricMatchSourceChoice(initialSource);
     const [query, setQuery] = useState('');
@@ -74,9 +76,37 @@ export const useLyricMatchSearch = (
         setSearchError(false);
 
         try {
-            const found = await searchLyricsByMatchSource(activeSource, text, songInfo);
+            let found: SongResult[];
+            let resultSource = activeSource;
+            if (autoPublicSources && activeSource === 'amll') {
+                // One tap instead of manually switching sources and retyping the
+                // same song. Parallel lookup bounds latency to the slower public
+                // service rather than the sum of both providers' timeouts.
+                const [amll, lrclib] = await Promise.allSettled([
+                    searchLyricsByMatchSource('amll', text, songInfo),
+                    searchLyricsByMatchSource('lrclib', text, songInfo),
+                ]);
+                if (amll.status === 'fulfilled' && amll.value.length) {
+                    found = amll.value;
+                } else if (lrclib.status === 'fulfilled' && lrclib.value.length) {
+                    found = lrclib.value;
+                    resultSource = 'lrclib';
+                } else if (amll.status === 'rejected' && lrclib.status === 'rejected') {
+                    throw new Error('AMLL and LRCLIB are both unavailable');
+                } else {
+                    found = [];
+                }
+            } else {
+                found = await searchLyricsByMatchSource(activeSource, text, songInfo);
+            }
             if (requestId !== requestIdRef.current) return;
 
+            if (resultSource !== activeSource) {
+                // Skip the usual source-change search: these results are already
+                // from the new provider, so no duplicate request is necessary.
+                searchedSourceRef.current = resultSource;
+                setSource(resultSource);
+            }
             setResults(found);
             setSelectedResult(pickResult?.(found) ?? null);
         } catch (error) {
