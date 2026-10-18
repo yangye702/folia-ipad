@@ -36,7 +36,11 @@ export function buildAmllDbSearchQueries(query: string): AmllApiSearchParams[] {
     }
     const [musicName, artist] = parts;
     const baseName = stripTitleSuffix(musicName);
-    const names = lyricChineseVariants(baseName);
+    // Preserve the original title before relaxing qualifiers like "(TV Size)".
+    // Each stage also searches simplified/traditional variants without manual retyping.
+    const originalNames = lyricChineseVariants(musicName);
+    const baseNames = lyricChineseVariants(baseName);
+    const names = [...new Set([...originalNames, ...baseNames])];
     if (parts.length === 1) {
         // q matches lyric bodies too, so keep it behind targeted title lookup.
         return [...names.map(name => ({ musicName: name })), { q: baseName }];
@@ -45,13 +49,14 @@ export function buildAmllDbSearchQueries(query: string): AmllApiSearchParams[] {
     const artistName = artist.split(ARTIST_SEPARATOR)[0]?.trim();
     const artists = artistName ? lyricChineseVariants(artistName) : [];
     const queries: AmllApiSearchParams[] = [];
-    // All paired variants first, then the more permissive title-only variants.
+    // Original title + artist, followed by normalized title + artist.
     if (artists.length) {
         names.forEach((name, i) => {
             queries.push({ musicName: name, artistName: artists[i] ?? artists[0] });
         });
     }
-    names.forEach(name => queries.push({ musicName: name }));
+    // Only drop the artist after trying the title's normalized variants.
+    baseNames.forEach(name => queries.push({ musicName: name }));
     return queries;
 }
 
