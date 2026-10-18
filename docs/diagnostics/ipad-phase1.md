@@ -82,6 +82,38 @@ node dev/perf/web.mjs <服务根目录> <证据目录> <before或after>
 
 固定视口 1180×820、DPR 1、touch、Chromium/SwiftShader，Monet/Common、Sonnet/Common、Pendolo/Common、Classic/Latent 各 3 个 4 秒窗口，第 3 窗口包含歌曲切换。报告 RAF p50/p95、长帧及错误；不把 RAF 调度当物理呈现帧率，不把软件 GPU 结果等同 iPad A16。
 
+### 本次结果与限制
+
+产品实施提交：`540e80ba4ab6fd9f839a15ec040f4cd43e6d80af`。基线归档为 `04f039c1…`；两侧测量页采用相同的 ICU 插件、RAF 清理和样式过渡配置。原始记录：[基线](phase1-evidence/before.json)、[修改版](phase1-evidence/after.json)。
+
+以下为三个窗口 p95 的中位数，括号内为各窗口 p95 范围，单位 ms，**不是 FPS**：
+
+| 场景 | 基线 | 修改版 |
+| --- | ---: | ---: |
+| Monet / Common | 33.3（16.8–50.0） | 16.8（16.7–33.2） |
+| Sonnet / Common | 850.0（533.3–883.3） | 633.3（516.7–683.3） |
+| Pendolo / Common | 83.2（66.7–83.4） | 100.0（83.2–100.0） |
+| Classic / Latent | 383.2（333.3–450.0） | 366.7（333.4–466.7） |
+
+首轮 Pendolo 变慢，因此没有把它静默视为通过。额外仅复测 Pendolo：把截图读回耗时排除在歌曲起点之外，首个窗口对齐到歌曲 40 秒，其余参数不变；由 `FOLIA_PERF_ONLY=pendolo FOLIA_PERF_ALIGN=1` 可复现。
+
+- [基线复测](phase1-evidence/before-pendolo-repeat.json)：各窗口 p95 为 66.6、100.0、66.7ms。
+- [修改版复测](phase1-evidence/after-pendolo-repeat.json)：50.1、66.7、50.0ms。
+- 首轮与复测方向相反，没有复现稳定变慢；同时这些样本量和波动不足以宣称性能提升。单轮的较快数字同样不作为 iPad 提速结论。
+- 每个采样窗口都检查非空且无重复 0ms 帧；以上所有场景均无页面异常。
+- 修改版另顺序检查 14 种歌词/6 种背景的挂载和切换，全部完成、页面异常 0；每次切换最终只余一层，歌词模式检查时静置 canvas 数为 0–2，没有观察到 DOM canvas 随模式数不断增长。URL 背景检查的是默认无自定义地址状态，不等于外部图片/视频地址已验收。
+- SwiftShader 上 Sonnet、Latent 的数百 ms 长帧说明这套云端软件 GPU 并不流畅；它不能证明或否定 A16/Metal 表现。没有为了得到漂亮数字降低默认效果、关掉模式或换引擎。热量、耗电、真实呈现帧率、Safari GPU 回收仍待真机验收。
+
+### 代码定位
+
+- 视觉层返回与动画清理：`src/components/visualizer/styleTransition/layerTransition.ts`、`VisualizerBackgroundTransition.tsx`。
+- Monet 同提交换歌与封面主题过渡：`src/components/visualizer/monet/VisualizerMonet.tsx`。
+- 原版快捷参数：`visualizer/{sonnet,pendolo,monet}/entry.tsx`、`backgrounds/latent/entry.tsx`；宿主接入 `src/components/panelTab/controls/AppearanceSection.tsx`。
+- 触屏尺寸与换行：`src/components/shared/QuickControlChip.tsx`、`src/components/panelTab/controls/ModeStepperRow.tsx`。
+- 回归探针：`test/component/ipadPhase1Continuity.spec.ts`、`ipadAppearanceControls.spec.ts`、`test/ui/ipadPhase1Touch.spec.ts`；性能工具 `dev/perf/web.mjs`。
+
+现有 GitHub `PR Unit Tests` 的两个测试 job 按 `draft == false` 条件运行，Draft PR 同步时跳过；不能用部署检查的绿色代替 GitHub 单测通过。未为此改 workflow 或把 PR 改成 Ready。
+
 ## 真机集中验收（无需重新导入音乐）
 
 1. 两首已有本地歌之间切换，观察 Monet 标题、封面与歌词是否连续，是否有闪黑或错歌。

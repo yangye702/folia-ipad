@@ -21,7 +21,8 @@ await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 const origin = `http://127.0.0.1:${server.address().port}`;
 const styles = ['cadenza', 'cappella', 'claddagh', 'classic', 'diorama', 'fume', 'lumiere', 'monet', 'partita', 'pendolo', 'sonnet', 'still', 'tempera', 'tilt'];
 const backgrounds = ['common', 'latent', 'monet', 'nomand', 'sora', 'url'];
-const results = { label, source: process.env.FOLIA_PERF_SOURCE || 'unspecified', startedAtUtc: new Date().toISOString(), cpu: os.cpus()[0]?.model, logicalCpus: os.cpus().length, loadAtStart: os.loadavg(), viewport: [1180, 820], deviceScaleFactor: 1, browser: '', scenarios: [], smoke: null, limitations: ['Cloud Chromium; not iPad Safari or physical GPU counters.', 'Synthetic audio/lyrics/covers, local fonts only.', 'No FPS claim for a real display; RAF gaps measure browser scheduling.', 'No other tests or builds should run concurrently.'] };
+const aligned = process.env.FOLIA_PERF_ALIGN === '1';
+const results = { label, source: process.env.FOLIA_PERF_SOURCE || 'unspecified', alignedSampleStartSeconds: aligned ? 40 : null, startedAtUtc: new Date().toISOString(), cpu: os.cpus()[0]?.model, logicalCpus: os.cpus().length, loadAtStart: os.loadavg(), viewport: [1180, 820], deviceScaleFactor: 1, browser: '', scenarios: [], smoke: null, limitations: ['Cloud Chromium; not iPad Safari or physical GPU counters.', 'Synthetic audio/lyrics/covers, local fonts only.', 'No FPS claim for a real display; RAF gaps measure browser scheduling.', 'No other tests or builds should run concurrently.'] };
 const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || '/usr/bin/chromium', headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage', '--enable-unsafe-swiftshader', '--autoplay-policy=no-user-gesture-required'] });
 results.browser = browser.version();
 async function open(style, background) {
@@ -39,11 +40,14 @@ async function open(style, background) {
 const percentile = (values, p) => { const sorted = [...values].sort((a, b) => a - b); return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * p))] ?? null; };
 try {
     for (const [style, background] of [['monet', 'common'], ['sonnet', 'common'], ['pendolo', 'common'], ['classic', 'latent']]) {
+        if (process.env.FOLIA_PERF_ONLY && style !== process.env.FOLIA_PERF_ONLY) continue;
         const { context, page, errors } = await open(style, background);
         const info = await page.evaluate(() => window.__perf.info());
         await page.evaluate(() => window.__perf.playFrom(36));
         await page.waitForTimeout(3000);
         await page.screenshot({ path: path.join(output, `${label}-${style}-${background}.png`) });
+        // An aligned repeat removes the variable duration of screenshot readback from the song clock.
+        if (aligned) await page.evaluate(() => window.__perf.playFrom(40));
         const windows = [];
         for (let index = 0; index < 3; index++) {
             const sample = await page.evaluate(async swap => { window.__perf.startWindow(); return window.__perf.endWindowAfter(4, swap ? { swapSongAfterSeconds: 2 } : undefined); }, index === 2);
