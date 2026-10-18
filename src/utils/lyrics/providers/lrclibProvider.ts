@@ -1,6 +1,7 @@
 import type { LyricData, SongResult } from '../../../types';
 import { parseLyricsByFormat } from '../parserCore';
 import { hasRenderableLyrics } from '../validity';
+import { lyricChineseVariants } from '../amllDbCandidates';
 
 // LRCLIB is an optional, public synced-LRC fallback for songs AMLL has not indexed.
 // A browser fetches metadata/lyrics only; MP3 audio remains on the device.
@@ -53,28 +54,86 @@ const toCandidate = (record: RecordResult): SongResult => ({
     durationMs: Math.round((record.duration || 0) * 1000),
 });
 
-export async function searchLrclibLyrics(query: string, limit: number): Promise<SongResult[]> {
+// Small, browser-local cache: avoids reissuing the same searches when listeners
+// switch tabs or retry. No lyrics are uploaded or persisted on a server.
+const SEARCH_CACHE_CAP = 60;
+const resultsCache = new Map<string, { expires: number; songs: SongResult[] }>();
+const inflight = new Map<string, Promise<SongResult[]>>();
+
+async function searchQueryGroup(params: URLSearchParams[]): Promise<RecordResult[]> {
+    if (!params.length) return [];
+    const outcomes = await Promise.allSettled(params.map(p => request<RecordResult[]>(`${BASE}/api/search?${p}`)));
+    const results: RecordResult[] = [];
+    let succeeded = false;
+    let lastError: unknown = null;
+    for (const outcome of outcomes) {
+        if (outcome.status === 'fulfilled') {
+            succeeded = true;
+            results.push(...outcome.value.filter(record => !record.instrumental && Boolean(record.syncedLyrics?.trim())));
+        } else {
+            lastError = outcome.reason;
+        }
+    }
+    if (!succeeded) throw lastError ?? new Error('LRCLIB search unavailable');
+    return results;
+}
+
+async function doSearch(query: string, limit: number): Promise<SongResult[]> {
     const parts = query.split(/\s+-\s+/u).map(x => x.trim()).filter(Boolean);
     if (!parts.length) return [];
-    const title = parts[0];
-    const artist = parts[1]?.split(/\s*[,，、&]\s*/u)[0]?.trim();
-    const url = (withArtist: boolean): string => {
+    const titles = lyricChineseVariants(parts[0]).slice(0, 3);
+    const artists = parts[1]
+        ? lyricChineseVariants(parts[1].split(/\s*[,，、&]\s*/u)[0] || '').slice(0, 3)
+        : [];
+    const paramsFor = (withArtist: boolean): URLSearchParams[] => titles.map((title, index) => {
         const params = new URLSearchParams({ track_name: title });
-        if (withArtist && artist) params.set('artist_name', artist);
-        return `${BASE}/api/search?${params}`;
-    };
-    let records = await request<RecordResult[]>(url(true));
-    // Title-only lookup catches incomplete/mis-tagged MP3 artist names.
-    if (!records.length && artist) {
-        records = await request<RecordResult[]>(url(false));
+        if (withArtist && artists.length) {
+            params.set('artist_name', artists[index] ?? artists[0]);
+        }
+        return params;
+    });
+    // In each round the original and Chinese script variant are requested in
+    // parallel (not 5-7 seconds apart). Relax artist only after an empty round.
+    const grouped = artists.length
+        ? [paramsFor(true), paramsFor(false)]
+        : [paramsFor(false)];
+    const matches: RecordResult[] = [];
+    for (const group of grouped) {
+        const found = await searchQueryGroup(group);
+        if (found.length) {
+            matches.push(...found);
+            break;
+        }
     }
-    // Never offer unsynchronised text as a timed animation.
-    return records.filter(record => !record.instrumental && Boolean(record.syncedLyrics?.trim()))
-        .slice(0, limit)
-        .map(record => {
-            cacheLyrics(record.id, record.syncedLyrics);
-            return toCandidate(record);
-        });
+    const seen = new Set<number>();
+    const songs: SongResult[] = [];
+    for (const record of matches) {
+        if (seen.has(record.id)) continue;
+        seen.add(record.id);
+        cacheLyrics(record.id, record.syncedLyrics);
+        songs.push(toCandidate(record));
+        if (songs.length >= limit) break;
+    }
+    return songs;
+}
+
+export function searchLrclibLyrics(query: string, limit: number): Promise<SongResult[]> {
+    const key = `${query.trim().normalize('NFC')}:${limit}`;
+    const cached = resultsCache.get(key);
+    if (cached && Date.now() < cached.expires) return Promise.resolve(cached.songs);
+    const running = inflight.get(key);
+    if (running) return running;
+    const task = doSearch(query, limit).then(songs => {
+        resultsCache.set(key, { expires: Date.now() + (songs.length ? 90_000 : 12_000), songs });
+        while (resultsCache.size > SEARCH_CACHE_CAP) {
+            const oldest = resultsCache.keys().next().value;
+            if (oldest === undefined) break;
+            resultsCache.delete(oldest);
+        }
+        return songs;
+    }).finally(() => { inflight.delete(key); });
+    inflight.set(key, task);
+    return task;
 }
 
 export async function fetchLrclibLyrics(song: Pick<SongResult, 'id'>): Promise<LyricData | null> {
