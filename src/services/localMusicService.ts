@@ -1,4 +1,4 @@
-import { pickLocalFiles, copyLocalFiles } from './localFilesImport';
+import { pickLocalFiles, copyLocalFiles, getCopiedLocalFilesDirectory } from './localFilesImport';
 import { LocalSong, LyricData, LocalLibrarySnapshot, LocalLibrarySnapshotFile, LocalLibrarySnapshotNode, type SongResult } from '../types';
 import { saveLocalSong, saveLocalSongs, deleteLocalSong as dbDeleteLocalSong, deleteLocalSongs as dbDeleteLocalSongs, saveDirHandles, getDirHandles, deleteDirHandle, getLocalSongs, getLocalLibrarySnapshot, saveLocalLibrarySnapshot, deleteLocalLibrarySnapshot } from './db';
 import { getLocalPlaylists, saveLocalPlaylists } from './localPlaylistService';
@@ -155,7 +155,7 @@ function notifyLocalMusicScanProgress(detail: LocalMusicScanProgressDetail) {
 async function getImportDirectoryHandle(expectedRootName?: string): Promise<FileSystemDirectoryHandle | null> {
     if (expectedRootName) {
         const dirHandles = await getDirHandles();
-        const persistedHandle = dirHandles[expectedRootName];
+        const persistedHandle = dirHandles[expectedRootName] ?? await getCopiedLocalFilesDirectory(expectedRootName);
 
         if (!persistedHandle) {
             throw new Error(REIMPORT_HANDLE_MISSING_ERROR);
@@ -1541,33 +1541,35 @@ async function resolveFileHandleFromDirHandle(
 
 async function recoverFileHandleFromPersistedDirectory(song: LocalSong): Promise<FileSystemFileHandle | null> {
     const rootFolderName = getRootFolderName(song);
-    if (!rootFolderName || !song.filePath) {
-        return null;
-    }
+    if (!rootFolderName || !song.filePath) return null;
 
-    const dirHandles = await getDirHandles();
-    const rootDirHandle = dirHandles[rootFolderName];
-    if (!rootDirHandle) {
-        return null;
-    }
+    // Safari may deserialize the IndexedDB song index but lose the directory
+    // handle. Files imported from iPad Files are already stored in our OPFS
+    // directory; resolve that deterministic path without asking to re-import.
+    const copiedRoot = await getCopiedLocalFilesDirectory(rootFolderName);
+    const cachedRoot = copiedRoot ? null : (await getDirHandles())[rootFolderName];
+    const rootDirHandle = copiedRoot ?? cachedRoot;
+    if (!rootDirHandle) return null;
 
     const permissionAwareHandle = rootDirHandle as FileSystemDirectoryHandle & {
-        queryPermission?: (descriptor: { mode: 'read' | 'readwrite'; }) => Promise<PermissionState>;
+        queryPermission?: (descriptor: { mode: 'read' | 'readwrite' }) => Promise<PermissionState>;
     };
-    const permission = (await permissionAwareHandle.queryPermission?.({ mode: 'read' })) ?? 'granted';
-    if (permission !== 'granted') {
-        return null;
-    }
-
-    const relativePathFromRoot = song.filePath.startsWith(`${rootFolderName}/`)
-        ? song.filePath.slice(rootFolderName.length + 1)
-        : song.filePath;
-
     try {
+        // OPFS handles are origin-private; Safari does not require a Files picker
+        // permission on each visit. External directory handles still do.
+        if (!copiedRoot) {
+            const permission = (await permissionAwareHandle.queryPermission?.({ mode: 'read' })) ?? 'granted';
+            if (permission !== 'granted') return null;
+        }
+
+        const relativePathFromRoot = song.filePath.startsWith(`${rootFolderName}/`)
+            ? song.filePath.slice(rootFolderName.length + 1)
+            : song.filePath;
         const recoveredHandle = await resolveFileHandleFromDirHandle(rootDirHandle, relativePathFromRoot);
+        // Hot path only: writing a FileSystemHandle back to IDB can itself fail
+        // in Safari; don't turn successfully recovered audio into a false error.
         fileHandleMap.set(song.id, recoveredHandle);
         song.fileHandle = recoveredHandle;
-        await saveLocalSong(song);
         return recoveredHandle;
     } catch (error) {
         console.warn(`[LocalMusic] Failed to recover file handle for ${song.filePath}:`, error);
