@@ -94,14 +94,19 @@ export async function searchAmllDbLyricCandidates(
         if (!group.length) continue;
         const settled = await Promise.allSettled(group.map(params => searchAmllDbSongs(params, AMLL_DB_SEARCH_PAGE_SIZE)));
         const candidates: SongResult[] = [];
+        let groupHasSuccess = false;
         for (const response of settled) {
             if (response.status === 'fulfilled' && response.value !== null) {
                 hadSuccessfulRequest = true;
+                groupHasSuccess = true;
                 candidates.push(...toAmllDbSongResults(response.value));
             } else {
                 lastFailure = response.status === 'rejected' ? response.reason : new Error('AMLL service unavailable');
             }
         }
+        // A failed service call is not an empty catalog: do not issue further
+        // broad fallback requests when every query in this group was unreachable.
+        if (!groupHasSuccess) throw lastFailure ?? new Error('AMLL service unavailable');
         if (candidates.length) {
             const ids = new Set<string>();
             const distinct = candidates.filter(song => {
