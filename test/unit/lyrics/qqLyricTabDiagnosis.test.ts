@@ -30,7 +30,9 @@ it('switching to QQ starts its anonymous network request, and refusal is shown a
         await act(async () => root.render(React.createElement(Probe)));
         expect(qqRequests).toHaveLength(0);
         await act(async () => host.querySelector('button')!.click());
-        expect(qqRequests).toHaveLength(1);
+        expect(qqRequests.map(request => request.payload.request.param.query)).toEqual([
+            '幸福不远 - 郭书瑶', '幸福不遠 - 郭書瑤', '幸福不远', '幸福不遠',
+        ]);
         expect(qqRequests[0].method).toBe('POST');
         expect(qqRequests[0].payload.request.param.query).toBe('幸福不远 - 郭书瑶');
         expect(search!.source).toBe('qq');

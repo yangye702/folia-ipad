@@ -9,7 +9,7 @@ const response = (body: unknown, status = 200) => new Response(JSON.stringify(bo
 it.each(['幸福不远 - 郭书瑶', '幸福不远', '幸福不遠'])('sends exactly one anonymous POST with the unchanged query %s', async keyword => {
     const request = vi.fn().mockResolvedValue(response({ code: 0, request: { code: 0, data: { body: { item_song: [] } } } }));
     vi.stubGlobal('fetch', request);
-    expect(await searchQQLyrics(keyword)).toEqual([]);
+    expect(await searchQQSongs(keyword)).toEqual([]);
     expect(request).toHaveBeenCalledOnce();
     const [url, init] = request.mock.calls[0];
     expect(new URL(url, 'https://folia.test').searchParams.get('url')).toBe('https://u.y.qq.com/cgi-bin/musicu.fcg');

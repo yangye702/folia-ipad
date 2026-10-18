@@ -6,6 +6,7 @@
  */
 
 import { SongResult } from '../../../types';
+import * as OpenCC from 'opencc-js';
 import { parseLyricsByFormat } from '../../../utils/lyrics/parserCore';
 import { detectTimedLyricFormat } from '../../../utils/lyrics/formatDetection';
 import { qrcDecrypt } from './qrcDecrypt';
@@ -160,10 +161,32 @@ export async function searchQQSongs(keyword: string, page = 1, pageSize = 20, di
 }
 
 /**
- * Searches anonymously for lyric matching. Failures propagate; only a valid empty list means no candidates.
+ * Searches anonymously for lyric matching, with bounded script/title fallback.
  */
 export async function searchQQLyrics(keyword: string, page = 1, pageSize = 20): Promise<SongResult[]> {
-  return await searchQQSongs(keyword, page, pageSize, true);
+  const input = keyword.trim().slice(0, 60);
+  if (!input) return [];
+  const toTraditional = OpenCC.Converter({ from: 'cn', to: 't' });
+  const toSimplified = OpenCC.Converter({ from: 't', to: 'cn' });
+  // The matching dialog builds "title - artist - album"; preserve literal input first.
+  const title = input.split(/\s+-\s+/u)[0].trim();
+  const queries = [...new Set([input, toTraditional(input), toSimplified(input), title, toTraditional(title), toSimplified(title)])];
+  let refusal: QqLyricSearchError | undefined;
+  for (const query of queries) {
+    try {
+      const songs = await searchQQSongs(query, page, pageSize, true);
+      if (songs.length) return songs;
+    } catch (error) {
+      // iPad evidence: code 2001 for simplified input, success for traditional.
+      // This is a recovery attempt, not an interpretation of what 2001 means.
+      if (!(error instanceof QqLyricSearchError) || error.kind !== 'upstream'
+          || error.summary.topCode !== 0 || error.summary.requestCode !== 2001) throw error;
+      refusal ??= error;
+    }
+  }
+  // A successful empty fallback must not conceal an earlier rejected request.
+  if (refusal) throw refusal;
+  return [];
 }
 
 /**
