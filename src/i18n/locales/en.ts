@@ -1,6 +1,7 @@
 
 
 export default {
+  "mediaDiagnostics": {"controlCenter": "Control Center", "lockScreen": "Lock Screen", "entry": "Media diagnostics", "close": "Close", "copy": "Copy logs", "disable": "Disable and clear diagnostics", "select": "Select logs"},
   "libraryBravais": {
     "suiteName": "Bravais wall",
     "homeTitle": "Library",

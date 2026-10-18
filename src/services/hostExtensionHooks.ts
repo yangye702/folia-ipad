@@ -1,3 +1,4 @@
+import { recordMediaDiagnostic } from '../utils/mediaSessionDiagnostics';
 import type { LyricData, SongResult } from '../types';
 import type { OnlineFailureCaseId, ProviderAudioSource, ProviderLyricsResult } from '../types/onlineMusic';
 import { ensureLyricDataRenderHints } from '../utils/lyrics/renderHints';
@@ -181,6 +182,7 @@ export const installPlaybackFailedListener = (listener: PlaybackFailedListener |
 
 /** Reports one visible playback failure; a throwing listener never reaches the playback path. */
 export const notifyPlaybackFailed = (notice: PlaybackFailedNotice): void => {
+    recordMediaDiagnostic('playback.failure', { phase: notice.phase, willAutoSkip: notice.willAutoSkip });
     if (!playbackFailedListener) return;
     try {
         playbackFailedListener(notice);

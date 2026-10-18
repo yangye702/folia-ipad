@@ -1,6 +1,7 @@
 
 
 export default {
+  "mediaDiagnostics": {"controlCenter": "Pusat Kontrol", "lockScreen": "Layar Kunci", "entry": "Diagnostik media", "close": "Tutup", "copy": "Salin log", "disable": "Nonaktifkan dan hapus diagnostik", "select": "Pilih log"},
   "libraryBravais": {
     "suiteName": "Dinding Bravais",
     "homeTitle": "Pustaka",

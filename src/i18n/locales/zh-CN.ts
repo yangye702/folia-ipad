@@ -1,6 +1,7 @@
 
 
 export default {
+  "mediaDiagnostics": {"controlCenter": "标记：控制中心", "lockScreen": "标记：锁屏", "entry": "媒体诊断", "close": "关闭面板", "copy": "复制日志", "disable": "停用并清除诊断", "select": "选择日志"},
   "libraryBravais": {
     "suiteName": "Bravais 墙面",
     "homeTitle": "书库",
