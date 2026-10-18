@@ -63,6 +63,7 @@ const LocalSongLyricMatch: React.FC<LocalSongLyricMatchProps> = ({ song, onClose
         && window.matchMedia('(pointer: coarse)').matches;
     const search = useLyricMatchSearch(song, songInfo, {
         initialSource: preferDirectLyricSearch ? 'amll' : undefined,
+        autoPublicSources: preferDirectLyricSearch,
     });
     const { source, selectedResult } = search;
 
