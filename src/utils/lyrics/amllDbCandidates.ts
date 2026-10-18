@@ -40,7 +40,9 @@ export function buildAmllDbSearchQueries(query: string): AmllApiSearchParams[] {
     // Each stage also searches simplified/traditional variants without manual retyping.
     const originalNames = lyricChineseVariants(musicName);
     const baseNames = lyricChineseVariants(baseName);
-    const names = [...new Set([...originalNames, ...baseNames])];
+    // Prefer the literal input and its qualifier-free title before trying
+    // script variants. Japanese names can contain convertible kanji too.
+    const names = [...new Set([musicName, baseName, ...originalNames, ...baseNames])];
     if (parts.length === 1) {
         // q matches lyric bodies too, so keep it behind targeted title lookup.
         return [...names.map(name => ({ musicName: name })), { q: baseName }];
