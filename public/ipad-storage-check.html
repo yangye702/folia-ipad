@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>Folia iPad · 本地曲库诊断</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#0d1017;color:#eef0f6;font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:30px 18px}main{max-width:720px;margin:auto}.tag{font-size:11px;letter-spacing:.12em;color:#9caee3}h1{font-size:24px;margin:8px 0 10px}p{color:#aeb5c7}button{font:inherit;border-radius:12px;background:#829ff5;color:#101728;border:0;padding:12px 20px;min-height:48px;font-weight:650}button[disabled]{opacity:.5}.secondary{background:#252c3a;color:#dce3f7;margin-left:8px}#output{margin-top:20px;white-space:pre-wrap;overflow-wrap:anywhere;background:#181e29;border:1px solid #30394d;padding:16px;border-radius:14px;min-height:90px;font:13px/1.9 ui-monospace,SFMono-Regular,Menlo,monospace}small{display:block;color:#8f97a8;margin-top:18px}.warn{color:#efce98}
+</style></head>
+<body><main>
+<div class="tag">FOLIA · iPad STORAGE CHECK</div>
+<h1>本地音乐恢复诊断</h1>
+<p>这个页面只检查<strong>当前网址</strong>保存的歌曲记录和 OPFS 文件是否可读，<strong>不会删除或修改音乐，也不会上传文件</strong>。请在之前导入歌曲的同一网址下使用。</p>
+<p class="warn">请先不要重新导入、清除 Safari 网站数据或删除主屏幕 App。</p>
+<button id="run">开始只读检查</button><button class="secondary" id="copy" disabled>复制结果</button>
+<pre id="output">等待检查…</pre>
+<small>此页面不读取或展示音乐内容；只显示数量、文件大小及错误类型。存储可能被 Safari 和主屏幕 App 隔离。</small>
+</main><script>
+const output=document.getElementById('output');
+const run=document.getElementById('run');
+const copy=document.getElementById('copy');
+let report='';
+function line(value){report+=value+'\n';output.textContent=report;}
+const codeOf=e=>(e&&e.name||'Error')+(e&&e.message?': '+String(e.message).slice(0,90):'');
+function indexedRecords(){
+  return new Promise((resolve,reject)=>{
+    const req=indexedDB.open('KineticPlayerDB');
+    req.onupgradeneeded=()=>{req.transaction.abort();reject(new Error('IndexedDB 不存在：本网址可能从未导入过歌曲'));};
+    req.onerror=()=>reject(req.error||new Error('无法打开 IndexedDB'));
+    req.onsuccess=()=>{
+      const db=req.result;
+      if(!db.objectStoreNames.contains('local_music')){db.close();resolve([]);return;}
+      const tx=db.transaction('local_music','readonly');
+      const store=tx.objectStore('local_music');
+      const rows=[];
+      const cur=store.openCursor();
+      cur.onsuccess=()=>{const c=cur.result;if(!c)return;
+        const v=c.value||{};
+        // Collect metadata and path only, no audio blobs.
+        rows.push({filePath:String(v.filePath||''),folderName:String(v.folderName||''),fileHandlePresent:!!v.fileHandle});
+        c.continue();
+      };
+      cur.onerror=()=>reject(cur.error||new Error('读取曲库失败'));
+      tx.oncomplete=()=>{db.close();resolve(rows);};
+      tx.onerror=()=>{db.close();reject(tx.error||new Error('读取曲库失败'));};
+    };
+  });
+}
+async function assessFile(folder,path){
+  const root=await navigator.storage.getDirectory();
+  const imports=await root.getDirectoryHandle('folia-file-imports');
+  let dir=await imports.getDirectoryHandle(folder);
+  const segments=path.split('/').filter(Boolean);
+  for(const segment of segments.slice(0,-1))dir=await dir.getDirectoryHandle(segment);
+  const handle=await dir.getFileHandle(segments[segments.length-1]);
+  const file=await handle.getFile();
+  return file.size;
+}
+run.addEventListener('click',async()=>{
+  run.disabled=true;copy.disabled=true;report='';line('Folia iPad 本地曲库只读诊断');
+  line('网址: '+location.origin);
+  line('Safari/主屏幕: '+(navigator.standalone?'主屏幕应用':'浏览器网页'));
+  try{
+    const storage=navigator.storage;
+    line('OPFS 接口: '+(typeof storage?.getDirectory==='function'?'可用':'不可用'));
+    if(storage?.persisted){try{line('持久存储已授予: '+await storage.persisted());}catch(e){line('持久授权状态: '+codeOf(e));}}
+    if(storage?.estimate){try{const q=await storage.estimate();line('站点已用空间(估计): '+Math.round((q.usage||0)/1048576)+' MiB');}catch(e){line('空间状态: '+codeOf(e));}}
+    let rows=[];
+    try{rows=await indexedRecords();line('IndexedDB 曲目数量: '+rows.length);}catch(e){line('IndexedDB: '+codeOf(e));}
+    if(!rows.length){line('提示: 曲目索引不存在，此网址与原导入网址可能不同。');}
+    const groups=new Map();
+    for(const row of rows){
+      const root=(row.filePath||row.folderName).split('/')[0];
+      if(!root)continue;
+      if(!groups.has(root))groups.set(root,[]);
+      groups.get(root).push(row);
+    }
+    line('IndexedDB 曲库文件夹数: '+groups.size);
+    try{
+      const opfs=await navigator.storage.getDirectory();
+      const imports=await opfs.getDirectoryHandle('folia-file-imports');
+      line('OPFS folia-file-imports: 存在');
+      const displayed=[...groups].slice(0,8);
+      for(const [folder,items] of displayed){
+        line('文件夹 '+folder.slice(0,11)+'…: 索引 '+items.length+' 首');
+        try{
+          await imports.getDirectoryHandle(folder);
+          line('  OPFS 文件夹: 存在');
+          for(const row of items.slice(0,2)){
+            const rel=row.filePath.startsWith(folder+'/')?row.filePath.slice(folder.length+1):row.filePath;
+            try{
+              const size=await assessFile(folder,rel);
+              line('  音频可读: '+(size>0?'是':'文件大小为0')+'，大小 '+Math.round(size/1024)+' KiB，索引自带句柄 '+(row.fileHandlePresent?'是':'否'));
+            }catch(e){line('  音频读取失败: '+codeOf(e));}
+          }
+        }catch(e){line('  OPFS 文件夹无法打开: '+codeOf(e));}
+      }
+    }catch(e){line('OPFS 导入根目录无法打开: '+codeOf(e));}
+    line('检查结束（未修改数据）');
+  }catch(e){line('诊断意外异常: '+codeOf(e));}
+  run.disabled=false;copy.disabled=false;
+});
+copy.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(report);copy.textContent='已复制';}catch(e){copy.textContent='请截图结果';}});
+</script></body></html>
