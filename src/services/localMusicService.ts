@@ -155,7 +155,9 @@ function notifyLocalMusicScanProgress(detail: LocalMusicScanProgressDetail) {
 async function getImportDirectoryHandle(expectedRootName?: string): Promise<FileSystemDirectoryHandle | null> {
     if (expectedRootName) {
         const dirHandles = await getDirHandles();
-        const persistedHandle = dirHandles[expectedRootName] ?? await getCopiedLocalFilesDirectory(expectedRootName);
+        // Prefer reopening Folia's own OPFS folder over a potentially stale
+        // IndexedDB-serialized handle on Safari.
+        const persistedHandle = await getCopiedLocalFilesDirectory(expectedRootName) ?? dirHandles[expectedRootName];
 
         if (!persistedHandle) {
             throw new Error(REIMPORT_HANDLE_MISSING_ERROR);
