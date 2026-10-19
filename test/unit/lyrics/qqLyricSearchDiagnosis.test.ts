@@ -51,7 +51,7 @@ it('the underlying song search does preserve refusal as an exception', async () 
     await expect(searchQQSongs('幸福不远')).rejects.toThrow('2001');
 });
 
-it.each([200, 403, 502])('Vercel proxy forwards POST body and preserves upstream HTTP %i', async status => {
+it.each([200, 403, 429, 502])('Vercel proxy forwards POST body and preserves upstream HTTP %i', async status => {
     const body = { comm: { uid: '0' }, request: { param: { query: '幸福不远' } } };
     const upstream = { code: status === 200 ? 0 : 2001, request: { code: 2001 } };
     const fetchMock = vi.fn().mockResolvedValue(response(upstream, status));
@@ -77,4 +77,26 @@ it('Vercel proxy also forwards an already serialized JSON request body unchanged
     const res: any = { setHeader: vi.fn(), status: vi.fn(), json: vi.fn() }; res.status.mockReturnValue(res);
     await handler({ method: 'POST', query: { url: 'https://u.y.qq.com/cgi-bin/musicu.fcg' }, headers: { 'content-type': 'application/json' }, body: serialized }, res);
     expect(fetchMock.mock.calls[0][1].body).toBe(serialized);
+});
+
+it('allows the exact generated KuGou image host while refusing lookalikes and non-HTTPS targets', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(new Uint8Array([1]), { headers: { 'content-type': 'image/jpeg' } }));
+    vi.stubGlobal('fetch', fetchMock);
+    const res: any = { setHeader: vi.fn(), status: vi.fn(), json: vi.fn(), send: vi.fn() }; res.status.mockReturnValue(res);
+    await handler({ method: 'GET', query: { url: 'https://c1.kgimg.com/stdmusic/400/fixture.jpg' }, headers: {} }, res);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(fetchMock.mock.calls[0][1].redirect).toBe('manual');
+    for (const url of ['https://c1.kgimg.com.evil.test/x', 'https://127.0.0.1/x', 'http://c1.kgimg.com/x', 'https://c1.kgimg.com:8080/x', 'https://name:password@c1.kgimg.com/x']) {
+        fetchMock.mockClear(); res.status.mockClear();
+        await handler({ method: 'GET', query: { url }, headers: {} }, res);
+        expect(res.status).toHaveBeenCalledWith(403);
+        expect(fetchMock).not.toHaveBeenCalled();
+    }
+});
+
+it('identifies a network timeout without retrying it as a script refusal', async () => {
+    const request = vi.fn().mockRejectedValue(new DOMException('timeout fixture', 'TimeoutError'));
+    vi.stubGlobal('fetch', request);
+    await expect(searchQQLyrics('幸福不远')).rejects.toMatchObject({ kind: 'timeout' });
+    expect(request).toHaveBeenCalledOnce();
 });

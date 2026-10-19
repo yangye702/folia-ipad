@@ -281,6 +281,7 @@ export const requestKugouAnonymousSearch = async (
         : lyricProxyWebUrl(targetUrl.toString());
     const response = await fetch(requestUrl, {
         method: 'GET',
+        signal: AbortSignal.timeout(12000),
         credentials: 'omit',
         headers: {
             'User-Agent': 'Android14-1070-11070-201-0-SearchSong-wifi',
@@ -295,16 +296,16 @@ export const requestKugouAnonymousSearch = async (
         throw new OnlineProviderError(
             'network',
             `KuGou anonymous search failed: ${response.status}`,
-            'kugou',
+            'kugou', undefined, response.status,
         );
     }
     const body = await response.json();
     const errorCode = Number(body?.error_code);
     if (Number.isFinite(errorCode) && errorCode !== 0 && errorCode !== 200) {
         throw new OnlineProviderError(
-            'network',
+            'unavailable',
             `KuGou anonymous search failed: ${errorCode}`,
-            'kugou',
+            'kugou', { code: errorCode },
         );
     }
     return body;

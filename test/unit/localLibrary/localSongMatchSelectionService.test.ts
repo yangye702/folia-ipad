@@ -8,16 +8,17 @@ import type { OnlineMetadataCandidate } from '@/services/onlineMetadataSearchSer
 const mocks = vi.hoisted(() => ({
     applyMatchedMetadata: vi.fn(),
     restoreImportedMetadata: vi.fn(),
-    cacheLocalSongOnlineCover: vi.fn(),
+    prepareLocalSongOnlineCover: vi.fn(),
     removeCachedCover: vi.fn(),
 }));
 
+vi.mock('@/services/appDatabase', () => ({ appDatabase: { local_music: { get: async () => ({ id: 'song-1' }) }, transaction: async (_mode: string, _tables: unknown[], run: () => Promise<void>) => run() } }));
 vi.mock('@/services/localLibraryCatalogService', () => ({
     applyMatchedMetadata: mocks.applyMatchedMetadata,
     restoreImportedMetadata: mocks.restoreImportedMetadata,
 }));
 vi.mock('@/services/coverCache', () => ({
-    cacheLocalSongOnlineCover: mocks.cacheLocalSongOnlineCover,
+    prepareLocalSongOnlineCover: mocks.prepareLocalSongOnlineCover,
     removeCachedCover: mocks.removeCachedCover,
 }));
 
@@ -45,7 +46,7 @@ const candidate: OnlineMetadataCandidate = {
 describe('applyLocalSongMatchSelection', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        mocks.cacheLocalSongOnlineCover.mockResolvedValue(true);
+        mocks.prepareLocalSongOnlineCover.mockResolvedValue({ commit: vi.fn(), finish: vi.fn(), discard: vi.fn() });
     });
 
     it('applies the same canonical metadata and cover action for GridView and Player', async () => {
@@ -57,10 +58,10 @@ describe('applyLocalSongMatchSelection', () => {
         };
         await applyLocalSongMatchSelection({ ...base, lyrics: 'keep' });
         const gridMetadataCall = mocks.applyMatchedMetadata.mock.calls[0];
-        const gridCoverCall = mocks.cacheLocalSongOnlineCover.mock.calls[0];
+        const gridCoverCall = mocks.prepareLocalSongOnlineCover.mock.calls[0];
 
         vi.clearAllMocks();
-        mocks.cacheLocalSongOnlineCover.mockResolvedValue(true);
+        mocks.prepareLocalSongOnlineCover.mockResolvedValue({ commit: vi.fn(), finish: vi.fn(), discard: vi.fn() });
         await applyLocalSongMatchSelection({ ...base, lyrics: 'local' });
 
         expect(mocks.applyMatchedMetadata.mock.calls[0][0]).toBe(gridMetadataCall[0]);
@@ -68,7 +69,7 @@ describe('applyLocalSongMatchSelection', () => {
         expect(mocks.applyMatchedMetadata.mock.calls[0][2]).toMatchObject({
             assignmentOrigin: 'manual-match',
         });
-        expect(mocks.cacheLocalSongOnlineCover.mock.calls[0]).toEqual(gridCoverCall);
+        expect(mocks.prepareLocalSongOnlineCover.mock.calls[0].slice(0, 3)).toEqual(gridCoverCall.slice(0, 3));
     });
 
     it('adds online lyric state without changing the metadata payload', async () => {
@@ -122,7 +123,7 @@ describe('applyLocalSongMatchSelection', () => {
                 hasManualLyricSelection: true,
             },
         });
-        expect(mocks.cacheLocalSongOnlineCover).not.toHaveBeenCalled();
+        expect(mocks.prepareLocalSongOnlineCover).not.toHaveBeenCalled();
         expect(mocks.removeCachedCover).not.toHaveBeenCalled();
     });
 
@@ -205,9 +206,9 @@ describe('applyLocalSongMatchSelection', () => {
                 matchMode: 'manual',
             }),
         }));
-        expect(mocks.cacheLocalSongOnlineCover).toHaveBeenCalledWith(
+        expect(mocks.prepareLocalSongOnlineCover).toHaveBeenCalledWith(
             'song-1',
-            'https://example.com/cover.jpg',
+            'https://example.com/cover.jpg', undefined,
         );
     });
 
@@ -222,7 +223,7 @@ describe('applyLocalSongMatchSelection', () => {
         });
 
         expect(mocks.applyMatchedMetadata).toHaveBeenCalledOnce();
-        expect(mocks.cacheLocalSongOnlineCover).toHaveBeenCalledOnce();
+        expect(mocks.prepareLocalSongOnlineCover).toHaveBeenCalledOnce();
         expect(mocks.applyMatchedMetadata.mock.calls[0][2].songPatch).not.toHaveProperty('lyricsSource');
         expect(result).toMatchObject({
             coverCached: true,
@@ -264,7 +265,7 @@ describe('applyLocalSongMatchSelection', () => {
         expect(options.songPatch).not.toHaveProperty('useOnlineCover');
         expect(options.songPatch).toMatchObject({ matchedLyrics: lyrics, matchedLyricsSource: 'amll', lyricsSource: 'online' });
         expect(mocks.removeCachedCover).not.toHaveBeenCalled();
-        expect(mocks.cacheLocalSongOnlineCover).not.toHaveBeenCalled();
+        expect(mocks.prepareLocalSongOnlineCover).not.toHaveBeenCalled();
     });
 
     it('keeps the existing metadata and cover choices for sources that provide metadata', () => {

@@ -44,6 +44,10 @@ export const applyMatchedMetadata = async (
   metadata: MatchedLocalMetadata,
   options: {
     lyricsOnly?: boolean;
+    signal?: AbortSignal;
+    coverCandidate?: MatchedLocalMetadata;
+    preserveCover?: boolean;
+    skipIfAutoMatchDisabled?: boolean;
     songPatch?: Partial<LocalSong>;
     protectOrigins?: LocalLibraryAssignmentOrigin[];
     assignmentOrigin?: Extract<LocalLibraryAssignmentOrigin, 'auto-match' | 'manual-match'>;
@@ -56,10 +60,30 @@ export const applyMatchedMetadata = async (
     [appDatabase.local_music, appDatabase.local_library_entities, appDatabase.local_library_assignments],
     async () => {
       const song = await appDatabase.local_music.get(songId);
+      options.signal?.throwIfAborted();
       if (!song) return undefined;
-      if (options.skipIfMarkedPureMusic && song.markedPureMusic) return song;
+      if (options.skipIfAutoMatchDisabled && (song.noAutoMatch || song.markedPureMusic)) return song;
+      if (options.skipIfMarkedPureMusic && (song.markedPureMusic || song.noAutoMatch)) return song;
       const updatedSong: LocalSong = { ...song, ...options.songPatch };
       const assignmentOrigin = options.assignmentOrigin || 'auto-match';
+      if (assignmentOrigin === 'auto-match' && (options.skipIfMarkedPureMusic || options.skipIfAutoMatchDisabled || options.assignmentOrigin === 'auto-match')) {
+          if (['manual', 'manual-match', 'split'].includes(song.titleOrigin)) {
+              updatedSong.title = song.title;
+              updatedSong.titleOrigin = song.titleOrigin;
+          }
+          if (song.hasManualLyricSelection) {
+              for (const key of ['matchedLyrics', 'matchedIsPureMusic', 'matchedLyricsSongId', 'matchedLyricsSource', 'matchedLyricsProviderPlatform', 'lyricsSource', 'hasManualLyricSelection', 'markedPureMusic'] as const) {
+                  Object.assign(updatedSong, { [key]: song[key] });
+              }
+          }
+      }
+      if (options.coverCandidate?.coverUrl) {
+          const cover = options.coverCandidate;
+          updatedSong.onlineMetadata = song.onlineMetadata
+              ? { ...song.onlineMetadata, coverUrl: cover.coverUrl }
+              : { source: cover.source!, songId: undefined, title: song.title, artists: song.importedMetadata.artistNames.map(name => ({ name })), album: song.importedMetadata.albumName ? { name: song.importedMetadata.albumName } : undefined,
+                  coverUrl: cover.coverUrl, matchMode: 'auto', matchedAt: Date.now() };
+      }
       if (metadata.source) {
         updatedSong.onlineMetadata = {
           source: metadata.source,
@@ -70,7 +94,7 @@ export const applyMatchedMetadata = async (
           album: cleanLocalLibraryName(metadata.album?.name)
             ? { id: metadata.album?.id, name: cleanLocalLibraryName(metadata.album?.name)! }
             : undefined,
-          coverUrl: metadata.coverUrl,
+          coverUrl: options.preserveCover ? song.onlineMetadata?.coverUrl : metadata.coverUrl,
           matchMode: assignmentOrigin === 'manual-match' ? 'manual' : 'auto',
           matchedAt: Date.now(),
         };
@@ -91,7 +115,7 @@ export const applyMatchedMetadata = async (
         const albumId = albumName
           ? resolveEntityNames(entities, 'album', [albumName], current?.albumEntityId ? [current.albumEntityId] : [])[0]
           : current?.albumEntityId;
-        if (metadata.title?.trim()) {
+        if (metadata.title?.trim() && !protectedOrigins.has(song.titleOrigin as LocalLibraryAssignmentOrigin)) {
           updatedSong.title = metadata.title.trim();
           updatedSong.titleOrigin = assignmentOrigin;
         }
@@ -107,6 +131,7 @@ export const applyMatchedMetadata = async (
           }),
         ]);
       }
+      options.signal?.throwIfAborted();
       await appDatabase.local_music.put(sanitizeLocalSongForStorage(updatedSong));
       return updatedSong;
     },

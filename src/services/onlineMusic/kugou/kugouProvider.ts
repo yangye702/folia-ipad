@@ -67,7 +67,7 @@ const audioUrlOf = (raw: unknown): string | undefined => {
 const dataOf = (raw: any): any => raw?.data ?? raw?.body?.data ?? raw?.body ?? raw;
 
 // Unwrap the nested envelopes used by the different KuGou recommendation endpoints.
-const listOf = (raw: any): any[] => {
+const listOf = (raw: any, strictSearch = false): any[] => {
     const queue: any[] = [dataOf(raw)];
     const listKeys = [
         'lists', 'list', 'info', 'songs', 'song_list', 'songlist', 'songList', 'audios', 'albums', 'items', 'records',
@@ -89,6 +89,7 @@ const listOf = (raw: any): any[] => {
         }
     }
 
+    if (strictSearch) throw new OnlineProviderError('invalid-response', 'KuGou search returned no song list', 'kugou');
     return [];
 };
 
@@ -1027,7 +1028,7 @@ export const kugouProvider: OnlineMusicProvider = {
                     page,
                     limit,
                 );
-                const rawItems = listOf(response);
+                const rawItems = listOf(response, true);
                 return pageOfWithRawItemCount(
                     normalizeKugouSearchSongs(rawItems),
                     response,
@@ -1037,7 +1038,7 @@ export const kugouProvider: OnlineMusicProvider = {
                 );
             }
             const response = await requestKugou('search', { keywords: query, keyword: query, type: 'song', page, pagesize: limit });
-            const rawItems = listOf(response);
+            const rawItems = listOf(response, true);
             return pageOfWithRawItemCount(
                 normalizeKugouSearchSongs(rawItems),
                 response,

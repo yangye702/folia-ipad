@@ -2,6 +2,8 @@ import type { LocalSong, LyricProviderSource, SongResult } from '../types';
 import type { LocalSongMetadataSource } from '../types/localLibrary';
 import { getProviderSongMetadata } from './onlineMusic/songMetadata';
 import { getLyricSourceAccess } from '../utils/lyrics/lyricMatchSources';
+import { isAutomaticMetadataCandidateReliable } from './metadataMatchPolicy';
+import { recordMatchDiagnostic, MatchFailure } from './matchingDiagnostics';
 import { calculateMatchScoreDetails } from '../utils/lyrics/matchScore';
 import { buildLyricSearchQuery } from '../utils/lyrics/searchQuery';
 import {
@@ -61,7 +63,8 @@ export const normalizeOnlineMetadataCandidate = (
     target: OnlineMetadataSearchTarget,
 ): OnlineMetadataCandidate => {
     const details = calculateMatchScoreDetails(target, result);
-    const albumName = getMatchResultAlbumName(result).trim();
+    const rawAlbumName = getMatchResultAlbumName(result).trim();
+    const albumName = /^unknown album$/i.test(rawAlbumName) ? '' : rawAlbumName;
     const albumId = getMatchResultAlbumId(result);
     return {
         source,
@@ -104,16 +107,22 @@ const throwIfAborted = (signal?: AbortSignal) => {
 
 // Stops waiting immediately when a provider client cannot receive AbortSignal directly.
 const waitForProvider = async <T>(request: Promise<T>, signal?: AbortSignal): Promise<T> => {
-    if (!signal) return await request;
+    throwIfAborted(signal);
+    let timer: ReturnType<typeof setTimeout>;
+    const timeout = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new MatchFailure('timeout', 'search')), 15000);
+    });
+    const bounded = Promise.race([request, timeout]).finally(() => clearTimeout(timer));
+    if (!signal) return await bounded;
     throwIfAborted(signal);
     return await new Promise<T>((resolve, reject) => {
         const abort = () => {
             const error = new Error('Metadata matching was cancelled');
-            error.name = 'AbortError';
+            error.name = signal.reason?.name === 'TimeoutError' ? 'TimeoutError' : 'AbortError';
             reject(error);
         };
         signal.addEventListener('abort', abort, { once: true });
-        request.then(
+        bounded.then(
             value => {
                 signal.removeEventListener('abort', abort);
                 resolve(value);
@@ -126,6 +135,21 @@ const waitForProvider = async <T>(request: Promise<T>, signal?: AbortSignal): Pr
     });
 };
 
+// Serialize each source across playback, manual metadata and folder requests, without retrying refusals.
+const sourceTails = new Map<string, Promise<void>>();
+const runSourceSearch = async <T>(source: string, signal: AbortSignal | undefined, run: (signal: AbortSignal) => Promise<T>): Promise<T> => {
+    const previous = sourceTails.get(source) || Promise.resolve();
+    const request = previous.then(async () => {
+        throwIfAborted(signal);
+        const boundedSignal = signal ? AbortSignal.any([signal, AbortSignal.timeout(15000)]) : AbortSignal.timeout(15000);
+        return await waitForProvider(run(boundedSignal), boundedSignal);
+    });
+    const tail = request.then(() => undefined, () => undefined);
+    sourceTails.set(source, tail);
+    void tail.then(() => { if (sourceTails.get(source) === tail) sourceTails.delete(source); });
+    return await waitForProvider(request, signal);
+};
+
 export async function searchOnlineMetadata(
     source: OnlineMetadataSource,
     query: string,
@@ -136,7 +160,15 @@ export async function searchOnlineMetadata(
     if (!safeQuery) return [];
     throwIfAborted(options.signal);
     const limit = options.limit ?? 10;
-    const results = await waitForProvider(getLyricSourceAccess(source).search(safeQuery, limit, target), options.signal);
+    let results: SongResult[];
+    try {
+        results = await runSourceSearch(source, options.signal, signal => getLyricSourceAccess(source).search(safeQuery, limit, target, signal));
+        if (!Array.isArray(results)) throw new MatchFailure('invalid-response', 'search', source);
+        recordMatchDiagnostic({ stage: 'search', source, outcome: results.length ? 'success' : 'empty', count: results.length });
+    } catch (error) {
+        recordMatchDiagnostic({ stage: 'search', source, error });
+        throw error;
+    }
     throwIfAborted(options.signal);
     return results
         .map(result => normalizeOnlineMetadataCandidate(source, result, target))
@@ -144,28 +176,41 @@ export async function searchOnlineMetadata(
         .slice(0, limit);
 }
 
-// Preserves the established NetEase-to-QQ fallback and appends KuGou as the final provider-backed source.
+// Keeps provider order, but never accepts a title alone or lets a coverless result end a cover search.
 export async function findAutomaticOnlineMetadataCandidate(
     song: LocalSong,
     signal?: AbortSignal,
+    options: { intent?: 'metadata' | 'cover'; excludedCoverUrls?: string[] } = {},
 ): Promise<OnlineMetadataCandidate | null> {
     const target = buildLocalSongMetadataSearchTarget(song);
     const query = buildLocalSongMetadataSearchQuery(song);
-    let neteaseCandidates: OnlineMetadataCandidate[] = [];
-    try {
-        neteaseCandidates = await searchOnlineMetadata('netease', query, target, { limit: 10, signal });
-    } catch (error) {
-        if ((error as Error).name === 'AbortError') throw error;
-        console.warn('[LocalMusic] NetEase metadata search failed, falling back to QQ:', error);
+    const errors: unknown[] = [];
+    const failedSources: string[] = [];
+    let hadCandidates = false;
+    let fallback: OnlineMetadataCandidate | null = null;
+    for (const source of ['netease', 'qq', 'kugou'] as const) {
+        throwIfAborted(signal);
+        try {
+            const candidates = await searchOnlineMetadata(source, query, target, { limit: 20, signal });
+            hadCandidates ||= candidates.length > 0;
+            const reliable = candidates.filter(candidate => isAutomaticMetadataCandidateReliable(target, candidate, options.intent));
+            if (options.intent === 'cover') {
+                const withCover = reliable.find(candidate => candidate.coverUrl && !options.excludedCoverUrls?.includes(candidate.coverUrl));
+                if (withCover) return withCover;
+            } else if (reliable.length) {
+                const withCover = reliable.find(candidate => candidate.coverUrl && isAutomaticMetadataCandidateReliable(target, candidate, 'cover'));
+                if (withCover) return withCover;
+                // Metadata may identify the same recording on another release; its artwork must not leak through.
+                fallback ??= { ...reliable[0], coverUrl: undefined };
+            }
+        } catch (error) {
+            if ((error as Error).name === 'AbortError') throw error;
+            errors.push(error);
+            failedSources.push(source);
+        }
     }
-    if (neteaseCandidates[0]?.titleMatched) return neteaseCandidates[0];
-    try {
-        const qqCandidates = await searchOnlineMetadata('qq', query, target, { limit: 10, signal });
-        if (qqCandidates[0]?.titleMatched) return qqCandidates[0];
-    } catch (error) {
-        if ((error as Error).name === 'AbortError') throw error;
-        console.warn('[LocalMusic] QQ metadata search failed, falling back to KuGou:', error);
-    }
-    const kugouCandidates = await searchOnlineMetadata('kugou', query, target, { limit: 10, signal });
-    return kugouCandidates[0]?.titleMatched ? kugouCandidates[0] : null;
+    if (fallback) return fallback;
+    if (errors.length) throw new MatchFailure('partial-search-failure', 'search', failedSources.join(', '), errors);
+    if (hadCandidates) throw new MatchFailure('low-confidence', 'candidate');
+    return null;
 }

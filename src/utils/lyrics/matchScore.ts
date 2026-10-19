@@ -46,7 +46,7 @@ export function normalizeLyricMatchText(value: string): string {
         .trim();
 }
 
-function normalizeTitleForMatch(value: string): string {
+export function normalizeTitleForMatch(value: string): string {
     const versionMarkerPattern = /(instrumental|inst|off\s*vocal|karaoke|remix|mix|version|ver\.?|cover|live|edit|arrange|伴奏|カラオケ|インスト|リミックス|remaster|remastered)/iu;
     return normalizeLyricMatchText(
         value

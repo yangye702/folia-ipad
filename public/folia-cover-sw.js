@@ -133,6 +133,23 @@ const getCoverResponse = async (requestUrl) => {
   }
 };
 
+// Online artwork uses a separate rebuildable image cache; no song database schema is opened or changed.
+self.addEventListener('fetch', event => {
+  const url = new URL(event.request.url);
+  if (event.request.method !== 'GET' || url.origin !== self.location.origin || url.pathname !== '/__folia_online_cover/') return;
+  event.respondWith((async () => {
+    let target;
+    try { target = new URL(url.searchParams.get('url')); } catch { return new Response('', { status: 400 }); }
+    if (target.protocol !== 'https:' || target.username || target.password) return new Response('', { status: 400 });
+    const cache = await caches.open('folia-online-covers-v1');
+    const cached = await cache.match(target.href);
+    if (cached) return cached;
+    const hostname = target.hostname;
+    const needsProxy = hostname === 'y.gtimg.cn' || hostname === 'c1.kgimg.com' || hostname === 'kugou.com' || hostname.endsWith('.kugou.com');
+    return fetch(needsProxy ? `/api/lyric-proxy?url=${encodeURIComponent(target.href)}` : target.href, { credentials: 'omit', mode: needsProxy ? 'cors' : 'no-cors' });
+  })());
+});
+
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
   if (event.request.method !== 'GET' || url.origin !== self.location.origin || !url.pathname.startsWith(COVER_PATH_PREFIX)) {

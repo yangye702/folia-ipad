@@ -1,7 +1,9 @@
+import { appDatabase } from './appDatabase';
+import { matchFailureFacts, MatchFailure, recordMatchDiagnostic } from './matchingDiagnostics';
 import type { AmllDbPlatform, LocalSong, LyricData, LyricProviderSource } from '../types';
 import type { LocalLibraryAssignmentOrigin } from '../types/localLibrary';
 import type { OnlineMetadataCandidate } from './onlineMetadataSearchService';
-import { cacheLocalSongOnlineCover, removeCachedCover } from './coverCache';
+import { prepareLocalSongOnlineCover, removeCachedCover, type PreparedCover } from './coverCache';
 import { sourceProvidesSongMetadata } from '../utils/lyrics/matchResult';
 import { applyMatchedMetadata, restoreImportedMetadata } from './localLibraryCatalogService';
 
@@ -33,11 +35,14 @@ export interface ApplyLocalSongMatchSelectionInput {
   lyricsFailed?: boolean;
   matchMode?: 'automatic' | 'manual';
   protectOrigins?: LocalLibraryAssignmentOrigin[];
+  signal?: AbortSignal;
+  expectedCoverUrl?: string | null;
 }
 
 export interface ApplyLocalSongMatchSelectionResult {
   coverAttempted: boolean;
   coverCached: boolean;
+  coverError?: ReturnType<typeof matchFailureFacts>;
   lyricsApplied: boolean;
   partialLyricsFailure: boolean;
 }
@@ -121,6 +126,21 @@ const buildSongPatch = (input: ApplyLocalSongMatchSelectionInput) => {
 export const applyLocalSongMatchSelection = async (
   input: ApplyLocalSongMatchSelectionInput,
 ): Promise<ApplyLocalSongMatchSelectionResult> => {
+  input.signal?.throwIfAborted();
+  let coverError: ReturnType<typeof matchFailureFacts> | undefined;
+  const coverAttempted = input.cover === 'online' && Boolean(input.candidate?.coverUrl);
+  let prepared: PreparedCover | undefined;
+  if (coverAttempted && input.candidate?.coverUrl) {
+    try { prepared = await prepareLocalSongOnlineCover(input.songId, input.candidate.coverUrl, input.signal); }
+    catch (error) {
+      if ((error as Error).name === 'AbortError') throw error;
+      coverError = matchFailureFacts(error);
+      recordMatchDiagnostic({ stage: coverError.stage, source: input.candidate.source, error });
+    }
+  }
+  const coverCached = Boolean(prepared);
+  // Failed artwork must never switch the user's existing cover reference.
+  const effectiveInput = coverAttempted && !coverCached ? { ...input, cover: 'keep' as const } : input;
   const candidateMetadata = input.candidate ? {
     source: input.candidate.source,
     songId: input.candidate.songId,
@@ -129,29 +149,57 @@ export const applyLocalSongMatchSelection = async (
     album: input.candidate.album,
     coverUrl: input.candidate.coverUrl,
   } : {};
-  const songPatch = buildSongPatch(input);
+  const songPatch = buildSongPatch(effectiveInput);
 
-  if (input.metadata === 'online' && input.candidate) {
-    await applyMatchedMetadata(input.songId, candidateMetadata, {
-      songPatch,
-      assignmentOrigin: input.matchMode === 'automatic' ? 'auto-match' : 'manual-match',
-      protectOrigins: input.protectOrigins,
-    });
-  } else if (input.metadata === 'imported') {
-    await restoreImportedMetadata(input.songId, songPatch);
-  } else {
-    await applyMatchedMetadata(input.songId, candidateMetadata, { lyricsOnly: true, songPatch });
+  try {
+    const saveSelection = async () => {
+      input.signal?.throwIfAborted();
+      if (prepared || input.matchMode === 'automatic') {
+        const current = await appDatabase.local_music.get(input.songId);
+        if (!current) throw new MatchFailure('missing-song', 'local-save');
+        if (input.matchMode === 'automatic' && (current.noAutoMatch || current.markedPureMusic || Boolean(prepared && current.localCoverAssetId)
+          || input.metadata === 'online' && current.onlineMetadata?.matchMode === 'manual'
+          || input.expectedCoverUrl !== undefined && (current.onlineMetadata?.coverUrl || null) !== input.expectedCoverUrl)) {
+          throw new MatchFailure('protected', 'local-save');
+        }
+      }
+        if (input.metadata === 'online' && input.candidate) {
+          await applyMatchedMetadata(input.songId, candidateMetadata, {
+            songPatch,
+            assignmentOrigin: input.matchMode === 'automatic' ? 'auto-match' : 'manual-match',
+            protectOrigins: input.protectOrigins,
+            signal: input.signal,
+            skipIfAutoMatchDisabled: input.matchMode === 'automatic',
+            preserveCover: effectiveInput.cover === 'keep',
+          });
+        } else if (input.metadata === 'imported') {
+          await restoreImportedMetadata(input.songId, songPatch);
+        } else {
+          await applyMatchedMetadata(input.songId, {}, { lyricsOnly: true, songPatch, ...(input.signal ? { signal: input.signal } : {}), ...(effectiveInput.cover === 'online' ? { coverCandidate: candidateMetadata } : {}), ...(input.matchMode === 'automatic' ? { skipIfAutoMatchDisabled: true } : {}) });
+        }
+
+      await prepared?.commit();
+      input.signal?.throwIfAborted();
+    };
+    if (prepared) {
+      await appDatabase.transaction('rw', [appDatabase.local_music, appDatabase.local_library_entities, appDatabase.local_library_assignments, appDatabase.media_cache], saveSelection);
+    } else {
+      await saveSelection();
+    }
+  } catch (error) {
+    await prepared?.discard();
+    if ((error as Error).name === 'AbortError' || error instanceof MatchFailure) throw error;
+    throw new MatchFailure('storage', 'local-save', input.candidate?.source);
   }
+  await prepared?.finish();
+  if (prepared) recordMatchDiagnostic({ stage: 'cover-cache', outcome: 'success', source: input.candidate?.source });
 
-  const coverAttempted = input.cover === 'online' && Boolean(input.candidate?.coverUrl);
-  const coverCached = coverAttempted && input.candidate?.coverUrl
-    ? await cacheLocalSongOnlineCover(input.songId, input.candidate.coverUrl)
-    : false;
   if (input.cover === 'embedded') await removeCachedCover(`cover_local_${input.songId}`);
 
   return {
     coverAttempted,
     coverCached,
+    ...(coverError ? { coverError } : {}),
     lyricsApplied: input.lyrics !== 'online' || Boolean(input.onlineLyrics) || input.setPureMusicMark === true,
     partialLyricsFailure: Boolean(input.lyricsFailed && !input.onlineLyrics),
   };

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, FileAudio, Loader2, Piano, Search, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { LocalSong } from '../../types';
@@ -14,6 +14,8 @@ import {
     type OnlineMetadataCandidate,
     type OnlineMetadataSource,
 } from '../../services/onlineMetadataSearchService';
+import { MatchingDiagnostics } from '../local-library-entity/MatchingDiagnostics';
+import { matchFailureFacts } from '../../services/matchingDiagnostics';
 import { DurationMatchBadge } from './DurationMatchBadge';
 import { getSizedCoverUrl } from '../../utils/coverUrl';
 import { useConfirmDialog } from '../shared/useConfirmDialog';
@@ -35,6 +37,9 @@ export const LocalSongMetadataMatchDialog = ({ song, assignment, isDaylight, onC
     const [query, setQuery] = useState(() => buildLocalSongMetadataSearchQuery(song));
     const [results, setResults] = useState<OnlineMetadataCandidate[]>([]);
     const [selected, setSelected] = useState<OnlineMetadataCandidate | null>(null);
+    const [searchError, setSearchError] = useState('');
+    const searchController = useRef<AbortController | null>(null);
+    useEffect(() => () => { searchController.current?.abort(); requestIdRef.current++; }, []);
     const [searching, setSearching] = useState(false);
     const [applying, setApplying] = useState(false);
     const [restoringLocalInfo, setRestoringLocalInfo] = useState(false);
@@ -59,20 +64,24 @@ export const LocalSongMetadataMatchDialog = ({ song, assignment, isDaylight, onC
     const previewTitle = useOnlineMetadata && selected?.title ? selected.title : currentTitle;
     const previewArtist = useOnlineMetadata && selectedArtist ? selectedArtist : currentArtist;
     const previewAlbum = useOnlineMetadata && selected?.album?.name ? selected.album.name : currentAlbum;
-    const previewCoverUrl = useOnlineCover && selected?.coverUrl ? selected.coverUrl : currentCoverUrl;
+    const previewCoverUrl = useOnlineCover && selected?.coverUrl ? selected.coverUrl : localCoverUrl;
 
     const search = async () => {
         const safeQuery = query.trim();
         if (!safeQuery) return;
         const requestId = ++requestIdRef.current;
+        searchController.current?.abort();
+        const controller = new AbortController();
+        searchController.current = controller;
+        setSearchError('');
         setSearching(true);
         setSelected(null);
         try {
-            const next = await searchOnlineMetadata(source, safeQuery, target);
+            const next = await searchOnlineMetadata(source, safeQuery, target, { signal: controller.signal });
             if (requestId === requestIdRef.current) setResults(next);
         } catch (error) {
             console.error('[LocalMusic] Manual metadata search failed:', error);
-            if (requestId === requestIdRef.current) setResults([]);
+            if (requestId === requestIdRef.current) { setResults([]); const detail = matchFailureFacts(error); setSearchError(t('localMusic.matchFailure', { stage: detail.stage, kind: detail.kind, source })); }
         } finally {
             if (requestId === requestIdRef.current) setSearching(false);
         }
@@ -101,6 +110,8 @@ export const LocalSongMetadataMatchDialog = ({ song, assignment, isDaylight, onC
             }
             onClose();
         } catch (error) {
+            const detail = matchFailureFacts(error);
+            setSearchError(t('localMusic.matchFailure', { stage: detail.stage, kind: detail.kind, source: selected.source }));
             console.error('[LocalMusic] Failed to apply manual metadata match:', error);
         } finally {
             setApplying(false);
@@ -167,7 +178,7 @@ export const LocalSongMetadataMatchDialog = ({ song, assignment, isDaylight, onC
                 <div className="flex min-h-0 flex-1 flex-col gap-4 p-5">
                     <div className="flex gap-2">
                         {(['netease', 'qq', 'kugou'] as const).map(item => (
-                            <button key={item} type="button" onClick={() => { setSource(item); setResults([]); setSelected(null); }} className={`rounded-full px-4 py-2 text-xs font-bold ${source === item ? 'bg-blue-500 text-white' : 'bg-current/10'}`}>
+                            <button key={item} type="button" onClick={() => { searchController.current?.abort(); requestIdRef.current++; setSearching(false); setSearchError(''); setSource(item); setResults([]); setSelected(null); }} className={`rounded-full px-4 py-2 text-xs font-bold ${source === item ? 'bg-blue-500 text-white' : 'bg-current/10'}`}>
                                 {item === 'netease'
                                     ? t('localMusic.neteaseSource')
                                     : item === 'qq'
@@ -185,6 +196,8 @@ export const LocalSongMetadataMatchDialog = ({ song, assignment, isDaylight, onC
                             {searching ? <Loader2 size={16} className="animate-spin" /> : t('localMusic.search')}
                         </button>
                     </form>
+                    <MatchingDiagnostics />
+                    {searchError && <div role="alert" className="text-sm text-red-400">{searchError}</div>}
                     <div className="min-h-48 flex-1 space-y-2 overflow-y-auto custom-scrollbar">
                         {results.map(candidate => (
                             <button key={`${candidate.source}:${candidate.songId}`} type="button" onClick={() => { setSelected(candidate); if (!candidate.coverUrl) setUseOnlineCover(false); }} className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left ${selected === candidate ? 'border-blue-500 bg-blue-500/10' : 'border-current/10 hover:bg-current/5'}`}>
@@ -199,7 +212,7 @@ export const LocalSongMetadataMatchDialog = ({ song, assignment, isDaylight, onC
                                 {selected === candidate && <Check size={17} className="text-blue-500" />}
                             </button>
                         ))}
-                        {!searching && results.length === 0 && <div className="flex h-48 items-center justify-center text-sm opacity-40">{t('localMusic.enterMetadataSearch')}</div>}
+                        {!searching && !searchError && results.length === 0 && <div className="flex h-48 items-center justify-center text-sm opacity-40">{t('localMusic.enterMetadataSearch')}</div>}
                     </div>
                     {selected && (
                         <div className="grid gap-3 sm:grid-cols-2">

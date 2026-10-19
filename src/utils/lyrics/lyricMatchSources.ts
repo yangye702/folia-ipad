@@ -42,7 +42,7 @@ export interface LyricSourceAccess {
      * The source's songs for `query`, `limit` of them at most. `target` is the song being matched,
      * for a source that has to choose its candidates itself.
      */
-    search(query: string, limit: number, target: LyricMatchSearchTarget): Promise<SongResult[]>;
+    search(query: string, limit: number, target: LyricMatchSearchTarget, signal?: AbortSignal): Promise<SongResult[]>;
     /**
      * The lyrics of one of the source's songs, or null when the source cannot be asked.
      * `lent.chorusRanges` are chorus ranges found elsewhere, for a fetch that marks the chorus itself.

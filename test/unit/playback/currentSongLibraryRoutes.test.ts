@@ -61,8 +61,13 @@ vi.mock('@/services/db', () => ({
     saveToCache: async () => { await env.duringCacheSave?.(); },
     removeFromCache: async () => {},
     getLocalSongs: async () => env.songs,
+    getLocalSong: async (id: string) => env.songs.find(song => (song as LocalSong).id === id),
     saveLocalSong: async () => { await env.duringSave?.(); },
     getFromCacheWithMigration: async () => null,
+}));
+vi.mock('@/services/localSongCoverMatchService', () => ({
+    needsLocalSongCoverMatch: async (song: { id: string }) => env.matchGate.has(song.id),
+    completeLocalSongCover: async (song: { id: string }) => { env.note(`wait match ${song.id}`); await env.matchGate.get(song.id); return false; },
 }));
 vi.mock('@/services/localMusicService', () => ({
     getAudioFromLocalSong: async (song: { id: string }) => {

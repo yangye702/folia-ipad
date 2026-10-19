@@ -95,12 +95,13 @@ export const readCoverAsset = async (key: string, mimeType?: string): Promise<Bl
   try {
     const handle = await directory.getFileHandle(fileName);
     const file = await handle.getFile();
-    const resolvedMimeType = file.type || mimeType;
+    // OPFS .bin files can be reported as application/octet-stream after reopening.
+    const resolvedMimeType = file.type?.startsWith('image/') ? file.type : mimeType;
     if (!isBlob(file) || file.size === 0 || !resolvedMimeType?.startsWith('image/')) {
       await directory.removeEntry(fileName).catch(() => undefined);
       return null;
     }
-    return file.type ? file : file.slice(0, file.size, resolvedMimeType);
+    return file.type === resolvedMimeType ? file : file.slice(0, file.size, resolvedMimeType);
   } catch {
     return null;
   }
@@ -152,6 +153,7 @@ export const getCoverAssetUsage = async (): Promise<number> => {
 };
 
 export const clearCoverAssets = async (): Promise<void> => {
+  if (typeof caches !== 'undefined') await caches.delete('folia-online-covers-v1').catch(() => false);
   if (hasElectronCoverBridge() && typeof window.electron?.clearCoverCache === 'function') {
     await window.electron.clearCoverCache();
     return;

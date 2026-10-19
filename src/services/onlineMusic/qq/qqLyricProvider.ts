@@ -21,7 +21,7 @@ const isElectron = typeof window !== 'undefined' && (window as any).electron;
 /**
  * Sends a POST request to u.y.qq.com via proxy or directly in Electron.
  */
-async function requestQQ(method: string, module: string, param: any, observeSearch?: (summary: QqSearchSummary) => void): Promise<any> {
+async function requestQQ(method: string, module: string, param: any, observeSearch?: (summary: QqSearchSummary) => void, signal?: AbortSignal): Promise<any> {
   const payload = {
     comm: {
       ct: 11,
@@ -49,6 +49,7 @@ async function requestQQ(method: string, module: string, param: any, observeSear
   try {
     response = await fetch(url, {
       method: 'POST',
+      signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(12000)]) : AbortSignal.timeout(12000),
       credentials: isElectron ? 'omit' : 'same-origin',
       headers: {
         'Content-Type': 'application/json',
@@ -59,7 +60,7 @@ async function requestQQ(method: string, module: string, param: any, observeSear
     });
 
   } catch (error) {
-    if (observeSearch) throw new QqLyricSearchError('network', emptyQqSearchSummary());
+    if (observeSearch) throw new QqLyricSearchError((error as Error).name === 'TimeoutError' ? 'timeout' : 'network', emptyQqSearchSummary());
     throw error;
   }
   if (observeSearch) return await readQqSearchResponse(response, observeSearch);
@@ -101,7 +102,7 @@ function detectIsQrc(content: string): boolean {
 /**
  * Searches songs on QQ Music anonymously and throws on upstream refusal (e.g. the frequent code 2001).
  */
-export async function searchQQSongs(keyword: string, page = 1, pageSize = 20, diagnoseLyrics = false): Promise<SongResult[]> {
+export async function searchQQSongs(keyword: string, page = 1, pageSize = 20, diagnoseLyrics = false, signal?: AbortSignal): Promise<SongResult[]> {
   const safeKeyword = keyword.trim();
   if (!safeKeyword) return [];
 
@@ -126,7 +127,7 @@ export async function searchQQSongs(keyword: string, page = 1, pageSize = 20, di
   const update = beginQqSearchDiagnostic(param.query, isElectron ? 'direct' : '/api/lyric-proxy', diagnoseLyrics);
   let data: any;
   try {
-    data = await requestQQ("DoSearchForQQMusicLite", "music.search.SearchCgiService", param, summary => update(summary));
+    data = await requestQQ("DoSearchForQQMusicLite", "music.search.SearchCgiService", param, summary => update(summary), signal);
     update({ outcome: 'success' });
   } catch (error) {
     update({ ...(error instanceof QqLyricSearchError ? error.summary : {}), outcome: error instanceof QqLyricSearchError ? error.kind : 'invalid-response' });
@@ -163,7 +164,7 @@ export async function searchQQSongs(keyword: string, page = 1, pageSize = 20, di
 /**
  * Searches anonymously for lyric matching, with bounded script/title fallback.
  */
-export async function searchQQLyrics(keyword: string, page = 1, pageSize = 20): Promise<SongResult[]> {
+export async function searchQQLyrics(keyword: string, page = 1, pageSize = 20, signal?: AbortSignal): Promise<SongResult[]> {
   const input = keyword.trim().slice(0, 60);
   if (!input) return [];
   const toTraditional = OpenCC.Converter({ from: 'cn', to: 't' });
@@ -173,8 +174,9 @@ export async function searchQQLyrics(keyword: string, page = 1, pageSize = 20): 
   const queries = [...new Set([input, toTraditional(input), toSimplified(input), title, toTraditional(title), toSimplified(title)])];
   let refusal: QqLyricSearchError | undefined;
   for (const query of queries) {
+    signal?.throwIfAborted();
     try {
-      const songs = await searchQQSongs(query, page, pageSize, true);
+      const songs = await searchQQSongs(query, page, pageSize, true, signal);
       if (songs.length) return songs;
     } catch (error) {
       // iPad evidence: code 2001 for simplified input, success for traditional.

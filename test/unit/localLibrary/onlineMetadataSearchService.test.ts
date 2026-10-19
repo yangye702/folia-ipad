@@ -31,7 +31,7 @@ describe('onlineMetadataSearchService', () => {
 
     it('keeps a title-compatible NetEase candidate without querying QQ', async () => {
         vi.mocked(neteaseApi.cloudSearch).mockResolvedValue({ result: { songs: [
-            { id: 1, name: 'Target Song', dt: 200000, ar: [{ id: 2, name: 'Target Artist' }], al: { id: 3, name: 'Target Album' } },
+            { id: 1, name: 'Target Song', dt: 200000, ar: [{ id: 2, name: 'Target Artist' }], al: { id: 3, name: 'Target Album', picUrl: 'https://example.test/first.jpg' } },
         ] } });
         const candidate = await findAutomaticOnlineMetadataCandidate(song);
         expect(candidate?.source).toBe('netease');
@@ -95,7 +95,7 @@ describe('onlineMetadataSearchService', () => {
         await searchOnlineMetadata('qq', 'custom user text', {
             title: 'Target Song', artist: '', durationMs: 0,
         });
-        expect(searchQQLyrics).toHaveBeenCalledWith('custom user text', 1, 10);
+        expect(searchQQLyrics).toHaveBeenCalledWith('custom user text', 1, 10, expect.any(AbortSignal));
         expect(neteaseApi.cloudSearch).not.toHaveBeenCalled();
     });
 
@@ -108,8 +108,43 @@ describe('onlineMetadataSearchService', () => {
         const pending = searchOnlineMetadata('netease', 'Target Song', {
             title: 'Target Song', artist: '', durationMs: 0,
         }, { signal: controller.signal });
+        await Promise.resolve();
+        await Promise.resolve();
         controller.abort();
         await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
         resolveRequest({ result: { songs: [] } });
+    });
+    it('rejects same-title wrong-artist candidates and continues to a reliable QQ candidate', async () => {
+        vi.mocked(neteaseApi.cloudSearch).mockResolvedValue({ result: { songs: [
+            { id: 1, name: 'Target Song', dt: 240000, ar: [{ name: 'Unrelated Singer' }], al: { name: 'Other Album' } },
+        ] } });
+        vi.mocked(searchQQLyrics).mockResolvedValue([
+            { id: 9, name: 'Target Song', durationMs: 200000, artists: [{ id: 2, name: 'Target Artist' }], album: { id: 3, name: 'Target Album', coverUrl: 'https://example.test/cover.jpg' } },
+        ]);
+        expect((await findAutomaticOnlineMetadataCandidate(song))?.source).toBe('qq');
+    });
+
+    it('continues looking for a reliable cover when the first platform has none', async () => {
+        vi.mocked(neteaseApi.cloudSearch).mockResolvedValue({ result: { songs: [
+            { id: 1, name: 'Target Song', dt: 200000, ar: [{ name: 'Target Artist' }], al: { name: 'Target Album' } },
+        ] } });
+        vi.mocked(searchQQLyrics).mockResolvedValue([
+            { id: 9, name: 'Target Song', durationMs: 200000, artists: [{ id: 2, name: 'Target Artist' }], album: { id: 3, name: 'Target Album', coverUrl: 'https://example.test/cover.jpg' } },
+        ]);
+        expect((await findAutomaticOnlineMetadataCandidate(song, undefined, { intent: 'cover' }))?.source).toBe('qq');
+    });
+
+});
+
+describe('bounded provider waits', () => {
+    it('reports timeout for a provider that never settles', async () => {
+        vi.useFakeTimers();
+        try {
+            vi.mocked(neteaseApi.cloudSearch).mockReturnValue(new Promise(() => {}));
+            const pending = searchOnlineMetadata('netease', 'timeout fixture', { title: 'Fixture', artist: '', durationMs: 0 });
+            const assertion = expect(pending).rejects.toMatchObject({ kind: 'timeout', stage: 'search' });
+            await vi.advanceTimersByTimeAsync(15001);
+            await assertion;
+        } finally { vi.useRealTimers(); }
     });
 });

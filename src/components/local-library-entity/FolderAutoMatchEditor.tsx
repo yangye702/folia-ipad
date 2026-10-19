@@ -5,6 +5,9 @@ import type { LocalSong } from '../../types';
 import type { LocalLibraryAssignment } from '../../types/localLibrary';
 import { batchAutoMatchLocalSongMetadata, useImportedSnapshotForLocalSong } from '../../services/localSongMetadataMatchService';
 import type { OnlineMetadataCandidate } from '../../services/onlineMetadataSearchService';
+import { MatchingDiagnostics } from './MatchingDiagnostics';
+import { needsLocalSongCoverMatch } from '../../services/localSongCoverMatchService';
+import { hasLocalSongCover } from '../../utils/localSongCover';
 import { FolderSongPicker } from './FolderSongPicker';
 
 // src/components/local-library-entity/FolderAutoMatchEditor.tsx
@@ -30,14 +33,16 @@ export const FolderAutoMatchEditor = ({ songs, assignments, isDaylight, onManual
     const [selectedSongIds, setSelectedSongIds] = useState(() => new Set(songs
         .filter(song => {
             const assignment = assignmentBySongId.get(song.id);
-            return !song.noAutoMatch && (!assignment?.artistEntityIds.length || !assignment.albumEntityId);
+            return !song.noAutoMatch && (!assignment?.artistEntityIds.length || !assignment.albumEntityId || !hasLocalSongCover(song) && !song.onlineMetadata?.coverUrl);
         })
         .map(song => song.id)));
     const [running, setRunning] = useState(false);
     const [restoringLocalInfo, setRestoringLocalInfo] = useState(false);
+    const [batchTotal, setBatchTotal] = useState(0);
     const [completed, setCompleted] = useState(0);
     const [statusBySongId, setStatusBySongId] = useState(new Map<string, string>());
     const abortControllerRef = useRef<AbortController | null>(null);
+    const mountedRef = useRef(true);
     const selectAllRef = useRef<HTMLInputElement | null>(null);
     const eligibleSongs = useMemo(() => songs.filter(song => !song.noAutoMatch), [songs]);
     const selectedCount = eligibleSongs.reduce((count, song) => count + Number(selectedSongIds.has(song.id)), 0);
@@ -56,19 +61,39 @@ export const FolderAutoMatchEditor = ({ songs, assignments, isDaylight, onManual
         setSelectedSongIds(current => new Set([...current].filter(songId => eligibleSongIds.has(songId))));
     }, [eligibleSongs]);
 
+    useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; abortControllerRef.current?.abort(); }; }, []);
+
+    useEffect(() => {
+        let disposed = false;
+        void (async () => {
+            const missing: string[] = [];
+            // Read/decode at most one cached image at a time on memory-constrained tablets.
+            for (const song of songs) {
+                if (disposed) return;
+                if (!song.noAutoMatch && !song.markedPureMusic && await needsLocalSongCoverMatch(song)) missing.push(song.id);
+            }
+            if (!disposed) setSelectedSongIds(current => new Set([...current, ...missing]));
+        })().catch(() => undefined);
+        return () => { disposed = true; };
+    }, [songs]);
+
     const run = async () => {
+        if (abortControllerRef.current) return;
         const selectedSongs = songs.filter(song => selectedSongIds.has(song.id));
         if (selectedSongs.length === 0) return;
         const controller = new AbortController();
         abortControllerRef.current = controller;
         setRunning(true);
         setCompleted(0);
-        setStatusBySongId(new Map());
+        setBatchTotal(selectedSongs.length);
+        // Keep previous per-song evidence when retrying only the remaining selection.
         try {
             await batchAutoMatchLocalSongMetadata(selectedSongs, {
                 signal: controller.signal,
                 concurrency: 2,
                 onUpdate: update => {
+                    if (!mountedRef.current || abortControllerRef.current !== controller) return;
+                    if (['matched', 'skipped'].includes(update.status)) setSelectedSongIds(current => { const next = new Set(current); next.delete(update.songId); return next; });
                     setCompleted(value => value + 1);
                     const statusText = t(`localMusic.autoMatchStatus.${update.status}`);
                     const candidateText = update.candidate ? formatMatchCandidate(update.candidate) : '';
@@ -77,13 +102,13 @@ export const FolderAutoMatchEditor = ({ songs, assignments, isDaylight, onManual
                         : update.status === 'matched-cover-failed' && candidateText
                             ? `${candidateText} · ${statusText}`
                             : statusText;
-                    setStatusBySongId(current => new Map(current).set(update.songId, displayText));
+                    setStatusBySongId(current => new Map(current).set(update.songId, update.detail ? `${displayText} · ${update.detail.source || ''} ${update.detail.stage}: ${update.detail.kind}${update.detail.httpStatus ? ` HTTP ${update.detail.httpStatus}` : ''}` : displayText));
                 },
             });
-            await onChanged();
+            if (!controller.signal.aborted) await onChanged();
         } finally {
             abortControllerRef.current = null;
-            setRunning(false);
+            if (mountedRef.current) setRunning(false);
         }
     };
 
@@ -113,7 +138,7 @@ export const FolderAutoMatchEditor = ({ songs, assignments, isDaylight, onManual
                 </div>
                 {running ? (
                     <button type="button" onClick={() => abortControllerRef.current?.abort()} className="flex items-center gap-2 rounded-xl bg-red-500/15 px-4 py-2 text-sm font-bold text-red-500">
-                        <Square size={14} /> {t('localMusic.cancelMatch')} ({completed}/{selectedCount})
+                        <Square size={14} /> {t('localMusic.cancelMatch')} ({completed}/{batchTotal})
                     </button>
                 ) : (
                     <div className="flex flex-wrap items-center gap-2">
@@ -129,7 +154,7 @@ export const FolderAutoMatchEditor = ({ songs, assignments, isDaylight, onManual
             </div>
             {running && (
                 <div className="h-1.5 overflow-hidden rounded-full bg-current/10">
-                    <div className="h-full rounded-full bg-blue-500 transition-[width]" style={{ width: `${selectedCount ? completed / selectedCount * 100 : 0}%` }} />
+                    <div className="h-full rounded-full bg-blue-500 transition-[width]" style={{ width: `${batchTotal ? completed / batchTotal * 100 : 0}%` }} />
                 </div>
             )}
             <label className="flex w-fit items-center gap-2 text-xs font-semibold">
@@ -147,6 +172,7 @@ export const FolderAutoMatchEditor = ({ songs, assignments, isDaylight, onManual
                 <span className="opacity-45">({selectedCount}/{eligibleSongs.length})</span>
                 {localInfoCount > 0 && <span className="text-amber-500/90">{t('localMusic.localInfoSkippedCount', { count: localInfoCount })}</span>}
             </label>
+            <MatchingDiagnostics />
             <FolderSongPicker
                 songs={songs}
                 selectedSongIds={selectedSongIds}

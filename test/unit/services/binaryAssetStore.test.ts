@@ -10,6 +10,18 @@ describe('binaryAssetStore', () => {
         vi.restoreAllMocks();
     });
 
+    it('restores an OPFS .bin image using its persisted MIME descriptor', async () => {
+        const bytes = new Blob(['image bytes'], { type: 'application/octet-stream' });
+        const removeEntry = vi.fn();
+        const directory: any = { getDirectoryHandle: async () => directory, getFileHandle: async () => ({ getFile: async () => bytes }), removeEntry };
+        vi.stubGlobal('window', {});
+        vi.stubGlobal('navigator', { storage: { getDirectory: async () => directory } });
+        const restored = await readCoverAsset('cover_local_synthetic', 'image/png');
+        expect(restored?.type).toBe('image/png');
+        expect(restored?.size).toBe(bytes.size);
+        expect(removeEntry).not.toHaveBeenCalled();
+    });
+
     it('deletes an Electron cover payload with an invalid MIME descriptor', async () => {
         const removeCoverCache = vi.fn().mockResolvedValue(undefined);
         vi.stubGlobal('window', {

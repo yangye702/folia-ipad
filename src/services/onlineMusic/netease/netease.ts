@@ -257,6 +257,7 @@ const fetchWithCreds = async (endpoint: string, options: RequestInit = {}, limit
         { httpStatus: res.status },
       );
     }
+    if (endpoint.startsWith('/cloudsearch') && !res.ok) throw Object.assign(new Error(`NetEase search HTTP ${res.status}`), { httpStatus: res.status, cause: { code: typeof body?.code === 'number' ? body.code : undefined } });
     if (limit === 'sign-in' && !res.ok) throw new NeteaseLoginHttpError(res.status, body);
     if (!res.ok && typeof body === 'object' && body !== null) errorStatuses.set(body, res.status);
     return body;
@@ -959,8 +960,8 @@ export const neteaseApi = {
 
   // --- Search ---
   cloudSearch: async (keywords: string, limit = 30, offset = 0) => {
-    const res = await fetchWithCreds(`/cloudsearch?keywords=${encodeURIComponent(keywords)}&limit=${limit}&offset=${offset}`);
-    if (res.result) {
+    const res = await fetchWithCreds(`/cloudsearch?keywords=${encodeURIComponent(keywords)}&limit=${limit}&offset=${offset}`, {}, 'online');
+    if (Array.isArray(res.result?.songs)) {
       res.result.songs = mergeSongsWithPrivileges(res.result.songs, res.result.privileges ?? res.privileges);
     }
     return res;

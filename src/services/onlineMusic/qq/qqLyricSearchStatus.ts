@@ -1,6 +1,6 @@
 import { LyricSearchFailure } from '../../../utils/lyrics/lyricSearchFailure';
 // Safe QQ search failure categories and an opt-in, memory-only diagnostic ring.
-export type QqSearchFailureKind = 'network' | 'http' | 'upstream' | 'invalid-response';
+export type QqSearchFailureKind = 'network' | 'http' | 'upstream' | 'invalid-response' | 'timeout';
 export type QqSearchSummary = {
     httpStatus: number | null;
     topCode: number | null;

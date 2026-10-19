@@ -1,7 +1,8 @@
 
 
 export default {
-  "qqLyricSearch": {"network": "QQ 搜索请求失败，请重试。", "http": "QQ 搜索代理返回 HTTP 错误。", "upstream": "QQ 音乐拒绝了搜索请求。", "invalid-response": "QQ 搜索响应格式异常。", "diagnostics": "QQ 歌词搜索诊断", "hint": "仅调试：最近 30 次歌词搜索，包含输入关键词、代理 HTTP 状态、QQ 响应码和结果数量。HTTP 成功不代表 QQ 接受了请求。不含凭据或完整响应。复制失败时请选择文本并使用“拷贝”。移除 URL 的 qqLyricDebug 参数可隐藏面板。", "copy": "复制诊断", "select": "选择诊断文本"},
+  "qqLyricSearch": {
+    "timeout": "QQ 搜索超时，请稍后重试。","network": "QQ 搜索请求失败，请重试。", "http": "QQ 搜索代理返回 HTTP 错误。", "upstream": "QQ 音乐拒绝了搜索请求。", "invalid-response": "QQ 搜索响应格式异常。", "diagnostics": "QQ 歌词搜索诊断", "hint": "仅调试：最近 30 次歌词搜索，包含输入关键词、代理 HTTP 状态、QQ 响应码和结果数量。HTTP 成功不代表 QQ 接受了请求。不含凭据或完整响应。复制失败时请选择文本并使用“拷贝”。移除 URL 的 qqLyricDebug 参数可隐藏面板。", "copy": "复制诊断", "select": "选择诊断文本"},
   "mediaDiagnostics": {"controlCenter": "标记：控制中心", "lockScreen": "标记：锁屏", "entry": "媒体诊断", "close": "关闭面板", "copy": "复制日志", "disable": "停用并清除诊断", "select": "选择日志"},
   "libraryBravais": {
     "suiteName": "Bravais 墙面",
@@ -3384,6 +3385,9 @@ export default {
     "unknownAlbum": "未知专辑",
   },
   "localMusic": {
+    "matchDiagnostics": "在线匹配诊断",
+    "copyMatchDiagnostics": "复制诊断",
+    "matchFailure": "{{source}} · {{stage}}：{{kind}}",
     "foldersAndPlaylists": "文件夹",
     "albums": "专辑",
     "artists": "艺术家",
@@ -3562,6 +3566,9 @@ export default {
     "deselectAllSongs": "取消全选",
     "matchingMetadata": "正在匹配歌曲信息...",
     "autoMatchStatus": {
+      "matched-cover-missing": "资料已匹配；未找到可靠封面",
+      "cancelled": "已取消",
+      "low-confidence": "候选置信度不足",
       "matched": "匹配成功",
       "matched-cover-failed": "元数据已匹配，封面缓存失败",
       "no-match": "没有合适候选",

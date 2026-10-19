@@ -1,3 +1,4 @@
+import { onlineCoverDisplayUrl } from '../../utils/onlineCoverDisplayUrl';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
@@ -136,13 +137,13 @@ const resolveLocalCollectionCoverUrlFromTracks = (
     }
 
     if (preferredSong.useOnlineCover && preferredSong.onlineMetadata?.coverUrl) {
-        return preferredSong.onlineMetadata.coverUrl;
+        return onlineCoverDisplayUrl(preferredSong.onlineMetadata.coverUrl);
     }
 
     const localCoverUrl = getLocalCoverAssetUrl(preferredSong.localCoverAssetId, 512);
     if (localCoverUrl) return localCoverUrl;
 
-    return preferredSong.onlineMetadata?.coverUrl;
+    return onlineCoverDisplayUrl(preferredSong.onlineMetadata?.coverUrl);
 };
 
 const resolveLiveLocalCollection = (

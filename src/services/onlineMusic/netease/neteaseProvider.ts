@@ -313,7 +313,12 @@ export const neteaseProvider: OnlineMusicProvider = {
     search: {
         async searchSongs(query, limit, offset) {
             const response = await neteaseApi.cloudSearch(query, limit, offset);
-            const items = (response.result?.songs || []).map(normalizeNeteaseSong);
+            if (isRefusedNeteaseAnswer(response)) throw neteaseAnswerError(response, 'the search');
+            if (!Array.isArray(response?.result?.songs)) {
+                if (response?.result?.songCount === 0) return { items: [], total: 0, hasMore: false, nextOffset: offset };
+                throw new OnlineProviderError('invalid-response', 'NetEase search returned no song list', 'netease');
+            }
+            const items = response.result.songs.map(normalizeNeteaseSong);
             const total = Number(response.result?.songCount || items.length);
             return { items, total, hasMore: offset + items.length < total, nextOffset: offset + items.length };
         },

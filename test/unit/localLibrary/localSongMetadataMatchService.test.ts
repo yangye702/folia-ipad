@@ -91,14 +91,14 @@ describe('localSongMetadataMatchService', () => {
         }));
     });
 
-    it('restores imported metadata while allowing an independently selected online cover', async () => {
+    it('keeps confirmed metadata while allowing an independently selected online cover', async () => {
         await applyOnlineMetadataCandidate(song('cover-only'), candidate, {
             mode: 'manual',
             useOnlineMetadata: false,
             useOnlineCover: true,
         });
         expect(applyLocalSongMatchSelection).toHaveBeenCalledWith(expect.objectContaining({
-            metadata: 'imported',
+            metadata: 'keep',
             cover: 'online',
             lyrics: 'keep',
         }));
@@ -142,5 +142,27 @@ describe('localSongMetadataMatchService', () => {
         const result = await batchAutoMatchLocalSongMetadata([song('cancelled')], { signal: controller.signal });
         expect(result.cancelled).toBe(true);
         expect(applyLocalSongMatchSelection).not.toHaveBeenCalled();
+    });
+});
+
+describe('batch lifecycle isolation', () => {
+    it('cancels an older batch before a replacement can apply its result', async () => {
+        vi.clearAllMocks();
+        let release!: (value: typeof candidate) => void;
+        vi.mocked(findAutomaticOnlineMetadataCandidate).mockImplementationOnce(() => new Promise(resolve => { release = resolve; })).mockResolvedValue(candidate);
+        const first = batchAutoMatchLocalSongMetadata([song('old')]);
+        await Promise.resolve();
+        const second = batchAutoMatchLocalSongMetadata([song('new')]);
+        release(candidate);
+        const [a, b] = await Promise.all([first, second]);
+        expect(a.cancelled).toBe(true);
+        expect(b.cancelled).toBe(false);
+        expect(applyLocalSongMatchSelection).not.toHaveBeenCalledWith(expect.objectContaining({ songId: 'old' }));
+    });
+    it('keeps independent successful results when another song search fails', async () => {
+        vi.clearAllMocks();
+        vi.mocked(findAutomaticOnlineMetadataCandidate).mockRejectedValueOnce(new Error('fixture network')).mockResolvedValue(candidate);
+        const result = await batchAutoMatchLocalSongMetadata([song('bad'), song('good')]);
+        expect(result.updates.map(update => update.status).sort()).toEqual(['failed', 'matched']);
     });
 });

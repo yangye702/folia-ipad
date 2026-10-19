@@ -33,7 +33,7 @@ const IGNORED_FORWARD_HEADERS = [
 ];
 function isAllowedLyricProxyHost(hostname) {
     return hostname === 'qq.com' || hostname.endsWith('.qq.com') ||
-        hostname === 'y.gtimg.cn' ||
+        hostname === 'y.gtimg.cn' || hostname === 'c1.kgimg.com' ||
         hostname === 'kugou.com' || hostname.endsWith('.kugou.com');
 }
 export default async function handler(req, res) {
@@ -53,7 +53,7 @@ export default async function handler(req, res) {
         const hostname = targetUrl.hostname;
         // Security check: only allow proxying to known lyric provider domains
         const isAllowed = isAllowedLyricProxyHost(hostname);
-        if (!isAllowed) {
+        if (!isAllowed || !['http:', 'https:'].includes(targetUrl.protocol) || hostname === 'c1.kgimg.com' && (targetUrl.protocol !== 'https:' || Boolean(targetUrl.port && targetUrl.port !== '443')) || targetUrl.username || targetUrl.password || (targetUrl.port && !['80', '443'].includes(targetUrl.port))) {
             return res.status(403).json({ error: 'Forbidden: Domain not allowed' });
         }
         // Filter headers to forward
@@ -71,6 +71,8 @@ export default async function handler(req, res) {
         const hasBody = ['POST', 'PUT', 'PATCH'].includes(req.method);
         const fetchOptions = {
             method: req.method,
+            redirect: 'manual',
+            signal: AbortSignal.timeout(15000),
             headers,
         };
         if (hasBody) {
@@ -81,7 +83,21 @@ export default async function handler(req, res) {
                 fetchOptions.body = req.body;
             }
         }
-        const response = await fetch(targetUrl.toString(), fetchOptions);
+        let currentUrl = targetUrl;
+        let response = await fetch(currentUrl.toString(), fetchOptions);
+        let redirects = 0;
+        while ([301, 302, 303, 307, 308].includes(response.status)) {
+            if (req.method !== 'GET' || ++redirects > 3)
+                return res.status(502).json({ error: 'Unsupported redirect' });
+            const location = response.headers.get('location');
+            const next = location ? new URL(location, currentUrl) : null;
+            if (!next || !isAllowedLyricProxyHost(next.hostname) || !['http:', 'https:'].includes(next.protocol)
+                || next.hostname === 'c1.kgimg.com' && next.protocol !== 'https:' || next.username || next.password
+                || next.port && !['80', '443'].includes(next.port))
+                return res.status(403).json({ error: 'Forbidden redirect' });
+            currentUrl = next;
+            response = await fetch(next.toString(), { ...fetchOptions, headers: {} });
+        }
         const contentType = response.headers.get('content-type') || '';
         // Forward response headers
         res.setHeader('Content-Type', contentType);
