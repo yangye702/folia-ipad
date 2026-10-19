@@ -1,10 +1,11 @@
 import type { LocalSong, LyricProviderSource, SongResult } from '../types';
 import type { LocalSongMetadataSource } from '../types/localLibrary';
 import { getProviderSongMetadata } from './onlineMusic/songMetadata';
-import { getLyricSourceAccess } from '../utils/lyrics/lyricMatchSources';
+import { searchMatchingSource, getLyricSourceAccess } from '../utils/lyrics/lyricMatchSources';
 import { isAutomaticMetadataCandidateReliable } from './metadataMatchPolicy';
 import { recordMatchDiagnostic, MatchFailure } from './matchingDiagnostics';
 import { calculateMatchScoreDetails } from '../utils/lyrics/matchScore';
+import { MatchingSearchSession } from './matchingSearchSession';
 import { buildLyricSearchQuery } from '../utils/lyrics/searchQuery';
 import {
     getMatchResultAlbumId,
@@ -37,6 +38,7 @@ export interface OnlineMetadataCandidate {
     titleMatched: boolean;
     durationMatched: boolean | null;
     raw: SongResult;
+    incompleteSearchError?: unknown;
 }
 
 const stripAudioExtension = (fileName: string) => fileName.replace(/\.(mp3|flac|m4a|wav|ogg|opus|aac)$/i, '');
@@ -105,56 +107,11 @@ const throwIfAborted = (signal?: AbortSignal) => {
     throw error;
 };
 
-// Stops waiting immediately when a provider client cannot receive AbortSignal directly.
-const waitForProvider = async <T>(request: Promise<T>, signal?: AbortSignal): Promise<T> => {
-    throwIfAborted(signal);
-    let timer: ReturnType<typeof setTimeout>;
-    const timeout = new Promise<never>((_, reject) => {
-        timer = setTimeout(() => reject(new MatchFailure('timeout', 'search')), 15000);
-    });
-    const bounded = Promise.race([request, timeout]).finally(() => clearTimeout(timer));
-    if (!signal) return await bounded;
-    throwIfAborted(signal);
-    return await new Promise<T>((resolve, reject) => {
-        const abort = () => {
-            const error = new Error('Metadata matching was cancelled');
-            error.name = signal.reason?.name === 'TimeoutError' ? 'TimeoutError' : 'AbortError';
-            reject(error);
-        };
-        signal.addEventListener('abort', abort, { once: true });
-        bounded.then(
-            value => {
-                signal.removeEventListener('abort', abort);
-                resolve(value);
-            },
-            error => {
-                signal.removeEventListener('abort', abort);
-                reject(error);
-            },
-        );
-    });
-};
-
-// Serialize each source across playback, manual metadata and folder requests, without retrying refusals.
-const sourceTails = new Map<string, Promise<void>>();
-const runSourceSearch = async <T>(source: string, signal: AbortSignal | undefined, run: (signal: AbortSignal) => Promise<T>): Promise<T> => {
-    const previous = sourceTails.get(source) || Promise.resolve();
-    const request = previous.then(async () => {
-        throwIfAborted(signal);
-        const boundedSignal = signal ? AbortSignal.any([signal, AbortSignal.timeout(15000)]) : AbortSignal.timeout(15000);
-        return await waitForProvider(run(boundedSignal), boundedSignal);
-    });
-    const tail = request.then(() => undefined, () => undefined);
-    sourceTails.set(source, tail);
-    void tail.then(() => { if (sourceTails.get(source) === tail) sourceTails.delete(source); });
-    return await waitForProvider(request, signal);
-};
-
 export async function searchOnlineMetadata(
     source: OnlineMetadataSource,
     query: string,
     target: OnlineMetadataSearchTarget,
-    options: { limit?: number; signal?: AbortSignal } = {},
+    options: { limit?: number; signal?: AbortSignal; session?: MatchingSearchSession; accept?: (songs: SongResult[]) => boolean } = {},
 ): Promise<OnlineMetadataCandidate[]> {
     const safeQuery = query.trim();
     if (!safeQuery) return [];
@@ -162,7 +119,7 @@ export async function searchOnlineMetadata(
     const limit = options.limit ?? 10;
     let results: SongResult[];
     try {
-        results = await runSourceSearch(source, options.signal, signal => getLyricSourceAccess(source).search(safeQuery, limit, target, signal));
+        results = await searchMatchingSource(source, safeQuery, limit, target, { ...options, session: options.session ?? new MatchingSearchSession() });
         if (!Array.isArray(results)) throw new MatchFailure('invalid-response', 'search', source);
         recordMatchDiagnostic({ stage: 'search', source, outcome: results.length ? 'success' : 'empty', count: results.length });
     } catch (error) {
@@ -180,10 +137,11 @@ export async function searchOnlineMetadata(
 export async function findAutomaticOnlineMetadataCandidate(
     song: LocalSong,
     signal?: AbortSignal,
-    options: { intent?: 'metadata' | 'cover'; excludedCoverUrls?: string[] } = {},
+    options: { intent?: 'metadata' | 'cover'; excludedCoverUrls?: string[]; session?: MatchingSearchSession } = {},
 ): Promise<OnlineMetadataCandidate | null> {
     const target = buildLocalSongMetadataSearchTarget(song);
     const query = buildLocalSongMetadataSearchQuery(song);
+    const session = options.session ?? new MatchingSearchSession();
     const errors: unknown[] = [];
     const failedSources: string[] = [];
     let hadCandidates = false;
@@ -191,17 +149,31 @@ export async function findAutomaticOnlineMetadataCandidate(
     for (const source of ['netease', 'qq', 'kugou'] as const) {
         throwIfAborted(signal);
         try {
-            const candidates = await searchOnlineMetadata(source, query, target, { limit: 20, signal });
-            hadCandidates ||= candidates.length > 0;
-            const reliable = candidates.filter(candidate => isAutomaticMetadataCandidateReliable(target, candidate, options.intent));
-            if (options.intent === 'cover') {
-                const withCover = reliable.find(candidate => candidate.coverUrl && !options.excludedCoverUrls?.includes(candidate.coverUrl));
-                if (withCover) return withCover;
-            } else if (reliable.length) {
-                const withCover = reliable.find(candidate => candidate.coverUrl && isAutomaticMetadataCandidateReliable(target, candidate, 'cover'));
-                if (withCover) return withCover;
-                // Metadata may identify the same recording on another release; its artwork must not leak through.
-                fallback ??= { ...reliable[0], coverUrl: undefined };
+            const queries = getLyricSourceAccess(source).handlesQueryFallback ? [query] : [...new Set([
+                query, buildLyricSearchQuery(target.title, target.artist), buildLyricSearchQuery(target.title),
+            ].filter(Boolean))];
+            // Broaden only successful but insufficient searches, never a refused/broken endpoint.
+            for (const variant of queries) {
+                const candidates = await searchOnlineMetadata(source, variant, target, { limit: 20, signal, session,
+                    accept: results => results.some(result => {
+                        const candidate = normalizeOnlineMetadataCandidate(source, result, target);
+                        return isAutomaticMetadataCandidateReliable(target, candidate, options.intent)
+                            && (options.intent !== 'cover' || Boolean(candidate.coverUrl && !options.excludedCoverUrls?.includes(candidate.coverUrl)));
+                    }),
+                });
+                hadCandidates ||= candidates.length > 0;
+                const reliable = candidates.filter(candidate => isAutomaticMetadataCandidateReliable(target, candidate, options.intent));
+                if (options.intent === 'cover') {
+                    const withCover = reliable.find(candidate => candidate.coverUrl && !options.excludedCoverUrls?.includes(candidate.coverUrl));
+                    if (withCover) return withCover;
+                } else if (reliable.length) {
+                    const withCover = reliable.find(candidate => candidate.coverUrl && isAutomaticMetadataCandidateReliable(target, candidate, 'cover'));
+                    if (withCover) return withCover;
+                    // Artwork from a different release must not leak through a metadata-only fallback.
+                    fallback ??= { ...reliable[0], coverUrl: undefined };
+                }
+                // Reliable identity with no picture is a reason to try another source, not broaden the same query.
+                if (reliable.length) break;
             }
         } catch (error) {
             if ((error as Error).name === 'AbortError') throw error;
@@ -209,7 +181,7 @@ export async function findAutomaticOnlineMetadataCandidate(
             failedSources.push(source);
         }
     }
-    if (fallback) return fallback;
+    if (fallback) return errors.length ? { ...fallback, incompleteSearchError: new MatchFailure('partial-search-failure', 'search', failedSources.join(', '), errors) } : fallback;
     if (errors.length) throw new MatchFailure('partial-search-failure', 'search', failedSources.join(', '), errors);
     if (hadCandidates) throw new MatchFailure('low-confidence', 'candidate');
     return null;

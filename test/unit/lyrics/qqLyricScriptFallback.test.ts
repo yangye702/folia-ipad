@@ -57,3 +57,9 @@ it('deduplicates unchanged non-Chinese inputs and skips blank input', async () =
     expect(await searchQQLyrics('   ')).toEqual([]);
     expect(queries).toEqual(['Hello']);
 });
+it('automatic callers can continue the same bounded variants after an unrelated successful result', async () => {
+    const queries = serve(query => answer(0, [{ ...song, id: query === '幸福不远' ? 42 : 7, title: query === '幸福不远' ? '幸福不远' : 'Unrelated' }]));
+    const result = await searchQQLyrics('幸福不远 - 郭书瑶', 1, 20, undefined, songs => songs.some(item => item.id === 42));
+    expect(result.some(item => item.id === 42)).toBe(true);
+    expect(queries).toEqual(['幸福不远 - 郭书瑶', '幸福不遠 - 郭書瑤', '幸福不远']);
+});

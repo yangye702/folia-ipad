@@ -3,6 +3,7 @@ import { useOnlineProviderAccountStore } from '../../stores/useOnlineProviderAcc
 import type { AmllDbPlatform, LyricData, LyricProviderSource, SongResult } from '../../types';
 import type { ChorusRange, ProviderLyricsResult } from '../../types/onlineMusic';
 import { calculateMatchScore } from './matchScore';
+import { defaultMatchingSearchSession, type MatchingSearchSession } from '../../services/matchingSearchSession';
 import { qqLyricMatchAccess } from '../../services/onlineMusic/qq/qqLyricMatchAccess';
 import type { LyricSearchDiagnostics } from '../../types/lyricSearchDiagnostics';
 import { fetchAmllDbLyrics, getAmllDbMusicIds, searchAmllDbSongs } from './providers/amllDbProvider';
@@ -37,12 +38,14 @@ export type LyricMatchFetchResult = {
 export type LyricSourceLyrics = ProviderLyricsResult & { matchedLyricsProviderPlatform?: AmllDbPlatform };
 
 export interface LyricSourceAccess {
+    /** The adapter already performs its bounded query fallback or a title-only search. */
+    handlesQueryFallback?: boolean;
     diagnostics?: LyricSearchDiagnostics;
     /**
      * The source's songs for `query`, `limit` of them at most. `target` is the song being matched,
      * for a source that has to choose its candidates itself.
      */
-    search(query: string, limit: number, target: LyricMatchSearchTarget, signal?: AbortSignal): Promise<SongResult[]>;
+    search(query: string, limit: number, target: LyricMatchSearchTarget, signal?: AbortSignal, accept?: (songs: SongResult[]) => boolean): Promise<SongResult[]>;
     /**
      * The lyrics of one of the source's songs, or null when the source cannot be asked.
      * `lent.chorusRanges` are chorus ranges found elsewhere, for a fetch that marks the chorus itself.
@@ -171,7 +174,7 @@ const OWN_ACCESS: Partial<Record<LyricProviderSource, Partial<LyricSourceAccess>
         fetch: async song => ({ lyrics: await fetchLrclibLyrics(song), isPureMusic: false }),
     },
     qq: qqLyricMatchAccess,
-    kugou: {
+    kugou: { handlesQueryFallback: true,
         songKey: song => String(song.kgHash ?? song.id).toUpperCase(),
     },
 };
@@ -188,14 +191,25 @@ const matchSearchCache = new Map<string, { until: number; value: SongResult[] }>
 const pendingMatchSearches = new Map<string, Promise<SongResult[]>>();
 const MAX_MATCH_SEARCH_CACHE = 80;
 
+// Shares the existing source access without caching target-specific scores or applied song state.
+export function searchMatchingSource(
+    source: LyricProviderSource, query: string, limit: number, target: LyricMatchSearchTarget,
+    options: { signal?: AbortSignal; session?: MatchingSearchSession; accept?: (songs: SongResult[]) => boolean } = {},
+): Promise<SongResult[]> {
+    const session = options.session ?? defaultMatchingSearchSession;
+    const account = useOnlineProviderAccountStore.getState().accounts[source];
+    const key = JSON.stringify([query.trim().normalize('NFC'), limit, target.title, target.artist, target.album, target.durationMs, Boolean(options.accept), account?.user?.id ?? null, account?.status ?? null]);
+    return session.search(source, key, signal => getLyricSourceAccess(source).search(query, limit, target, signal, options.accept), options.signal);
+}
+
 export function searchLyricsByMatchSource(
     source: LyricProviderSource,
     query: string,
     target: LyricMatchSearchTarget,
 ): Promise<SongResult[]> {
-    // Provider accounts can change: cache only account-free lyric databases.
+    // Platform queries use account-scoped, short-lived matching sessions; lyric databases keep their existing cache.
     if (source !== 'amll' && source !== 'lrclib') {
-        return getLyricSourceAccess(source).search(query, MATCH_WINDOW_SEARCH_LIMIT, target)
+        return searchMatchingSource(source, query, MATCH_WINDOW_SEARCH_LIMIT, target)
             .then(songs => sortByMatchScore(songs, target));
     }
     const key = JSON.stringify([source, query.trim().normalize('NFC'), target.title, target.artist, target.album, target.durationMs]);

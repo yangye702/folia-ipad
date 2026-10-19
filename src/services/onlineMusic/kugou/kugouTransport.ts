@@ -1,7 +1,7 @@
 import md5 from 'blueimp-md5';
 import { OnlineProviderError } from '../../../types/onlineMusic';
 import { readProviderSessionValue, removeProviderSessionValue, writeProviderSessionValue } from '../providerStorage';
-import { lyricProxyWebUrl, requestLyricProxyOnDesktop } from '../../lyricProxy';
+import { readLyricProxyResponseFacts, lyricProxyWebUrl, requestLyricProxyOnDesktop } from '../../lyricProxy';
 import { withLoginRequestLimit } from '../login/loginRequestLimit';
 
 // src/services/onlineMusic/kugou/kugouTransport.ts
@@ -279,7 +279,8 @@ export const requestKugouAnonymousSearch = async (
     const requestUrl = typeof window !== 'undefined' && window.electron
         ? targetUrl.toString()
         : lyricProxyWebUrl(targetUrl.toString());
-    const response = await fetch(requestUrl, {
+    let response: Response;
+    try { response = await fetch(requestUrl, {
         method: 'GET',
         signal: AbortSignal.timeout(12000),
         credentials: 'omit',
@@ -291,22 +292,28 @@ export const requestKugouAnonymousSearch = async (
             mid,
             'x-router': 'complexsearch.kugou.com',
         },
-    });
-    if (!response.ok) {
-        throw new OnlineProviderError(
-            'network',
-            `KuGou anonymous search failed: ${response.status}`,
-            'kugou', undefined, response.status,
-        );
+    }); } catch (error) {
+        throw Object.assign(new OnlineProviderError('network', 'KuGou search request did not receive a response', 'kugou'), {
+            kind: (error as Error)?.name === 'TimeoutError' ? 'timeout' : 'network', stage: 'search-request',
+        });
     }
-    const body = await response.json();
+    const facts = readLyricProxyResponseFacts(response);
+    if (!response.ok) {
+        throw Object.assign(new OnlineProviderError(
+            'network', `KuGou anonymous search failed: ${response.status}`, 'kugou', undefined, response.status, facts.retryAfterMs,
+        ), facts, { kind: facts.proxyPhase === 'upstream-parse' ? 'invalid-response' : 'http', stage: 'search-response' });
+    }
+    let body: any;
+    try { body = await response.json(); } catch {
+        throw Object.assign(new OnlineProviderError('invalid-response', 'KuGou search returned unreadable JSON', 'kugou', undefined, response.status), facts);
+    }
     const errorCode = Number(body?.error_code);
     if (Number.isFinite(errorCode) && errorCode !== 0 && errorCode !== 200) {
-        throw new OnlineProviderError(
+        throw Object.assign(new OnlineProviderError(
             'unavailable',
             `KuGou anonymous search failed: ${errorCode}`,
-            'kugou', { code: errorCode },
-        );
+            'kugou', { code: errorCode }, response.status,
+        ), facts, { kind: 'upstream', stage: 'search-response' });
     }
     return body;
 };

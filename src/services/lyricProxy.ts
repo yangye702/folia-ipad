@@ -34,3 +34,15 @@ export const requestLyricProxyOnDesktop = (
     if (typeof window === 'undefined' || !window.electron?.fetchLyricProxy) return null;
     return window.electron.fetchLyricProxy(...args);
 };
+
+/** Only controlled scalar response facts; never export URLs, headers or response bodies. */
+export const readLyricProxyResponseFacts = (response: Response) => {
+    const phase = response.headers?.get?.('X-Folia-Proxy-Phase');
+    const proxyPhase = phase && ['proxy-policy', 'upstream-response', 'upstream-connect', 'upstream-timeout', 'upstream-body', 'upstream-parse'].includes(phase) ? phase : undefined;
+    const status = Number(response.headers?.get?.('X-Folia-Upstream-Status'));
+    const upstreamHttpStatus = status >= 100 && status <= 599 ? status : undefined;
+    const retry = response.headers?.get?.('Retry-After')?.trim();
+    const retryAfterMs = retry ? /^\d+$/.test(retry) ? Number(retry) * 1000 : Date.parse(retry) - Date.now() : undefined;
+    return { ...(proxyPhase ? { proxyPhase } : {}), ...(upstreamHttpStatus ? { upstreamHttpStatus } : {}),
+        ...(retryAfterMs != null && Number.isFinite(retryAfterMs) && retryAfterMs >= 0 ? { retryAfterMs } : {}) };
+};

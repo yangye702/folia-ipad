@@ -24,5 +24,5 @@ it('records nothing by default or for ordinary song search, and bounds opt-in su
     for (let i = 0; i < 35; i++) beginQqSearchDiagnostic(`query-${i}`, '/api/lyric-proxy')({ ...emptyQqSearchSummary(), httpStatus: 200, topCode: 0, requestCode: 0, listShape: 'array', resultCount: 0, outcome: 'success' });
     expect(getQqSearchDiagnostics()).toHaveLength(30);
     expect(getQqSearchDiagnostics().at(-1)).toMatchObject({ query: 'query-34', resultCount: 0 });
-    expect(Object.keys(getQqSearchDiagnostics()[0]).sort()).toEqual(['httpStatus','id','listShape','outcome','query','requestCode','responseKind','resultCount','time','topCode','via'].sort());
+    expect(Object.keys(getQqSearchDiagnostics()[0]).sort()).toEqual(['operation','httpStatus','id','listShape','outcome','query','requestCode','responseKind','resultCount','time','topCode','via'].sort());
 });

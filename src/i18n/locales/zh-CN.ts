@@ -3564,6 +3564,8 @@ export default {
     "startAutoMatch": "匹配 {{count}} 首歌曲",
     "selectAllSongs": "全选",
     "deselectAllSongs": "取消全选",
+    "matchSourceUnavailable": "{{source}}：本批次不可用，已跳过重复请求（{{reason}}）",
+    "recoveringMetadata": "正在等待来源恢复并重试未完成项目（最多两轮）…",
     "matchingMetadata": "正在匹配歌曲信息...",
     "autoMatchStatus": {
       "matched-cover-missing": "资料已匹配；未找到可靠封面",

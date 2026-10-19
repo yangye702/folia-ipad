@@ -1,6 +1,8 @@
 import type { LocalSong } from '../types';
 import type { LocalLibraryAssignmentOrigin } from '../types/localLibrary';
-import { matchFailureFacts, recordMatchDiagnostic } from './matchingDiagnostics';
+import { matchFailureFacts, recordMatchDiagnostic, recordMatchBatchSummary } from './matchingDiagnostics';
+import { MatchingSearchSession, isRetryableMatchFailure } from './matchingSearchSession';
+import { appDatabase } from './appDatabase';
 import { getCachedCoverUrl } from './coverCache';
 import { needsLocalSongCoverMatch, completeLocalSongCover } from './localSongCoverMatchService';
 import { hasLocalSongCover } from '../utils/localSongCover';
@@ -20,12 +22,14 @@ export interface LocalSongMetadataMatchUpdate {
     status: LocalSongMetadataMatchStatus;
     candidate?: OnlineMetadataCandidate;
     error?: unknown;
+    attempts?: number;
     detail?: ReturnType<typeof matchFailureFacts>;
 }
 
 export interface BatchLocalSongMetadataMatchResult {
     updates: LocalSongMetadataMatchUpdate[];
     cancelled: boolean;
+    summary: ReturnType<MatchingSearchSession['snapshot']> & { total: number; elapsedMs: number; recoveryPasses: number; statuses: Record<string, number> };
 }
 
 export interface ApplyOnlineMetadataCandidateOptions {
@@ -85,6 +89,7 @@ export async function batchAutoMatchLocalSongMetadata(
         signal?: AbortSignal;
         onUpdate?: (update: LocalSongMetadataMatchUpdate) => void;
         concurrency?: number;
+        onProgress?: (phase: 'matching' | 'recovering') => void;
     } = {},
 ): Promise<BatchLocalSongMetadataMatchResult> {
     activeBatch?.abort();
@@ -94,57 +99,89 @@ export async function batchAutoMatchLocalSongMetadata(
     options.signal?.addEventListener('abort', externalAbort, { once: true });
     if (options.signal?.aborted) controller.abort();
     const signal = controller.signal;
+    const session = new MatchingSearchSession(true);
+    const startedAt = Date.now();
     const updates: LocalSongMetadataMatchUpdate[] = [];
-    let nextIndex = 0;
+    const attempts = new Map<string, number>();
+    let recoveryPasses = 0;
     const record = (update: LocalSongMetadataMatchUpdate) => {
         updates.push(update);
         options.onUpdate?.(update);
     };
-    const worker = async () => {
-        while (nextIndex < songs.length && !signal.aborted) {
-            const song = songs[nextIndex++];
-            if (song.noAutoMatch || song.markedPureMusic) {
-                record({ songId: song.id, status: 'skipped' });
-                continue;
+    const attempt = async (song: LocalSong): Promise<LocalSongMetadataMatchUpdate> => {
+        if (song.noAutoMatch || song.markedPureMusic) return { songId: song.id, status: 'skipped' };
+        try {
+            const intent = song.onlineMetadata?.songId != null || ['manual', 'manual-match', 'split'].includes(song.titleOrigin) ? 'cover' : 'metadata';
+            if (intent === 'cover' && !await needsLocalSongCoverMatch(song)) return { songId: song.id, status: 'skipped' };
+            if (intent === 'cover' && song.onlineMetadata?.coverUrl) {
+                const completed = await completeLocalSongCover(song, signal, session);
+                signal.throwIfAborted();
+                return { songId: song.id, status: completed ? 'matched' : 'matched-cover-failed' };
             }
-            try {
-                const intent = song.onlineMetadata?.songId != null || ['manual', 'manual-match', 'split'].includes(song.titleOrigin) ? 'cover' : 'metadata';
-                if (intent === 'cover' && !await needsLocalSongCoverMatch(song)) { record({ songId: song.id, status: 'skipped' }); continue; }
-                if (intent === 'cover' && song.onlineMetadata?.coverUrl) {
-                    const completed = await completeLocalSongCover(song, signal);
-                    signal.throwIfAborted();
-                    record({ songId: song.id, status: completed ? 'matched' : 'matched-cover-failed' });
-                    continue;
-                }
-                const candidate = await findAutomaticOnlineMetadataCandidate(song, signal, { intent });
-                if (signal.aborted) return;
-                if (!candidate) {
-                    record({ songId: song.id, status: 'no-match' });
-                    continue;
-                }
-                const applied = await applyOnlineMetadataCandidate(song, candidate, {
-                    mode: 'automatic',
-                    intent,
-                    signal,
-                    protectOrigins: ['manual', 'manual-match', 'split'],
-                });
-                record({
-                    songId: song.id,
-                    status: applied.coverAttempted && !applied.coverCached ? 'matched-cover-failed' : !candidate.coverUrl && !hasLocalSongCover(song) ? 'matched-cover-missing' : 'matched',
-                    detail: applied.coverError,
-                    candidate,
-                });
-            } catch (error) {
-                const detail = matchFailureFacts(error);
-                if (signal.aborted || detail.kind === 'cancelled') return;
-                recordMatchDiagnostic({ stage: detail.stage, error });
-                record({ songId: song.id, status: detail.kind === 'protected' ? 'skipped' : detail.kind === 'low-confidence' ? 'low-confidence' : 'failed', error, detail });
-            }
+            const candidate = await findAutomaticOnlineMetadataCandidate(song, signal, { intent, session });
+            signal.throwIfAborted();
+            if (!candidate) return { songId: song.id, status: 'no-match' };
+            const applied = await applyOnlineMetadataCandidate(song, candidate, {
+                mode: 'automatic', intent, signal, protectOrigins: ['manual', 'manual-match', 'split'],
+            });
+            return { songId: song.id,
+                status: applied.coverAttempted && !applied.coverCached ? 'matched-cover-failed' : !candidate.coverUrl && !hasLocalSongCover(song) ? 'matched-cover-missing' : 'matched',
+                detail: applied.coverError, candidate,
+                ...(applied.coverError ? { error: Object.assign(new Error('Cover incomplete'), applied.coverError) }
+                    : !candidate.coverUrl && !hasLocalSongCover(song) && candidate.incompleteSearchError ? { error: candidate.incompleteSearchError } : {}),
+            };
+        } catch (error) {
+            const detail = matchFailureFacts(error);
+            if (signal.aborted || detail.kind === 'cancelled') throw error;
+            recordMatchDiagnostic({ stage: detail.stage, error });
+            return { songId: song.id, status: detail.kind === 'protected' ? 'skipped' : detail.kind === 'low-confidence' ? 'low-confidence' : 'failed', error, detail };
         }
     };
-    const workerCount = Math.max(1, Math.min(options.concurrency ?? 2, 2, songs.length || 1));
-    try { await Promise.all(Array.from({ length: workerCount }, () => worker())); }
-    finally { options.signal?.removeEventListener('abort', externalAbort); if (activeBatch === controller) activeBatch = null; }
-    if (signal.aborted) for (const song of songs) if (!updates.some(update => update.songId === song.id)) record({ songId: song.id, status: 'cancelled' });
-    return { updates, cancelled: signal.aborted };
+    let remaining = [...new Map(songs.map(song => [song.id, song])).values()];
+    let deferred: LocalSongMetadataMatchUpdate[] = [];
+    try {
+        for (let pass = 0; pass < 3 && remaining.length && !signal.aborted; pass++) {
+            if (pass) {
+                if (!await session.waitForRecovery(signal)) break;
+                recoveryPasses++;
+            }
+            options.onProgress?.(pass ? 'recovering' : 'matching');
+            deferred = [];
+            let nextIndex = 0;
+            const worker = async () => {
+                while (nextIndex < remaining.length && !signal.aborted) {
+                    const original = remaining[nextIndex++];
+                    const count = (attempts.get(original.id) ?? 0) + 1;
+                    attempts.set(original.id, count);
+                    // Recovery must use committed data, including covers/metadata saved by a partial first attempt.
+                    let current: LocalSong | undefined;
+                    try { current = pass ? await appDatabase.local_music.get(original.id) : original; }
+                    catch { record({ songId: original.id, status: 'failed', detail: { kind: 'local-save', stage: 'read' }, attempts: count }); continue; }
+                    if (signal.aborted) return;
+                    const update = current ? await attempt(current) : { songId: original.id, status: 'skipped' as const };
+                    update.attempts = count;
+                    if (signal.aborted) return;
+                    if (pass < 2 && update.error && isRetryableMatchFailure(update.error)) deferred.push(update);
+                    else record(update);
+                }
+            };
+            const workerCount = Math.max(1, Math.min(options.concurrency ?? 2, 2, remaining.length));
+            await Promise.all(Array.from({ length: workerCount }, () => worker()));
+            const pendingIds = new Set(deferred.map(update => update.songId));
+            remaining = remaining.filter(song => pendingIds.has(song.id));
+        }
+        if (!signal.aborted) for (const update of deferred) if (!updates.some(item => item.songId === update.songId)) record(update);
+    } catch (error) {
+        if (!signal.aborted) throw error;
+    } finally {
+        options.signal?.removeEventListener('abort', externalAbort);
+        if (activeBatch === controller) activeBatch = null;
+        session.dispose();
+    }
+    if (signal.aborted) for (const song of songs) if (!updates.some(update => update.songId === song.id)) record({ songId: song.id, status: 'cancelled', attempts: attempts.get(song.id) ?? 0 });
+    const statuses: Record<string, number> = {};
+    for (const update of updates) statuses[update.status] = (statuses[update.status] ?? 0) + 1;
+    const summary = { ...session.snapshot(), total: updates.length, elapsedMs: Date.now() - startedAt, recoveryPasses, statuses };
+    recordMatchBatchSummary(summary);
+    return { updates, cancelled: signal.aborted, summary };
 }

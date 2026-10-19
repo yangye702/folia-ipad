@@ -36,6 +36,8 @@ export const FolderAutoMatchEditor = ({ songs, assignments, isDaylight, onManual
             return !song.noAutoMatch && (!assignment?.artistEntityIds.length || !assignment.albumEntityId || !hasLocalSongCover(song) && !song.onlineMetadata?.coverUrl);
         })
         .map(song => song.id)));
+    const [sourceWarnings, setSourceWarnings] = useState<Array<{ source: string; kind: string }>>([]);
+    const [phase, setPhase] = useState<'matching' | 'recovering'>('matching');
     const [running, setRunning] = useState(false);
     const [restoringLocalInfo, setRestoringLocalInfo] = useState(false);
     const [batchTotal, setBatchTotal] = useState(0);
@@ -88,9 +90,10 @@ export const FolderAutoMatchEditor = ({ songs, assignments, isDaylight, onManual
         setBatchTotal(selectedSongs.length);
         // Keep previous per-song evidence when retrying only the remaining selection.
         try {
-            await batchAutoMatchLocalSongMetadata(selectedSongs, {
+            const result = await batchAutoMatchLocalSongMetadata(selectedSongs, {
                 signal: controller.signal,
                 concurrency: 2,
+                onProgress: next => { if (mountedRef.current) setPhase(next); },
                 onUpdate: update => {
                     if (!mountedRef.current || abortControllerRef.current !== controller) return;
                     if (['matched', 'skipped'].includes(update.status)) setSelectedSongIds(current => { const next = new Set(current); next.delete(update.songId); return next; });
@@ -105,6 +108,7 @@ export const FolderAutoMatchEditor = ({ songs, assignments, isDaylight, onManual
                     setStatusBySongId(current => new Map(current).set(update.songId, update.detail ? `${displayText} · ${update.detail.source || ''} ${update.detail.stage}: ${update.detail.kind}${update.detail.httpStatus ? ` HTTP ${update.detail.httpStatus}` : ''}` : displayText));
                 },
             });
+            if (mountedRef.current) setSourceWarnings(Object.entries(result.summary.sources).filter(([, state]) => state.blocked).map(([source, state]) => ({ source, kind: state.lastFailure?.kind || 'source-unavailable' })));
             if (!controller.signal.aborted) await onChanged();
         } finally {
             abortControllerRef.current = null;
@@ -172,6 +176,7 @@ export const FolderAutoMatchEditor = ({ songs, assignments, isDaylight, onManual
                 <span className="opacity-45">({selectedCount}/{eligibleSongs.length})</span>
                 {localInfoCount > 0 && <span className="text-amber-500/90">{t('localMusic.localInfoSkippedCount', { count: localInfoCount })}</span>}
             </label>
+            {sourceWarnings.map(warning => <div key={warning.source} role="status" className="text-xs text-amber-500">{t('localMusic.matchSourceUnavailable', { source: t(`localMusic.${warning.source}Source`, { defaultValue: warning.source }), reason: warning.kind })}</div>)}
             <MatchingDiagnostics />
             <FolderSongPicker
                 songs={songs}
@@ -187,7 +192,7 @@ export const FolderAutoMatchEditor = ({ songs, assignments, isDaylight, onManual
                 disabled={busy}
                 isDaylight={isDaylight}
             />
-            {running && <div className="flex items-center justify-center gap-2 text-xs opacity-55"><Loader2 size={13} className="animate-spin" />{t('localMusic.matchingMetadata')}</div>}
+            {running && <div className="flex items-center justify-center gap-2 text-xs opacity-55"><Loader2 size={13} className="animate-spin" />{t(phase === 'recovering' ? 'localMusic.recoveringMetadata' : 'localMusic.matchingMetadata')}</div>}
         </div>
     );
 };

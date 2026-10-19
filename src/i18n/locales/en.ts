@@ -3565,6 +3565,8 @@ export default {
     "startAutoMatch": "Match {{count}} songs",
     "selectAllSongs": "Select all",
     "deselectAllSongs": "Deselect all",
+    "matchSourceUnavailable": "{{source}} is unavailable for this batch; repeated requests were skipped ({{reason}})",
+    "recoveringMetadata": "Waiting for sources and retrying unfinished items (up to two recovery passes)…",
     "matchingMetadata": "Matching song info...",
     "autoMatchStatus": {
       "matched-cover-missing": "Information matched; no reliable artwork",

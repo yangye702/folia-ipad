@@ -104,3 +104,61 @@ test('turning online artwork off previews the same embedded source that is saved
         return (await appDatabase.local_music.get('preview-fixture'))?.useOnlineCover;
     })).toBe(false);
 });
+
+test('one batch recovers temporary relay errors, skips a refused source and persists every synthetic cover', async ({ page }) => {
+    await installBaseState(page, { neteaseMode: 'guest' });
+    await mockNeteaseApi(page, 'guest');
+    await page.addInitScript(() => { delete (window as any).electron; });
+    let backendSearches = 0;
+    let anonymousSearches = 0;
+    await page.route('**/__mock_netease__/**', async route => {
+        if (!route.request().url().includes('cloudsearch')) return route.fallback();
+        backendSearches++;
+        await route.fulfill({ status: 403, json: { code: 403 } });
+    });
+    await page.route('**/api/lyric-proxy?**', async route => {
+        const target = new URL(route.request().url()).searchParams.get('url')!;
+        if (!target.includes('u.y.qq.com')) return route.fulfill({ contentType: 'image/png', body: png });
+        anonymousSearches++;
+        if (anonymousSearches <= 2) return route.fulfill({ status: 502, headers: { 'X-Folia-Proxy-Phase': 'upstream-connect' }, json: { error: 'controlled fixture' } });
+        const query = route.request().postDataJSON().request.param.query;
+        const index = Number(query.match(/Batch Fixture (\d+)/)?.[1]);
+        await route.fulfill({ json: { code: 0, request: { code: 0, data: { body: { item_song: [
+            { id: index + 1, mid: `fixture-${index}`, title: `Batch Fixture ${index}`, interval: 200, singer: [{ id: 7, name: 'Fixture Artist' }], album: { id: 8, mid: `album-${index}`, name: 'Fixture Album' } },
+        ] } } } } });
+    });
+    await page.goto('/?matchDebug=1');
+    await waitForAppMounted(page);
+    const result = await page.evaluate(async () => {
+        const load = (name: string) => import(/* @vite-ignore */ name);
+        const { appDatabase } = await load('/src/services/appDatabase.ts');
+        const { batchAutoMatchLocalSongMetadata } = await load('/src/services/localSongMetadataMatchService.ts');
+        const songs = Array.from({ length: 8 }, (_, index) => ({ id: `batch-fixture-${index}`, fileName: `fixture-${index}.mp3`, filePath: '', title: `Batch Fixture ${index}`, titleOrigin: 'manual-match',
+            importedMetadata: { title: `Batch Fixture ${index}`, titleSource: 'embedded', artistNames: ['Fixture Artist'], albumName: 'Fixture Album' },
+            matchedLyrics: { lines: [{ fullText: 'Preserved fixture lyrics', startTime: 0, endTime: 1 }] }, duration: 200000, fileSize: 1, mimeType: 'audio/mpeg', addedAt: 1 }));
+        await appDatabase.local_music.bulkPut(songs);
+        const batch = await batchAutoMatchLocalSongMetadata(songs);
+        const stored = await appDatabase.local_music.bulkGet(songs.map(song => song.id));
+        return { statuses: batch.updates.map((item: any) => item.status), summary: batch.summary,
+            preserved: stored.every((song: any) => song.titleOrigin === 'manual-match' && song.matchedLyrics.lines[0].fullText === 'Preserved fixture lyrics') };
+    });
+    expect(result.statuses, JSON.stringify(result.summary)).toEqual(Array(8).fill('matched'));
+    expect(result.preserved).toBe(true);
+    expect(backendSearches).toBe(1);
+    expect(anonymousSearches).toBe(10);
+    await page.reload();
+    await waitForAppMounted(page);
+    const restored = await page.evaluate(async () => {
+        const load = (name: string) => import(/* @vite-ignore */ name);
+        const { appDatabase } = await load('/src/services/appDatabase.ts');
+        const { getCachedCoverUrl } = await load('/src/services/coverCache.ts');
+        let count = 0;
+        for (let i = 0; i < 8; i++) {
+            const song = await appDatabase.local_music.get(`batch-fixture-${i}`);
+            const url = await getCachedCoverUrl(`cover_local_${song.id}`, song.onlineMetadata.coverUrl);
+            if (url) { count++; URL.revokeObjectURL(url); }
+        }
+        return count;
+    });
+    expect(restored).toBe(8);
+});

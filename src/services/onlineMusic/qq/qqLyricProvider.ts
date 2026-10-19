@@ -164,7 +164,7 @@ export async function searchQQSongs(keyword: string, page = 1, pageSize = 20, di
 /**
  * Searches anonymously for lyric matching, with bounded script/title fallback.
  */
-export async function searchQQLyrics(keyword: string, page = 1, pageSize = 20, signal?: AbortSignal): Promise<SongResult[]> {
+export async function searchQQLyrics(keyword: string, page = 1, pageSize = 20, signal?: AbortSignal, accept?: (songs: SongResult[]) => boolean): Promise<SongResult[]> {
   const input = keyword.trim().slice(0, 60);
   if (!input) return [];
   const toTraditional = OpenCC.Converter({ from: 'cn', to: 't' });
@@ -173,11 +173,15 @@ export async function searchQQLyrics(keyword: string, page = 1, pageSize = 20, s
   const title = input.split(/\s+-\s+/u)[0].trim();
   const queries = [...new Set([input, toTraditional(input), toSimplified(input), title, toTraditional(title), toSimplified(title)])];
   let refusal: QqLyricSearchError | undefined;
+  let fallback: SongResult[] = [];
   for (const query of queries) {
     signal?.throwIfAborted();
     try {
       const songs = await searchQQSongs(query, page, pageSize, true, signal);
-      if (songs.length) return songs;
+      if (songs.length) {
+        if (!accept || accept(songs)) return songs;
+        if (!fallback.length) fallback = songs;
+      }
     } catch (error) {
       // iPad evidence: code 2001 for simplified input, success for traditional.
       // This is a recovery attempt, not an interpretation of what 2001 means.
@@ -187,6 +191,7 @@ export async function searchQQLyrics(keyword: string, page = 1, pageSize = 20, s
     }
   }
   // A successful empty fallback must not conceal an earlier rejected request.
+  if (fallback.length) return fallback;
   if (refusal) throw refusal;
   return [];
 }

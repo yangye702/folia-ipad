@@ -140,11 +140,26 @@ describe('bounded provider waits', () => {
     it('reports timeout for a provider that never settles', async () => {
         vi.useFakeTimers();
         try {
-            vi.mocked(neteaseApi.cloudSearch).mockReturnValue(new Promise(() => {}));
+            let settle!: (value: any) => void;
+            vi.mocked(neteaseApi.cloudSearch).mockReturnValue(new Promise(resolve => { settle = resolve; }));
             const pending = searchOnlineMetadata('netease', 'timeout fixture', { title: 'Fixture', artist: '', durationMs: 0 });
             const assertion = expect(pending).rejects.toMatchObject({ kind: 'timeout', stage: 'search' });
-            await vi.advanceTimersByTimeAsync(15001);
+            await vi.advanceTimersByTimeAsync(15401);
             await assertion;
+            settle({ result: { songs: [] } });
+            await Promise.resolve();
         } finally { vi.useRealTimers(); }
     });
+});
+
+it('recovers a successful but overconstrained metadata query without weakening candidate admission', async () => {
+    const queries: string[] = [];
+    vi.mocked(neteaseApi.cloudSearch).mockImplementation(async query => {
+        queries.push(query);
+        return { result: { songs: query === 'Target Song - Target Artist' ? [
+            { id: 1, name: 'Target Song', dt: 200000, ar: [{ name: 'Target Artist' }], al: { name: 'Target Album', picUrl: 'https://example.test/cover.jpg' } },
+        ] : [] } };
+    });
+    expect((await findAutomaticOnlineMetadataCandidate(song))?.source).toBe('netease');
+    expect(queries).toEqual(['Target Song - Target Artist - Target Album', 'Target Song - Target Artist']);
 });

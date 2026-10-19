@@ -3462,6 +3462,8 @@ export default {
     "startAutoMatch": "Cocokkan {{count}} lagu",
     "selectAllSongs": "Pilih semua",
     "deselectAllSongs": "Batal pilih semua",
+    "matchSourceUnavailable": "{{source}} tidak tersedia untuk batch ini; permintaan berulang dilewati ({{reason}})",
+    "recoveringMetadata": "Menunggu sumber pulih dan mencoba item yang belum selesai (maksimal dua putaran)…",
     "matchingMetadata": "Mencocokkan info lagu...",
     "autoMatchStatus": {
       "matched-cover-missing": "Informasi cocok; sampul tepercaya tidak ditemukan",

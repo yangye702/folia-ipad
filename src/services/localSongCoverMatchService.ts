@@ -3,6 +3,7 @@ import { hasLocalSongCover } from '../utils/localSongCover';
 import { getCachedCoverUrl } from './coverCache';
 import { findAutomaticOnlineMetadataCandidate } from './onlineMetadataSearchService';
 import { applyLocalSongMatchSelection } from './localSongMatchSelectionService';
+import type { MatchingSearchSession } from './matchingSearchSession';
 import { recordMatchDiagnostic } from './matchingDiagnostics';
 
 // Cover repair is independent of lyrics and identity assignments; share the existing provider search.
@@ -15,7 +16,7 @@ export const needsLocalSongCoverMatch = async (song: LocalSong): Promise<boolean
     }
     return true;
 };
-export const completeLocalSongCover = (song: LocalSong, signal?: AbortSignal): Promise<boolean> => {
+export const completeLocalSongCover = (song: LocalSong, signal?: AbortSignal, session?: MatchingSearchSession): Promise<boolean> => {
     const existing = pending.get(song.id);
     if (existing && !existing.signal?.aborted) return existing.work;
     const work = (async () => {
@@ -35,11 +36,12 @@ export const completeLocalSongCover = (song: LocalSong, signal?: AbortSignal): P
             if (restored.coverCached) return true;
         }
         signal?.throwIfAborted();
-        const candidate = await findAutomaticOnlineMetadataCandidate(song, signal, { intent: 'cover', excludedCoverUrls: song.onlineMetadata?.coverUrl ? [song.onlineMetadata.coverUrl] : [] });
+        const candidate = await findAutomaticOnlineMetadataCandidate(song, signal, { intent: 'cover', session, excludedCoverUrls: song.onlineMetadata?.coverUrl ? [song.onlineMetadata.coverUrl] : [] });
         signal?.throwIfAborted();
         if (!candidate) return false;
         const result = await applyLocalSongMatchSelection({ songId: song.id, candidate, metadata: 'keep', cover: 'online', lyrics: 'keep', matchMode: 'automatic', signal, expectedCoverUrl: song.onlineMetadata?.coverUrl || null });
         recordMatchDiagnostic({ stage: 'cover', source: candidate.source, outcome: result.coverCached ? 'success' : 'failed' });
+        if (!result.coverCached && result.coverError) throw Object.assign(new Error('Cover incomplete'), result.coverError);
         return result.coverCached;
     })().finally(() => { if (pending.get(song.id)?.work === work) pending.delete(song.id); });
     pending.set(song.id, { work, signal });

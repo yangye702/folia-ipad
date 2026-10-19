@@ -2,6 +2,7 @@ import { URL } from 'url';
 // 当前文件：Vercel 歌词请求代理函数的 TypeScript 源文件。
 const CORS_HEADERS = {
     'Access-Control-Allow-Origin': '*',
+    'Access-Control-Expose-Headers': 'X-Folia-Proxy-Phase, X-Folia-Upstream-Status, Retry-After',
     'Access-Control-Allow-Methods': 'GET,OPTIONS,PATCH,DELETE,POST,PUT',
     'Access-Control-Allow-Headers': [
         'X-CSRF-Token',
@@ -44,10 +45,12 @@ export default async function handler(req, res) {
     if (req.method === 'OPTIONS') {
         return res.status(200).end();
     }
+    res.setHeader('X-Folia-Proxy-Phase', 'proxy-policy');
     const { url: targetUrlStr } = req.query;
     if (!targetUrlStr) {
         return res.status(400).json({ error: 'Missing url parameter' });
     }
+    let phase = 'upstream-connect';
     try {
         const targetUrl = new URL(targetUrlStr);
         const hostname = targetUrl.hostname;
@@ -98,10 +101,17 @@ export default async function handler(req, res) {
             currentUrl = next;
             response = await fetch(next.toString(), { ...fetchOptions, headers: {} });
         }
+        phase = 'upstream-body';
+        res.setHeader('X-Folia-Proxy-Phase', 'upstream-response');
+        res.setHeader('X-Folia-Upstream-Status', String(response.status));
+        const retryAfter = response.headers.get('retry-after');
+        if (retryAfter && retryAfter.length <= 80 && (/^\d+$/.test(retryAfter) || Number.isFinite(Date.parse(retryAfter))))
+            res.setHeader('Retry-After', retryAfter);
         const contentType = response.headers.get('content-type') || '';
         // Forward response headers
         res.setHeader('Content-Type', contentType);
         if (contentType.includes('application/json')) {
+            phase = 'upstream-parse';
             const json = await response.json();
             return res.status(response.status).json(json);
         }
@@ -111,7 +121,8 @@ export default async function handler(req, res) {
         }
     }
     catch (error) {
-        console.error('Proxy request failed:', error);
-        return res.status(500).json({ error: 'Proxy request failed', details: String(error) });
+        const failurePhase = error?.name === 'TimeoutError' ? 'upstream-timeout' : phase;
+        res.setHeader('X-Folia-Proxy-Phase', failurePhase);
+        return res.status(failurePhase === 'upstream-timeout' ? 504 : 502).json({ error: 'Proxy request failed', phase: failurePhase });
     }
 }

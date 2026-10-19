@@ -1,7 +1,11 @@
+import { readLyricProxyResponseFacts } from '../../lyricProxy';
 import { LyricSearchFailure } from '../../../utils/lyrics/lyricSearchFailure';
 // Safe QQ search failure categories and an opt-in, memory-only diagnostic ring.
 export type QqSearchFailureKind = 'network' | 'http' | 'upstream' | 'invalid-response' | 'timeout';
 export type QqSearchSummary = {
+    proxyPhase?: string;
+    upstreamHttpStatus?: number;
+    retryAfterMs?: number;
     httpStatus: number | null;
     topCode: number | null;
     requestCode: number | null;
@@ -17,11 +21,11 @@ export class QqLyricSearchError extends LyricSearchFailure {
 }
 export const emptyQqSearchSummary = (): QqSearchSummary => ({ httpStatus: null, topCode: null, requestCode: null, responseKind: 'unknown', listShape: 'unknown', resultCount: null });
 export async function readQqSearchResponse(response: Response, observe: (summary: QqSearchSummary) => void): Promise<any> {
-    const summary = { ...emptyQqSearchSummary(), httpStatus: response.status };
+    const summary = { ...emptyQqSearchSummary(), httpStatus: response.status, ...readLyricProxyResponseFacts(response) };
     observe(summary);
     let body: any;
     try { body = await response.json(); }
-    catch { observe(summary); throw new QqLyricSearchError(response.ok ? 'invalid-response' : 'http', summary); }
+    catch { observe(summary); throw new QqLyricSearchError(response.ok || summary.proxyPhase === 'upstream-parse' ? 'invalid-response' : 'http', summary); }
     summary.topCode = typeof body?.code === 'number' ? body.code : null;
     summary.requestCode = typeof body?.request?.code === 'number' ? body.request.code : null;
     if (summary.topCode !== null && summary.requestCode !== null) summary.responseKind = 'qq-envelope';
@@ -29,7 +33,7 @@ export async function readQqSearchResponse(response: Response, observe: (summary
     summary.listShape = songs == null ? 'missing' : Array.isArray(songs) ? 'array' : 'invalid';
     summary.resultCount = Array.isArray(songs) ? songs.length : null;
     observe(summary);
-    if (!response.ok) throw new QqLyricSearchError('http', summary);
+    if (!response.ok) throw new QqLyricSearchError(summary.proxyPhase === 'upstream-parse' ? 'invalid-response' : 'http', summary);
     if (summary.topCode !== null && summary.topCode !== 0 || summary.requestCode !== null && summary.requestCode !== 0) {
         throw new QqLyricSearchError('upstream', summary);
     }
@@ -40,7 +44,7 @@ export async function readQqSearchResponse(response: Response, observe: (summary
     return body.request.data;
 }
 
-type Entry = QqSearchSummary & { id: number; time: string; query: string; via: string; outcome: 'pending' | 'success' | QqSearchFailureKind };
+type Entry = QqSearchSummary & { operation: 'DoSearchForQQMusicLite'; id: number; time: string; query: string; via: string; outcome: 'pending' | 'success' | QqSearchFailureKind };
 let entries: Entry[] = [];
 let sequence = 0;
 const listeners = new Set<() => void>();
@@ -60,7 +64,7 @@ export function beginQqSearchDiagnostic(query: string, via: string, forLyrics = 
             listeners.forEach(listener => { try { listener(); } catch { /* Diagnostic UI must not affect search. */ } });
         } catch { /* Observation only. */ }
     };
-    if (enabled) entries = [...entries, { ...emptyQqSearchSummary(), id, time: new Date().toISOString(), query: query.slice(0, 60), via, outcome: 'pending' as const }].slice(-30);
+    if (enabled) entries = [...entries, { ...emptyQqSearchSummary(), id, operation: 'DoSearchForQQMusicLite' as const, time: new Date().toISOString(), query: query.slice(0, 60), via, outcome: 'pending' as const }].slice(-30);
     update({});
     return update;
 }

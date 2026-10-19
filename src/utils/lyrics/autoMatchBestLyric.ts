@@ -10,7 +10,8 @@ import { buildLyricSearchQuery } from './searchQuery';
 import { buildLyricSourceOrder } from './sourcePriority';
 import { resolveProviderLyricsChorus } from './chorusResolver';
 import { hasRenderableLyrics } from './validity';
-import { getLyricSourceAccess, isLyricMatchSourceOffered } from './lyricMatchSources';
+import { getLyricSourceAccess, searchMatchingSource, isLyricMatchSourceOffered } from './lyricMatchSources';
+import { MatchingSearchSession } from '../../services/matchingSearchSession';
 import { getLyricSource } from './lyricSources';
 import type { PlatformLyricSource } from './lyricSources';
 import type { LocalSongMetadataLyricCandidate } from './localSongMatchContext';
@@ -161,7 +162,8 @@ async function matchUnderArtist(
     title: string,
     artist: string,
     durationMs: number,
-    options: AutoMatchBestLyricOptions
+    options: AutoMatchBestLyricOptions,
+    searchSession: MatchingSearchSession,
 ): Promise<AutoMatchBestLyricResult> {
     const searchQuery = buildLyricSearchQuery(title, artist, options.album);
     const normalizedDurationMs = normalizeLyricMatchDurationMs(durationMs);
@@ -226,12 +228,8 @@ async function matchUnderArtist(
             };
         }
 
-        const songs = (await withTimeout(
-            access.search(searchQuery, AUTO_MATCH_SEARCH_LIMIT, targetSong),
-            PROVIDER_SEARCH_TIMEOUT_MS,
-            `${source} search`,
-            []
-        )) ?? [];
+        // The source queue has its own bounded wait; the original 3.5s budget starts at the request.
+        const songs = await searchMatchingSource(source, searchQuery, AUTO_MATCH_SEARCH_LIMIT, targetSong, { session: searchSession });
         if (picked) {
             const exactCandidate = songs.find(song => isSelectedMetadataCandidate(source, song, picked));
             if (exactCandidate || options.exactMatchOnly) {
@@ -436,7 +434,8 @@ export async function autoMatchBestLyric(
     durationMs: number,
     options: AutoMatchBestLyricOptions = {}
 ): Promise<AutoMatchBestLyricResult> {
-    const match = await matchUnderArtist(title, artist, durationMs, options);
+    const searchSession = new MatchingSearchSession(false, PROVIDER_SEARCH_TIMEOUT_MS);
+    const match = await matchUnderArtist(title, artist, durationMs, options, searchSession);
     if (match || !options.alternateArtist) return match;
     const alternate = await withTimeout(
         options.alternateArtist().catch(() => null),
@@ -446,5 +445,5 @@ export async function autoMatchBestLyric(
     );
     if (!alternate || alternate === artist) return null;
     console.log(`[autoMatchBestLyric] Searching again with the artist as "${alternate}"`);
-    return matchUnderArtist(title, alternate, durationMs, options);
+    return matchUnderArtist(title, alternate, durationMs, options, searchSession);
 }
