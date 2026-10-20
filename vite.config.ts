@@ -313,6 +313,7 @@ export default async function viteConfig(_config: ConfigEnv): Promise<UserConfig
       })
     ],
     define: {
+      'import.meta.env.VITE_NETEASE_READONLY_API_BASE': JSON.stringify(process.env.VITE_NETEASE_READONLY_API_BASE || (process.env.VERCEL ? '/api/netease' : '')),
       '__COMMIT_HASH__': JSON.stringify(commitHash + commitSuffix),
       '__GIT_BRANCH__': JSON.stringify(gitBranch),
       '__BUILD_REPO__': JSON.stringify(buildRepo),

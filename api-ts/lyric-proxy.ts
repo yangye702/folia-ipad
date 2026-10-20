@@ -4,7 +4,7 @@ import { URL } from 'url';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Expose-Headers': 'X-Folia-Proxy-Phase, X-Folia-Upstream-Status, Retry-After',
+  'Access-Control-Expose-Headers': 'X-Folia-Proxy-Phase, X-Folia-Upstream-Status, X-Folia-Proxy-Error, Retry-After',
   'Access-Control-Allow-Methods': 'GET,OPTIONS,PATCH,DELETE,POST,PUT',
   'Access-Control-Allow-Headers': [
     'X-CSRF-Token',
@@ -88,7 +88,8 @@ export default async function handler(req: any, res: any) {
     const fetchOptions: RequestInit = {
       method: req.method,
       redirect: 'manual',
-      signal: AbortSignal.timeout(15000),
+      // Leave time for the relay response to reach clients with a 12-second deadline.
+      signal: AbortSignal.timeout(8000),
       headers,
     };
 
@@ -133,6 +134,9 @@ export default async function handler(req: any, res: any) {
       return res.status(response.status).send(Buffer.from(buffer));
     }
   } catch (error) {
+    const rawCode = (error as { cause?: { code?: string }; code?: string })?.cause?.code ?? (error as { code?: string })?.code;
+    const safeCodes = ['ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED', 'ECONNRESET', 'ETIMEDOUT', 'ENETUNREACH', 'EHOSTUNREACH', 'UND_ERR_CONNECT_TIMEOUT', 'UND_ERR_HEADERS_TIMEOUT', 'UND_ERR_BODY_TIMEOUT', 'UND_ERR_SOCKET', 'ERR_TLS_CERT_ALTNAME_INVALID', 'CERT_HAS_EXPIRED', 'UNABLE_TO_VERIFY_LEAF_SIGNATURE', 'DEPTH_ZERO_SELF_SIGNED_CERT'];
+    if (rawCode && safeCodes.includes(rawCode)) res.setHeader('X-Folia-Proxy-Error', rawCode);
     const failurePhase = (error as Error)?.name === 'TimeoutError' ? 'upstream-timeout' : phase;
     res.setHeader('X-Folia-Proxy-Phase', failurePhase);
     return res.status(failurePhase === 'upstream-timeout' ? 504 : 502).json({ error: 'Proxy request failed', phase: failurePhase });

@@ -50,8 +50,9 @@ async function scenario(size: number, mode: string) {
         maxSourceActive = Math.max(maxSourceActive, activeSources.get(source)!);
         await new Promise(resolve => setTimeout(resolve, 10));
         active--; activeSources.set(source, activeSources.get(source)! - 1);
-        if ((mode === 'missing-backend' || mode === 'outage' || mode === 'refused') && source === 'netease') throw Object.assign(new Error('fixture missing'), { code: 'NETEASE_API_BASE_MISSING' });
+        if ((mode === 'missing-backend' || mode === 'outage' || mode === 'refused' || mode === 'qq-mixed') && source === 'netease') throw Object.assign(new Error('fixture missing'), { code: 'NETEASE_API_BASE_MISSING' });
         if (mode === 'outage' && Date.now() - started < 1500 && source !== 'netease') throw new TypeError('Controlled temporary outage');
+        if (mode === 'qq-mixed' && source === 'qq' && Number(query.match(/Synthetic (\d+)/)?.[1] ?? 0) % 5 === 0) throw Object.assign(new Error('fixture QQ refusal'), { kind: 'upstream', summary: { httpStatus: 200, requestCode: 2001 } });
         if (mode === 'refused') throw source === 'qq' ? Object.assign(new Error('fixture'), { kind: 'upstream', summary: { httpStatus: 200, requestCode: 2001 } }) : new TypeError('Controlled offline');
         successfulResponses++;
         const identity = Number(query.match(/Synthetic (\d+)/)?.[1] ?? 0);
@@ -98,7 +99,7 @@ async function scenario(size: number, mode: string) {
         if (mode === 'refused') { expect(successes).toBe(0); expect(calls.filter(call => call.source === 'qq')).toHaveLength(size); }
         else if (mode === 'mixed') { expect(successes).toBe(size - Math.ceil(size / 10)); expect(state.covers.size).toBe(successes); }
         else expect(state.covers.size).toBe(size);
-        if (mode === 'missing-backend' || mode === 'outage' || mode === 'refused') expect(calls.filter(call => call.source === 'netease')).toHaveLength(1);
+        if (mode === 'missing-backend' || mode === 'outage' || mode === 'refused' || mode === 'qq-mixed') expect(calls.filter(call => call.source === 'netease')).toHaveLength(1);
         if (mode === 'dedup') expect(calls).toHaveLength(Math.ceil(size / 2));
         if (mode !== 'cancel-resume') expect(new Set(state.saves).size).toBe(state.saves.length);
     }
@@ -109,7 +110,7 @@ async function scenario(size: number, mode: string) {
     }
 }
 for (const size of [50, 100, 250, 1000]) {
-    for (const mode of ['normal', 'missing-backend', 'outage', 'mixed', 'dedup', 'cancel-resume', 'refused']) {
+    for (const mode of ['normal', 'missing-backend', 'outage', 'mixed', 'dedup', 'cancel-resume', 'refused', 'qq-mixed']) {
         it(`${size} synthetic songs: ${mode}`, () => scenario(size, mode));
     }
 }

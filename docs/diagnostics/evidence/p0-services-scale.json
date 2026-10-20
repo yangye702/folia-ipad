@@ -1,0 +1,523 @@
+{
+  "evidence": "controlled-provider-responses-and-in-memory-save-boundary-not-live-platforms",
+  "clock": "fake timer; elapsedMs is virtual time with controlled 10ms provider latency",
+  "requestUnit": "provider-search, not per-variant QQ HTTP requests",
+  "rows": [
+    {
+      "size": 50,
+      "mode": "normal",
+      "searchSuccessRate": 1,
+      "matched": 50,
+      "savedCovers": 50,
+      "requests": 50,
+      "repeatedQueries": 0,
+      "elapsedMs": 19610,
+      "finalStatuses": {
+        "matched": 50
+      },
+      "incorrectMatches": 0,
+      "maxActive": 1,
+      "maxSourceActive": 1
+    },
+    {
+      "size": 50,
+      "mode": "missing-backend",
+      "searchSuccessRate": 0.9803921568627451,
+      "matched": 50,
+      "savedCovers": 50,
+      "requests": 51,
+      "repeatedQueries": 0,
+      "elapsedMs": 19620,
+      "finalStatuses": {
+        "matched": 50
+      },
+      "incorrectMatches": 0,
+      "maxActive": 1,
+      "maxSourceActive": 1
+    },
+    {
+      "size": 50,
+      "mode": "outage",
+      "searchSuccessRate": 0.9090909090909091,
+      "matched": 50,
+      "savedCovers": 50,
+      "requests": 55,
+      "repeatedQueries": 3,
+      "elapsedMs": 23020,
+      "finalStatuses": {
+        "matched": 50
+      },
+      "incorrectMatches": 0,
+      "maxActive": 1,
+      "maxSourceActive": 1
+    },
+    {
+      "size": 50,
+      "mode": "mixed",
+      "searchSuccessRate": 1,
+      "matched": 45,
+      "savedCovers": 45,
+      "requests": 115,
+      "repeatedQueries": 0,
+      "elapsedMs": 23620,
+      "finalStatuses": {
+        "matched": 45,
+        "low-confidence": 5
+      },
+      "incorrectMatches": 0,
+      "maxActive": 1,
+      "maxSourceActive": 1
+    },
+    {
+      "size": 50,
+      "mode": "dedup",
+      "searchSuccessRate": 1,
+      "matched": 50,
+      "savedCovers": 50,
+      "requests": 25,
+      "repeatedQueries": 0,
+      "elapsedMs": 9610,
+      "finalStatuses": {
+        "matched": 50
+      },
+      "incorrectMatches": 0,
+      "maxActive": 1,
+      "maxSourceActive": 1
+    },
+    {
+      "size": 50,
+      "mode": "cancel-resume",
+      "searchSuccessRate": 1,
+      "matched": 50,
+      "savedCovers": 50,
+      "requests": 50,
+      "repeatedQueries": 0,
+      "elapsedMs": 39220,
+      "finalStatuses": {
+        "matched": 50
+      },
+      "incorrectMatches": 0,
+      "maxActive": 1,
+      "maxSourceActive": 1
+    },
+    {
+      "size": 50,
+      "mode": "refused",
+      "searchSuccessRate": 0,
+      "matched": 0,
+      "savedCovers": 0,
+      "requests": 58,
+      "repeatedQueries": 2,
+      "elapsedMs": 62840,
+      "finalStatuses": {
+        "failed": 50
+      },
+      "incorrectMatches": 0,
+      "maxActive": 1,
+      "maxSourceActive": 1
+    },
+    {
+      "size": 50,
+      "mode": "qq-mixed",
+      "searchSuccessRate": 0.819672131147541,
+      "matched": 50,
+      "savedCovers": 50,
+      "requests": 61,
+      "repeatedQueries": 0,
+      "elapsedMs": 19620,
+      "finalStatuses": {
+        "matched": 50
+      },
+      "incorrectMatches": 0,
+      "maxActive": 1,
+      "maxSourceActive": 1
+    },
+    {
+      "size": 100,
+      "mode": "normal",
+      "searchSuccessRate": 1,
+      "matched": 100,
+      "savedCovers": 100,
+      "requests": 100,
+      "repeatedQueries": 0,
+      "elapsedMs": 39610,
+      "finalStatuses": {
+        "matched": 100
+      },
+      "incorrectMatches": 0,
+      "maxActive": 1,
+      "maxSourceActive": 1
+    },
+    {
+      "size": 100,
+      "mode": "missing-backend",
+      "searchSuccessRate": 0.9900990099009901,
+      "matched": 100,
+      "savedCovers": 100,
+      "requests": 101,
+      "repeatedQueries": 0,
+      "elapsedMs": 39620,
+      "finalStatuses": {
+        "matched": 100
+      },
+      "incorrectMatches": 0,
+      "maxActive": 1,
+      "maxSourceActive": 1
+    },
+    {
+      "size": 100,
+      "mode": "outage",
+      "searchSuccessRate": 0.9523809523809523,
+      "matched": 100,
+      "savedCovers": 100,
+      "requests": 105,
+      "repeatedQueries": 3,
+      "elapsedMs": 43020,
+      "finalStatuses": {
+        "matched": 100
+      },
+      "incorrectMatches": 0,
+      "maxActive": 1,
+      "maxSourceActive": 1
+    },
+    {
+      "size": 100,
+      "mode": "mixed",
+      "searchSuccessRate": 1,
+      "matched": 90,
+      "savedCovers": 90,
+      "requests": 230,
+      "repeatedQueries": 0,
+      "elapsedMs": 47620,
+      "finalStatuses": {
+        "matched": 90,
+        "low-confidence": 10
+      },
+      "incorrectMatches": 0,
+      "maxActive": 1,
+      "maxSourceActive": 1
+    },
+    {
+      "size": 100,
+      "mode": "dedup",
+      "searchSuccessRate": 1,
+      "matched": 100,
+      "savedCovers": 100,
+      "requests": 50,
+      "repeatedQueries": 0,
+      "elapsedMs": 19610,
+      "finalStatuses": {
+        "matched": 100
+      },
+      "incorrectMatches": 0,
+      "maxActive": 1,
+      "maxSourceActive": 1
+    },
+    {
+      "size": 100,
+      "mode": "cancel-resume",
+      "searchSuccessRate": 1,
+      "matched": 100,
+      "savedCovers": 100,
+      "requests": 100,
+      "repeatedQueries": 0,
+      "elapsedMs": 59220,
+      "finalStatuses": {
+        "matched": 100
+      },
+      "incorrectMatches": 0,
+      "maxActive": 1,
+      "maxSourceActive": 1
+    },
+    {
+      "size": 100,
+      "mode": "refused",
+      "searchSuccessRate": 0,
+      "matched": 0,
+      "savedCovers": 0,
+      "requests": 109,
+      "repeatedQueries": 2,
+      "elapsedMs": 93240,
+      "finalStatuses": {
+        "failed": 100
+      },
+      "incorrectMatches": 0,
+      "maxActive": 1,
+      "maxSourceActive": 1
+    },
+    {
+      "size": 100,
+      "mode": "qq-mixed",
+      "searchSuccessRate": 0.8264462809917356,
+      "matched": 100,
+      "savedCovers": 100,
+      "requests": 121,
+      "repeatedQueries": 0,
+      "elapsedMs": 39620,
+      "finalStatuses": {
+        "matched": 100
+      },
+      "incorrectMatches": 0,
+      "maxActive": 1,
+      "maxSourceActive": 1
+    },
+    {
+      "size": 250,
+      "mode": "normal",
+      "searchSuccessRate": 1,
+      "matched": 250,
+      "savedCovers": 250,
+      "requests": 250,
+      "repeatedQueries": 0,
+      "elapsedMs": 99610,
+      "finalStatuses": {
+        "matched": 250
+      },
+      "incorrectMatches": 0,
+      "maxActive": 1,
+      "maxSourceActive": 1
+    },
+    {
+      "size": 250,
+      "mode": "missing-backend",
+      "searchSuccessRate": 0.9960159362549801,
+      "matched": 250,
+      "savedCovers": 250,
+      "requests": 251,
+      "repeatedQueries": 0,
+      "elapsedMs": 99620,
+      "finalStatuses": {
+        "matched": 250
+      },
+      "incorrectMatches": 0,
+      "maxActive": 1,
+      "maxSourceActive": 1
+    },
+    {
+      "size": 250,
+      "mode": "outage",
+      "searchSuccessRate": 0.9803921568627451,
+      "matched": 250,
+      "savedCovers": 250,
+      "requests": 255,
+      "repeatedQueries": 3,
+      "elapsedMs": 103020,
+      "finalStatuses": {
+        "matched": 250
+      },
+      "incorrectMatches": 0,
+      "maxActive": 1,
+      "maxSourceActive": 1
+    },
+    {
+      "size": 250,
+      "mode": "mixed",
+      "searchSuccessRate": 1,
+      "matched": 225,
+      "savedCovers": 225,
+      "requests": 575,
+      "repeatedQueries": 0,
+      "elapsedMs": 119620,
+      "finalStatuses": {
+        "matched": 225,
+        "low-confidence": 25
+      },
+      "incorrectMatches": 0,
+      "maxActive": 1,
+      "maxSourceActive": 1
+    },
+    {
+      "size": 250,
+      "mode": "dedup",
+      "searchSuccessRate": 1,
+      "matched": 250,
+      "savedCovers": 250,
+      "requests": 125,
+      "repeatedQueries": 0,
+      "elapsedMs": 49610,
+      "finalStatuses": {
+        "matched": 250
+      },
+      "incorrectMatches": 0,
+      "maxActive": 1,
+      "maxSourceActive": 1
+    },
+    {
+      "size": 250,
+      "mode": "cancel-resume",
+      "searchSuccessRate": 1,
+      "matched": 250,
+      "savedCovers": 250,
+      "requests": 250,
+      "repeatedQueries": 0,
+      "elapsedMs": 119220,
+      "finalStatuses": {
+        "matched": 250
+      },
+      "incorrectMatches": 0,
+      "maxActive": 1,
+      "maxSourceActive": 1
+    },
+    {
+      "size": 250,
+      "mode": "refused",
+      "searchSuccessRate": 0,
+      "matched": 0,
+      "savedCovers": 0,
+      "requests": 261,
+      "repeatedQueries": 2,
+      "elapsedMs": 154040,
+      "finalStatuses": {
+        "failed": 250
+      },
+      "incorrectMatches": 0,
+      "maxActive": 1,
+      "maxSourceActive": 1
+    },
+    {
+      "size": 250,
+      "mode": "qq-mixed",
+      "searchSuccessRate": 0.8305647840531561,
+      "matched": 250,
+      "savedCovers": 250,
+      "requests": 301,
+      "repeatedQueries": 0,
+      "elapsedMs": 99620,
+      "finalStatuses": {
+        "matched": 250
+      },
+      "incorrectMatches": 0,
+      "maxActive": 1,
+      "maxSourceActive": 1
+    },
+    {
+      "size": 1000,
+      "mode": "normal",
+      "searchSuccessRate": 1,
+      "matched": 1000,
+      "savedCovers": 1000,
+      "requests": 1000,
+      "repeatedQueries": 0,
+      "elapsedMs": 399610,
+      "finalStatuses": {
+        "matched": 1000
+      },
+      "incorrectMatches": 0,
+      "maxActive": 1,
+      "maxSourceActive": 1
+    },
+    {
+      "size": 1000,
+      "mode": "missing-backend",
+      "searchSuccessRate": 0.999000999000999,
+      "matched": 1000,
+      "savedCovers": 1000,
+      "requests": 1001,
+      "repeatedQueries": 0,
+      "elapsedMs": 399620,
+      "finalStatuses": {
+        "matched": 1000
+      },
+      "incorrectMatches": 0,
+      "maxActive": 1,
+      "maxSourceActive": 1
+    },
+    {
+      "size": 1000,
+      "mode": "outage",
+      "searchSuccessRate": 0.9970089730807578,
+      "matched": 1000,
+      "savedCovers": 1000,
+      "requests": 1003,
+      "repeatedQueries": 1,
+      "elapsedMs": 401332,
+      "finalStatuses": {
+        "matched": 1000
+      },
+      "incorrectMatches": 0,
+      "maxActive": 1,
+      "maxSourceActive": 1
+    },
+    {
+      "size": 1000,
+      "mode": "mixed",
+      "searchSuccessRate": 1,
+      "matched": 900,
+      "savedCovers": 900,
+      "requests": 2300,
+      "repeatedQueries": 0,
+      "elapsedMs": 479620,
+      "finalStatuses": {
+        "matched": 900,
+        "low-confidence": 100
+      },
+      "incorrectMatches": 0,
+      "maxActive": 1,
+      "maxSourceActive": 1
+    },
+    {
+      "size": 1000,
+      "mode": "dedup",
+      "searchSuccessRate": 1,
+      "matched": 1000,
+      "savedCovers": 1000,
+      "requests": 500,
+      "repeatedQueries": 0,
+      "elapsedMs": 199610,
+      "finalStatuses": {
+        "matched": 1000
+      },
+      "incorrectMatches": 0,
+      "maxActive": 1,
+      "maxSourceActive": 1
+    },
+    {
+      "size": 1000,
+      "mode": "cancel-resume",
+      "searchSuccessRate": 1,
+      "matched": 1000,
+      "savedCovers": 1000,
+      "requests": 1000,
+      "repeatedQueries": 0,
+      "elapsedMs": 419220,
+      "finalStatuses": {
+        "matched": 1000
+      },
+      "incorrectMatches": 0,
+      "maxActive": 1,
+      "maxSourceActive": 1
+    },
+    {
+      "size": 1000,
+      "mode": "refused",
+      "searchSuccessRate": 0,
+      "matched": 0,
+      "savedCovers": 0,
+      "requests": 1021,
+      "repeatedQueries": 2,
+      "elapsedMs": 458040,
+      "finalStatuses": {
+        "failed": 1000
+      },
+      "incorrectMatches": 0,
+      "maxActive": 1,
+      "maxSourceActive": 1
+    },
+    {
+      "size": 1000,
+      "mode": "qq-mixed",
+      "searchSuccessRate": 0.832639467110741,
+      "matched": 1000,
+      "savedCovers": 1000,
+      "requests": 1201,
+      "repeatedQueries": 0,
+      "elapsedMs": 399620,
+      "finalStatuses": {
+        "matched": 1000
+      },
+      "incorrectMatches": 0,
+      "maxActive": 1,
+      "maxSourceActive": 1
+    }
+  ]
+}

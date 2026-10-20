@@ -5,16 +5,17 @@ export class MatchFailure extends Error {
         this.name = 'MatchFailure';
     }
 }
-export type MatchFailureFacts = { kind: string; stage: string; source?: string; httpStatus?: number; upstreamCode?: number; proxyPhase?: string; upstreamHttpStatus?: number; retryAfterMs?: number };
+export type MatchFailureFacts = { kind: string; stage: string; source?: string; httpStatus?: number; upstreamCode?: number; proxyPhase?: string; upstreamHttpStatus?: number; retryAfterMs?: number; transportCode?: string; browserErrorName?: string };
 export const matchFailureFacts = (error: unknown): MatchFailureFacts => {
-    const value = error as { name?: string; kind?: string; stage?: string; source?: string; providerId?: string; code?: string; summary?: { httpStatus?: number; requestCode?: number; topCode?: number; proxyPhase?: string; upstreamHttpStatus?: number; retryAfterMs?: number }; status?: number; httpStatus?: number; proxyPhase?: string; upstreamHttpStatus?: number; retryAfterMs?: number; cause?: { httpStatus?: number; code?: number } } | null;
+    const value = error as { name?: string; kind?: string; stage?: string; source?: string; providerId?: string; code?: string; summary?: { httpStatus?: number; requestCode?: number; topCode?: number; proxyPhase?: string; upstreamHttpStatus?: number; retryAfterMs?: number; transportCode?: string; browserErrorName?: string }; status?: number; httpStatus?: number; proxyPhase?: string; upstreamHttpStatus?: number; retryAfterMs?: number; transportCode?: string; browserErrorName?: string; cause?: { httpStatus?: number; code?: number } } | null;
     const httpStatus = value?.summary?.httpStatus ?? value?.status ?? value?.httpStatus ?? value?.cause?.httpStatus;
     const upstreamCode = value?.summary?.requestCode || value?.summary?.topCode || value?.cause?.code;
     return { kind: value?.name === 'AbortError' ? 'cancelled' : value?.name === 'TimeoutError' || value?.name === 'OnlineRequestTimeout' ? 'timeout' : value?.kind || (value?.name === 'SyntaxError' ? 'invalid-response' : httpStatus && httpStatus !== 200 ? 'http' : value?.code === 'auth-required' || upstreamCode ? 'upstream' : value?.code || (httpStatus === 200 ? 'invalid-response' : 'network')),
         stage: value?.stage || 'search', source: value?.source || value?.providerId,
         httpStatus, upstreamCode, proxyPhase: value?.summary?.proxyPhase ?? value?.proxyPhase,
         upstreamHttpStatus: value?.summary?.upstreamHttpStatus ?? value?.upstreamHttpStatus,
-        retryAfterMs: value?.summary?.retryAfterMs ?? value?.retryAfterMs };
+        retryAfterMs: value?.summary?.retryAfterMs ?? value?.retryAfterMs,
+        transportCode: value?.summary?.transportCode ?? value?.transportCode, browserErrorName: value?.summary?.browserErrorName ?? value?.browserErrorName };
 };
 type Entry = Partial<MatchFailureFacts> & { time: string; stage: string; source?: string; outcome?: string; count?: number; kind?: string; httpStatus?: number; upstreamCode?: number };
 let entries: Entry[] = [];

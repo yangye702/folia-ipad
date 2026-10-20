@@ -1,7 +1,7 @@
 import md5 from 'blueimp-md5';
 import { OnlineProviderError } from '../../../types/onlineMusic';
 import { readProviderSessionValue, removeProviderSessionValue, writeProviderSessionValue } from '../providerStorage';
-import { readLyricProxyResponseFacts, lyricProxyWebUrl, requestLyricProxyOnDesktop } from '../../lyricProxy';
+import { readBrowserRequestFailure, readLyricProxyResponseFacts, lyricProxyWebUrl, requestLyricProxyOnDesktop } from '../../lyricProxy';
 import { withLoginRequestLimit } from '../login/loginRequestLimit';
 
 // src/services/onlineMusic/kugou/kugouTransport.ts
@@ -294,7 +294,7 @@ export const requestKugouAnonymousSearch = async (
         },
     }); } catch (error) {
         throw Object.assign(new OnlineProviderError('network', 'KuGou search request did not receive a response', 'kugou'), {
-            kind: (error as Error)?.name === 'TimeoutError' ? 'timeout' : 'network', stage: 'search-request',
+            kind: (error as Error)?.name === 'TimeoutError' ? 'timeout' : 'network', stage: 'search-request', ...readBrowserRequestFailure(error),
         });
     }
     const facts = readLyricProxyResponseFacts(response);
@@ -305,7 +305,7 @@ export const requestKugouAnonymousSearch = async (
     }
     let body: any;
     try { body = await response.json(); } catch {
-        throw Object.assign(new OnlineProviderError('invalid-response', 'KuGou search returned unreadable JSON', 'kugou', undefined, response.status), facts);
+        throw Object.assign(new OnlineProviderError('invalid-response', 'KuGou search returned unreadable JSON', 'kugou', undefined, response.status), facts, { stage: 'search-response' });
     }
     const errorCode = Number(body?.error_code);
     if (Number.isFinite(errorCode) && errorCode !== 0 && errorCode !== 200) {

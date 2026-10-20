@@ -13,7 +13,7 @@ import { qrcDecrypt } from './qrcDecrypt';
 import { applyDetectedChorusEffects, applyChorusRangesByTime } from '../../../utils/lyrics/chorusEffects';
 import type { ChorusRange } from '../../../utils/lyrics/chorusEffects';
 import { getOriginalCoverUrl } from '../../../utils/coverUrl';
-import { lyricProxyWebUrl } from '../../lyricProxy';
+import { lyricProxyWebUrl, readBrowserRequestFailure } from '../../lyricProxy';
 import { beginQqSearchDiagnostic, emptyQqSearchSummary, QqLyricSearchError, readQqSearchResponse, type QqSearchSummary } from './qqLyricSearchStatus';
 
 const isElectron = typeof window !== 'undefined' && (window as any).electron;
@@ -60,7 +60,7 @@ async function requestQQ(method: string, module: string, param: any, observeSear
     });
 
   } catch (error) {
-    if (observeSearch) throw new QqLyricSearchError((error as Error).name === 'TimeoutError' ? 'timeout' : 'network', emptyQqSearchSummary());
+    if (observeSearch) throw new QqLyricSearchError((error as Error).name === 'TimeoutError' ? 'timeout' : 'network', { ...emptyQqSearchSummary(), ...readBrowserRequestFailure(error) });
     throw error;
   }
   if (observeSearch) return await readQqSearchResponse(response, observeSearch);
@@ -115,7 +115,9 @@ export async function searchQQSongs(keyword: string, page = 1, pageSize = 20, di
     ),
     remoteplace: "search.android.keyboard",
     query: safeKeyword.length > 60 ? safeKeyword.slice(0, 60) : safeKeyword,
-    search_type: 0, // 0 = SONG
+    // Upstream 82ca394e: QQ's current song discriminator is 7; 0 returns 2001.
+    // Keep the original anonymous RPC and bounded keyword fallbacks.
+    search_type: 7,
     num_per_page: pagesize,
     page_num: page,
     highlight: 0,
@@ -125,6 +127,7 @@ export async function searchQQSongs(keyword: string, page = 1, pageSize = 20, di
   };
 
   const update = beginQqSearchDiagnostic(param.query, isElectron ? 'direct' : '/api/lyric-proxy', diagnoseLyrics);
+  update({ searchType: param.search_type });
   let data: any;
   try {
     data = await requestQQ("DoSearchForQQMusicLite", "music.search.SearchCgiService", param, summary => update(summary), signal);

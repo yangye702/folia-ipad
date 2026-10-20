@@ -4,6 +4,7 @@ import { OnlineProviderError } from '../../../types/onlineMusic';
 import type { PersonalFmRequestOptions, ProviderSongAvailability } from '../../../types/onlineMusic';
 import { withLoginRequestLimit } from '../login/loginRequestLimit';
 import { withOnlineRequestLimit } from '../failure/onlineRequestLimit';
+import { readBrowserRequestFailure, readLyricProxyResponseFacts } from '../../lyricProxy';
 import { errorFields } from '../../../utils/errorText';
 
 type UnavailableSongReplacement = {
@@ -172,7 +173,12 @@ const getApiBase = async () => {
 // the sign-in's limit; an HTTP error answer to it throws NeteaseLoginHttpError instead of being read as
 // an answer. 'online': a song's address or a collection's tracks, with the limit of online requests.
 const fetchWithCreds = async (endpoint: string, options: RequestInit = {}, limit?: 'sign-in' | 'online') => {
-  const base = await getApiBase();
+  // Only matching's anonymous read operations may use the bundled serverless backend.
+  // Configured full backends and Electron retain their original routes and account behavior.
+  const readOnlyRoutes = new Set(['/cloudsearch', '/song/detail', '/lyric/new', '/song/chorus']);
+  const readOnlyBase = !isElectronRuntime() && !getConfiguredApiBase() && readOnlyRoutes.has(endpoint.split('?')[0])
+    ? (import.meta.env.VITE_NETEASE_READONLY_API_BASE || '') : '';
+  const base = readOnlyBase || await getApiBase();
   const url = `${base}${endpoint}`;
   // Ensure we send credentials to persist session (cookies)
   const defaultOptions: RequestInit = {
@@ -196,11 +202,11 @@ const fetchWithCreds = async (endpoint: string, options: RequestInit = {}, limit
   // Note: For Vercel hosted APIs, we rely on the `cookie` query param if cross-site cookies are blocked,
   // or `credentials: 'include'` if the server allows it. 
 
-  const storedCookie = readProviderSessionValue('netease', 'cookie', ['netease_cookie']);
+  const storedCookie = readOnlyBase ? null : readProviderSessionValue('netease', 'cookie', ['netease_cookie']);
 
   let cookieToUse = storedCookie;
 
-  if (!cookieToUse) {
+  if (!cookieToUse && !readOnlyBase) {
     const isLoginOrStatusEndpoint =
       endpoint.startsWith('/login') ||
       endpoint.startsWith('/user/account') ||
@@ -235,18 +241,19 @@ const fetchWithCreds = async (endpoint: string, options: RequestInit = {}, limit
   const send = async (signal?: AbortSignal) => {
     let res: Response;
     try {
-      res = await fetch(finalUrl, { ...defaultOptions, credentials: 'include', ...(signal ? { signal } : {}) });
+      res = await fetch(finalUrl, { ...defaultOptions, credentials: readOnlyBase ? 'omit' : 'include', ...(signal ? { signal } : {}) });
     } catch (error) {
       // The API itself could not be reached (the local backend has exited, a remote API is down): not a
       // failure of NetEase's. The error names the route, keeps the fetch's own error as its cause, and
       // is marked as the network's (`isNeteaseNetworkFailure`).
       throw Object.assign(
         new Error(`NetEase API request ${target} failed: ${error instanceof Error ? error.message : String(error)}`, { cause: error }),
-        { networkFailure: true },
+        { networkFailure: true, ...readBrowserRequestFailure(error) },
       );
     }
     // An error comes as JSON with a code like any answer; a body that is not JSON is told of with its
     // HTTP status and how it starts, not as a SyntaxError that says nothing of where it came from.
+    const proxyFacts = readLyricProxyResponseFacts(res);
     const text = await res.text();
     let body: any;
     try {
@@ -254,10 +261,14 @@ const fetchWithCreds = async (endpoint: string, options: RequestInit = {}, limit
     } catch {
       throw Object.assign(
         new Error(`NetEase API ${target} returned HTTP ${res.status} without a JSON body: ${text.slice(0, 200) || '(empty)'}`),
-        { httpStatus: res.status },
+        { httpStatus: res.status, kind: 'invalid-response', ...proxyFacts },
       );
     }
-    if (endpoint.startsWith('/cloudsearch') && !res.ok) throw Object.assign(new Error(`NetEase search HTTP ${res.status}`), { httpStatus: res.status, cause: { code: typeof body?.code === 'number' ? body.code : undefined } });
+    if ((readOnlyBase || endpoint.startsWith('/cloudsearch')) && !res.ok) throw Object.assign(new Error(`NetEase API ${target} HTTP ${res.status}`), {
+      httpStatus: res.status, ...proxyFacts,
+      ...(body?.error === 'upstream' ? { kind: 'upstream' } : body?.error === 'invalid-response' ? { kind: 'invalid-response' } : proxyFacts.proxyPhase === 'upstream-timeout' ? { kind: 'timeout' } : {}),
+      cause: { code: typeof body?.code === 'number' ? body.code : undefined },
+    });
     if (limit === 'sign-in' && !res.ok) throw new NeteaseLoginHttpError(res.status, body);
     if (!res.ok && typeof body === 'object' && body !== null) errorStatuses.set(body, res.status);
     return body;

@@ -30,6 +30,8 @@ export interface PlatformNamePlace {
 
 export const PLATFORM_NAME_PLACES: Record<string, PlatformNamePlace> = {
     'api-ts/lyric-proxy.ts': { n: { qq: 2, kugou: 1 }, kind: 'main', why: 'the hosts the lyric relay may reach' },
+    'api-ts/netease.ts': { n: { netease: 1 }, kind: 'main', why: 'new path-discovered anonymous read-only backend entry; all rules stay in shared/netease/' },
+    'api/netease.js': { n: { netease: 1 }, kind: 'main', why: 'generated copy of the read-only backend entry' },
     'api-ts/qq.ts': { n: { qq: 10 }, kind: 'main', why: 'the serverless entry of the QQ backend; the host finds it by path' },
     'api/lyric-proxy.js': { n: { qq: 2, kugou: 1 }, kind: 'main', why: 'the built copy of api-ts/lyric-proxy.ts' },
     'api/qq.js': { n: { qq: 10 }, kind: 'main', why: 'the built copy of api-ts/qq.ts' },

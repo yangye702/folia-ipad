@@ -4,6 +4,8 @@ import { LyricSearchFailure } from '../../../utils/lyrics/lyricSearchFailure';
 export type QqSearchFailureKind = 'network' | 'http' | 'upstream' | 'invalid-response' | 'timeout';
 export type QqSearchSummary = {
     proxyPhase?: string;
+    transportCode?: string;
+    browserErrorName?: string;
     upstreamHttpStatus?: number;
     retryAfterMs?: number;
     httpStatus: number | null;
@@ -44,7 +46,7 @@ export async function readQqSearchResponse(response: Response, observe: (summary
     return body.request.data;
 }
 
-type Entry = QqSearchSummary & { operation: 'DoSearchForQQMusicLite'; id: number; time: string; query: string; via: string; outcome: 'pending' | 'success' | QqSearchFailureKind };
+type Entry = QqSearchSummary & { searchType?: number; operation: 'DoSearchForQQMusicLite'; id: number; time: string; query: string; via: string; outcome: 'pending' | 'success' | QqSearchFailureKind };
 let entries: Entry[] = [];
 let sequence = 0;
 const listeners = new Set<() => void>();
