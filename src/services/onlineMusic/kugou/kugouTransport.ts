@@ -276,14 +276,16 @@ export const requestKugouAnonymousSearch = async (
 
     const targetUrl = new URL('http://complexsearch.kugou.com/v2/search/song');
     Object.entries(params).forEach(([key, value]) => targetUrl.searchParams.set(key, String(value)));
-    const requestUrl = typeof window !== 'undefined' && window.electron
+    const directSearch = typeof window !== 'undefined' && Boolean(window.electron);
+    const requestUrl = directSearch
         ? targetUrl.toString()
         : lyricProxyWebUrl(targetUrl.toString());
     let response: Response;
     try { response = await fetch(requestUrl, {
         method: 'GET',
         signal: AbortSignal.timeout(12000),
-        credentials: 'omit',
+        // Keep site authentication for a protected same-origin relay; it strips cookies upstream.
+        credentials: directSearch ? 'omit' : 'same-origin',
         headers: {
             'User-Agent': 'Android14-1070-11070-201-0-SearchSong-wifi',
             'KG-Rec': '1',

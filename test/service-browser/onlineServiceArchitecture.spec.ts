@@ -110,3 +110,45 @@ test('KuGou distinguishes a relay DNS failure, upstream HTTP and unreadable JSON
         });
     }
 });
+test('same-origin preview authentication survives while upstream requests stay anonymous', async ({ page, context }) => {
+    await context.addCookies([{ name: 'preview-access', value: 'synthetic-private-gate', url: 'http://127.0.0.1:4174' }]);
+    await page.route('https://auth.example.test/**', route => route.fulfill({ contentType: 'text/html', body: 'Synthetic sign-in gate' }));
+    const backend = createReadOnlyHandler(() => createSdkTransport(async (options: any) => {
+        expect(JSON.stringify(options.headers)).not.toContain('synthetic-private-gate');
+        return { status: 200, headers: {}, data: { code: 200, result: { songs: [] } } };
+    }));
+    await page.route('**/api/**', async route => {
+        if (!route.request().headers().cookie?.includes('preview-access=')) {
+            await route.fulfill({ status: 302, headers: { location: 'https://auth.example.test/sign-in' } });
+            return;
+        }
+        const { output, res } = makeResponse();
+        const url = new URL(route.request().url());
+        if (url.pathname.startsWith('/api/netease/')) {
+            await backend({ method: 'GET', query: { path: '/cloudsearch', keywords: 'Synthetic' }, headers: route.request().headers() }, res);
+        } else {
+            const originalFetch = globalThis.fetch;
+            try {
+                globalThis.fetch = async (_url, options) => {
+                    expect(JSON.stringify(options?.headers)).not.toContain('synthetic-private-gate');
+                    return Response.json({ error_code: 0, data: { lists: [] } });
+                };
+                await relay({ method: 'GET', query: { url: url.searchParams.get('url') }, headers: route.request().headers() }, res);
+            } finally { globalThis.fetch = originalFetch; }
+        }
+        await route.fulfill(output);
+    });
+    await page.goto('/dev-probe.html');
+    const result = await page.evaluate(async () => {
+        const load = (path: string) => import(/* @vite-ignore */ path);
+        // Control: an omitted site cookie yields an auth redirect and CORS network failure.
+        const omitted = await fetch('/api/lyric-proxy?url=fixture', { credentials: 'omit' }).then(() => 'response', error => error.name);
+        const { requestKugouAnonymousSearch } = await load('/src/services/onlineMusic/kugou/kugouTransport.ts');
+        const { neteaseApi } = await load('/src/services/onlineMusic/netease/netease.ts');
+        const outcomes: Record<string, unknown> = { omitted };
+        try { outcomes.kugou = await requestKugouAnonymousSearch('Synthetic', 1, 10); } catch (error: any) { outcomes.kugou = error.code; }
+        try { outcomes.netease = await neteaseApi.cloudSearch('Synthetic'); } catch (error: any) { outcomes.netease = error.networkFailure ? 'network' : error.code; }
+        return outcomes;
+    });
+    expect(result).toMatchObject({ omitted: 'TypeError', kugou: { error_code: 0 }, netease: { code: 200 } });
+});

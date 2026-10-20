@@ -9,14 +9,14 @@ beforeEach(() => {
     vi.stubGlobal('localStorage', { getItem: vi.fn(() => 'private-cookie'), setItem: vi.fn(), removeItem: vi.fn() });
 });
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
-it('searches through the built-in read-only backend without registration or cookies', async () => {
+it('searches through the built-in read-only backend without provider registration or stored credentials', async () => {
     const fetchMock = vi.fn().mockResolvedValue(Response.json({ code: 200, result: { songs: [] } }));
     vi.stubGlobal('fetch', fetchMock);
     const { neteaseApi } = await import('@/services/onlineMusic/netease/netease');
     await expect(neteaseApi.cloudSearch('Synthetic')).resolves.toMatchObject({ code: 200 });
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock.mock.calls[0][0]).toBe('/api/netease/cloudsearch?keywords=Synthetic&limit=30&offset=0');
-    expect(fetchMock.mock.calls[0][1].credentials).toBe('omit');
+    expect(fetchMock.mock.calls[0][1].credentials).toBe('same-origin');
     expect(localStorage.getItem).not.toHaveBeenCalled();
 });
 it('keeps a configured full backend ahead of the read-only fallback', async () => {

@@ -241,7 +241,7 @@ const fetchWithCreds = async (endpoint: string, options: RequestInit = {}, limit
   const send = async (signal?: AbortSignal) => {
     let res: Response;
     try {
-      res = await fetch(finalUrl, { ...defaultOptions, credentials: readOnlyBase ? 'omit' : 'include', ...(signal ? { signal } : {}) });
+      res = await fetch(finalUrl, { ...defaultOptions, credentials: readOnlyBase ? 'same-origin' : 'include', ...(signal ? { signal } : {}) });
     } catch (error) {
       // The API itself could not be reached (the local backend has exited, a remote API is down): not a
       // failure of NetEase's. The error names the route, keeps the fetch's own error as its cause, and

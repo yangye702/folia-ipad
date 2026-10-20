@@ -40,7 +40,7 @@
 - 平台规则在 `shared/netease/readOnlyBackend.cjs`，仅允许 GET 的 `/cloudsearch`、`/song/detail`、`/lyric/new`、`/song/chorus`，严格限制字段、数字、数量、关键词长度。调用原 SDK 的四个 module，原加密请求器及固定上游域名；不接受 URL、domain、proxy、cookie、token、IP 等输入。
 - `shared/netease/sdkTransport.cjs` 对**已钉版本的可信 SDK 源文件**使用局部 CommonJS 工厂：不改 SDK 文件、不改全局 console/axios，屏蔽 SDK 原请求器会输出原始 answer/cookie 的日志。只截取 HTTP 状态、数字上游码、经验证的 Retry-After、安全连接错误码。原请求器所需匿名 token 文件通过局部只读适配返回空字符串，不写磁盘或维护用户会话；显式关闭随机 IP。未启用登录、反作弊注册或访问控制绕过功能。
 - SDK 把 axios HTTP 错误折叠成 502 的行为已用真实代码隔离复现；新适配在折叠前保留实际 403/429/5xx 与 Retry-After，不把合成 502 冒充上游响应码。原始异常、headers、Cookie 和响应全文不出诊断边界。
-- `src/services/onlineMusic/netease/netease.ts` 只在没有完整 API 配置、没有 Electron 桥、且调用这四条读取路由时使用只读入口。跳过账号/匿名注册及任何凭据读取，`credentials:omit`。配置的完整后端、登录、云盘、在线音频等原调用路径不改。
+- `src/services/onlineMusic/netease/netease.ts` 只在没有完整 API 配置、没有 Electron 桥、且调用这四条读取路由时使用只读入口。跳过账号/匿名注册及任何凭据读取，`credentials:same-origin`（只允许本站 Preview 认证，不向音乐上游转发）。配置的完整后端、登录、云盘、在线音频等原调用路径不改。
 - `vite.config.ts` 在 Vercel 构建自动启用 `/api/netease`，开发验证可显式设置 `VITE_NETEASE_READONLY_API_BASE`。其他普通静态托管不会误认为存在此函数。无需用户新增 Vercel 环境变量。
 - 未修改 Vercel 控制台的 Production 环境变量或生产部署设置；仅在原分支提供函数与路由代码，由原 Git 集成更新 Preview。
 
@@ -54,6 +54,7 @@
 - `api-ts/lyric-proxy.ts` 上游截止改为 8 秒，为原 12 秒客户端留出返回诊断的时间；单测验证 12 秒前可以得到 504。包括读取响应正文在内共用同一 AbortSignal。
 - 新 `X-Folia-Proxy-Error` 只返回白名单 DNS/TLS/socket 错误码；继续保留代理阶段、上游真实 HTTP 和 Retry-After，不复制原异常文字。
 - `src/services/lyricProxy.ts`、`kugouTransport.ts`、`qqLyricSearchStatus.ts`、`matchingDiagnostics.ts` 传递这些安全字段；浏览器没有 HTTP 时仅记录白名单异常名称，能辨认 TypeError、SecurityError、NotSupportedError、TimeoutError 等类别。未对未知原因进行关键词猜测或接口替换。
+- 最终浏览器复核另确认**同源站点认证丢失**：QQ 已保留站点 Cookie，但酷狗沿用原版 `credentials:omit`，新只读入口最初也为 omit。在受保护同源入口的隔离浏览器中，已认证页面的请求仍被重定向到外域登录，fetch 因 CORS 只报 TypeError/network。测试先失败，然后仅将酷狗 Web 和只读入口改为 same-origin，Electron 仍 omit；验证请求经过站点认证，同时音乐上游拿不到站点 Cookie。代理本已过滤 Cookie/Authorization，新只读处理器也不读取入站凭据。修复的是 Web 部署兼容缺陷；**没有 Vercel 配置/运行时证据证明当前真实失败就是此原因**，不把受控认证网关当成真实 Vercel 响应。
 - 仍保留原主机白名单、协议/凭据/端口校验及跳转防护。没有把任意 URL 开放给 NetEase 新函数，也没有放宽原歌词代理。
 
 **仍未知**：真机酷狗失败是否发生于浏览器策略、连接代理、Vercel 运行时或上游连接。当前无 Vercel runtime 日志权限，且环境网络白名单不允许 QQ、酷狗、Preview 或 Vercel API；不能把本环境 CONNECT 403/HTTP000 记为它们真实拒绝。基线 e3abacb4 的原 Preview 已成功部署，只是元数据证据，无法替代新增函数的实际响应。
@@ -70,11 +71,11 @@
 
 ## 验证结果
 
-- 定向回归：首组 10 文件 131 项通过；最终含新诊断和架构边界的 6 文件 49 项通过。
-- 全量单测：855 文件通过、1 文件跳过；9,711 项通过、2 项跳过，最终一轮 154 秒。
+- 定向回归：初次 10 文件 131 项、QQ/诊断及架构 6 文件 49 项通过；最终同源认证/后端/代理 4 文件 74 项通过。
+- 全量单测：855 文件通过、1 文件跳过；9,711 项通过、2 项跳过，最终一轮 180 秒。
 - `npm run typecheck`：通过。
 - `VERCEL=1 npm run build`（包含 `build:vercel-api`）：通过，验证自动打包同源只读后端配置。
-- Chromium 浏览器已有 P0 与本地双 MP3：5/5 通过。新增服务调用链：4/4 通过（含 3 种酷狗代理失败分段）；由真实前端 + 实际服务器处理器/SDK 对接受控上游，不是在线平台可用性证明。
+- Chromium 浏览器已有 P0 与本地双 MP3：5/5 通过。新增服务调用链：5/5 通过（含 3 种酷狗代理失败分段和同源认证网关）；由真实前端 + 实际服务器处理器/SDK 对接受控上游，不是在线平台可用性证明。
 - 独立代码审查：无 Critical/Important；补测并修正了非 JSON 错误丢失代理事实的 Minor 问题。
 - 构建有原有无效动态 import 警告；单测有原有 jsdom 不支持 CSS `@layer` 警告，未将这些提示隐藏或当作新服务失败。
 
