@@ -1,5 +1,7 @@
 # iPad 本地 MP3：Web / PWA
 
+> 当前交付沿用 Draft PR #3 和原 Preview 来源；下文“Vercel 免费个人使用部署”是首次搭建时的历史记录，**不要据此新建项目、切换 Production 分支或更换域名**。当前状态与集中验收见 [Phase 1 Web 完整性报告](diagnostics/ipad-web-completeness.md)。
+
 目标设备为 iPad 11（A16）。沿用 Folia 的资料库、播放器、封面解析和歌词动画，不需要常开的电脑、音乐服务器或付费 API，音频不上传。
 
 ## 原版限制与本分支

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import type { PaperShaderElement } from '@paper-design/shaders';
 import {
     FlutedGlass,
@@ -17,7 +17,7 @@ import {
     resolveHalftoneInversion,
 } from './nomandShaderAdjustments';
 import { useFirstFrameDrawn } from '../../styleTransition/firstFrame';
-import { PAPER_SHADER_CONTEXT_ATTRIBUTES } from '../../../../utils/paperShaderContext';
+import { createPaperShaderReleaseRef, PAPER_SHADER_CONTEXT_ATTRIBUTES } from '../../../../utils/paperShaderContext';
 
 // src/components/visualizer/backgrounds/nomand/NomandBackgroundLayer.tsx
 // Renders the selected Paper image shader with the current theme palette.
@@ -73,6 +73,7 @@ const NomandBackgroundLayer: React.FC<NomandBackgroundLayerProps> = ({
     const tuning = { ...DEFAULT_NOMAND_BACKGROUND_TUNING, ...tuningOverride };
     const sourceUrl = resolveNomandSourceUrl(coverUrl, monetBackgroundImage, tuning);
     const shaderRef = useRef<PaperShaderElement | null>(null);
+    const releasingShaderRef = useMemo(() => createPaperShaderReleaseRef(shaderRef), []);
     useShaderDrawn(shaderRef, sourceUrl ? `${sourceUrl}:${tuning.effect}` : null);
 
     if (!sourceUrl) {
@@ -89,7 +90,7 @@ const NomandBackgroundLayer: React.FC<NomandBackgroundLayerProps> = ({
         const commonProps = {
             width: '100%' as const,
             height: '100%' as const,
-            ref: shaderRef,
+            ref: releasingShaderRef,
             image: sourceUrl,
             fit: 'cover' as const,
             minPixelRatio: 1,

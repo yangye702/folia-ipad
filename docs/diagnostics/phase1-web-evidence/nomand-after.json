@@ -1,0 +1,47 @@
+[
+  {
+    "stage": "attached-0",
+    "connected": true,
+    "lost": false
+  },
+  {
+    "stage": "replaced-0",
+    "connected": false,
+    "lost": true
+  },
+  {
+    "stage": "released-0",
+    "connected": false,
+    "lost": true
+  },
+  {
+    "stage": "attached-1",
+    "connected": true,
+    "lost": false
+  },
+  {
+    "stage": "replaced-1",
+    "connected": false,
+    "lost": true
+  },
+  {
+    "stage": "released-1",
+    "connected": false,
+    "lost": true
+  },
+  {
+    "stage": "attached-final",
+    "connected": true,
+    "lost": false
+  },
+  {
+    "stage": "unmounted",
+    "connected": false,
+    "lost": true
+  },
+  {
+    "stage": "released-final",
+    "connected": false,
+    "lost": true
+  }
+]

@@ -1,0 +1,881 @@
+{
+  "kind": "clean Vite server; isolated Chromium; not iPad acceptance",
+  "stats": {
+    "startTime": "2026-10-22T07:03:20.768Z",
+    "duration": 6336229.116,
+    "expected": 974,
+    "skipped": 2,
+    "unexpected": 105,
+    "flaky": 0
+  },
+  "failedFiles": {
+    "test/ui/app.screenshot.spec.ts": 3,
+    "test/ui/bravaisCollectionFilter.spec.ts": 1,
+    "test/ui/bravaisSettingsGroup.spec.ts": 3,
+    "test/ui/collectionOpenTransition.spec.ts": 1,
+    "test/ui/commandPalette.spec.ts": 2,
+    "test/ui/commandPaletteSizing.spec.ts": 1,
+    "test/ui/dioramaSettings.spec.ts": 1,
+    "test/ui/helpCommunity.spec.ts": 5,
+    "test/ui/libraryNavigation.spec.ts": 1,
+    "test/ui/localPureMusicMark.spec.ts": 4,
+    "test/ui/playingSongLocator.spec.ts": 1,
+    "test/ui/wallHandoff.spec.ts": 3,
+    "test/component/accountBehavior.spec.ts": 35,
+    "test/component/artistBehavior.spec.ts": 2,
+    "test/component/bravaisChrome.spec.ts": 2,
+    "test/component/bravaisPerf.spec.ts": 1,
+    "test/component/collectionGrid.spec.ts": 2,
+    "test/component/exploreSurface.spec.ts": 1,
+    "test/component/foliumSelectField.spec.ts": 1,
+    "test/component/gridEntrancePerf.spec.ts": 2,
+    "test/component/lattice.spec.ts": 1,
+    "test/component/libraryBehavior.spec.ts": 13,
+    "test/component/pixiVisualizerResize.spec.ts": 1,
+    "test/component/playerLayout.spec.ts": 13,
+    "test/component/standInHandover.spec.ts": 4,
+    "test/component/wallReflowMotion.spec.ts": 1
+  },
+  "failures": [
+    {
+      "file": "test/ui/app.screenshot.spec.ts",
+      "line": 20,
+      "title": "captures the Netease playlist home view",
+      "project": "e2e",
+      "status": "unexpected",
+      "error": "Error: expect(page).toHaveScreenshot(expected) failed\n\n  2916 pixels (ratio 0.01 of all image pixels) are different.\n\n  Snapshot: netease-home.png\n\nCall log:\n  - Expect \"toHaveScreenshot(netease-home.png)\" with timeout 15000ms\n    - verifying given screenshot expectation\n  - taking page screenshot\n    - disabled all CSS animations\n  - waiting for fonts to load...\n  - fonts loaded\n  - 2916 pixels (ratio 0.01 of all image pixels) are different.\n  -"
+    },
+    {
+      "file": "test/ui/app.screenshot.spec.ts",
+      "line": 35,
+      "title": "captures the Navidrome library view with mocked Subsonic responses",
+      "project": "e2e",
+      "status": "unexpected",
+      "error": "Error: expect(page).toHaveScreenshot(expected) failed\n\n  3218 pixels (ratio 0.01 of all image pixels) are different.\n\n  Snapshot: navidrome-home.png\n\nCall log:\n  - Expect \"toHaveScreenshot(navidrome-home.png)\" with timeout 15000ms\n    - verifying given screenshot expectation\n  - taking page screenshot\n    - disabled all CSS animations\n  - waiting for fonts to load...\n  - fonts loaded\n  - 3219 pixels (ratio 0.01 of all image pixels) are different."
+    },
+    {
+      "file": "test/ui/app.screenshot.spec.ts",
+      "line": 55,
+      "title": "captures the local library after importing a mocked folder",
+      "project": "e2e",
+      "status": "unexpected",
+      "error": "Error: expect(page).toHaveScreenshot(expected) failed\n\n  3752 pixels (ratio 0.01 of all image pixels) are different.\n\n  Snapshot: local-library.png\n\nCall log:\n  - Expect \"toHaveScreenshot(local-library.png)\" with timeout 15000ms\n    - verifying given screenshot expectation\n  - taking page screenshot\n    - disabled all CSS animations\n  - waiting for fonts to load...\n  - fonts loaded\n  - 3791 pixels (ratio 0.01 of all image pixels) are different.\n "
+    },
+    {
+      "file": "test/ui/bravaisCollectionFilter.spec.ts",
+      "line": 84,
+      "title": "the command palette filter still acts on the same query, with --play",
+      "project": "e2e",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toHaveValue(expected) failed\n\nLocator: locator('[data-library-stage=\"bravais\"]').locator('[data-bravais-seam] [data-bravais-filter-input]')\nExpected: \"train\"\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toHaveValue\" locator('[data-library-stage=\"bravais\"]').locator('[data-bravais-seam] [data-bravais-filter-input]') with timeout 15000ms\n  - waiting for locator('[data-library-stage=\"bravais\"]').locator("
+    },
+    {
+      "file": "test/ui/bravaisSettingsGroup.spec.ts",
+      "line": 36,
+      "title": "the Bravais group holds the transparency, the windows per block and the stack edges",
+      "project": "e2e",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: locator('[data-bravais-settings]')\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" locator('[data-bravais-settings]') with timeout 15000ms\n  - waiting for locator('[data-bravais-settings]')\n"
+    },
+    {
+      "file": "test/ui/bravaisSettingsGroup.spec.ts",
+      "line": 77,
+      "title": "the Bravais group stays out of the grid interface and appears once bravais is chosen",
+      "project": "e2e",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toHaveAttribute(expected) failed\n\nLocator: locator('[data-library-suite-option=\"grid\"]')\nExpected: \"true\"\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toHaveAttribute\" locator('[data-library-suite-option=\"grid\"]') with timeout 15000ms\n  - waiting for locator('[data-library-suite-option=\"grid\"]')\n"
+    },
+    {
+      "file": "test/ui/bravaisSettingsGroup.spec.ts",
+      "line": 90,
+      "title": "the Bravais group switches the info strip material and the backdrop",
+      "project": "e2e",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: locator('[data-bravais-settings]')\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" locator('[data-bravais-settings]') with timeout 15000ms\n  - waiting for locator('[data-bravais-settings]')\n"
+    },
+    {
+      "file": "test/ui/collectionOpenTransition.spec.ts",
+      "line": 134,
+      "title": "back to the home surface: the card flies back onto the home card, which is shown again when it has landed",
+      "project": "e2e",
+      "status": "unexpected",
+      "error": "Error: expect(received).toBeGreaterThan(expected)\n\nExpected: > 10\nReceived:   8"
+    },
+    {
+      "file": "test/ui/commandPalette.spec.ts",
+      "line": 217,
+      "title": "queue song selection closes the palette by default",
+      "project": "e2e",
+      "status": "unexpected",
+      "error": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: 2\nReceived: 1\n\nCall Log:\n- Timeout 15000ms exceeded while waiting on the predicate"
+    },
+    {
+      "file": "test/ui/commandPalette.spec.ts",
+      "line": 228,
+      "title": "queue keep-open preserves filtering for mouse and keyboard song changes",
+      "project": "e2e",
+      "status": "unexpected",
+      "error": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: 2\nReceived: 1\n\nCall Log:\n- Timeout 15000ms exceeded while waiting on the predicate"
+    },
+    {
+      "file": "test/ui/commandPaletteSizing.spec.ts",
+      "line": 233,
+      "title": "固定命令行的有无不影响面板与 body 的尺寸",
+      "project": "e2e",
+      "status": "unexpected",
+      "error": "Test timeout of 90000ms exceeded."
+    },
+    {
+      "file": "test/ui/dioramaSettings.spec.ts",
+      "line": 11,
+      "title": "switches between clouds and corridor mode and keeps particle controls interactive",
+      "project": "e2e",
+      "status": "unexpected",
+      "error": "Test timeout of 90000ms exceeded."
+    },
+    {
+      "file": "test/ui/helpCommunity.spec.ts",
+      "line": 50,
+      "title": "one community capsule replaces the separate Discord and QQ buttons",
+      "project": "e2e",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByRole('button', { name: 'Join the community', exact: true })\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByRole('button', { name: 'Join the community', exact: true }) with timeout 15000ms\n  - waiting for getByRole('button', { name: 'Join the community', exact: true })\n"
+    },
+    {
+      "file": "test/ui/helpCommunity.spec.ts",
+      "line": 64,
+      "title": "the QQ option copies the group number and says so",
+      "project": "e2e",
+      "status": "unexpected",
+      "error": "Test timeout of 90000ms exceeded."
+    },
+    {
+      "file": "test/ui/helpCommunity.spec.ts",
+      "line": 78,
+      "title": "the Discord option opens the invite and closes the menu",
+      "project": "e2e",
+      "status": "unexpected",
+      "error": "Test timeout of 90000ms exceeded."
+    },
+    {
+      "file": "test/ui/helpCommunity.spec.ts",
+      "line": 88,
+      "title": "Escape closes only the menu, and a click elsewhere closes it too",
+      "project": "e2e",
+      "status": "unexpected",
+      "error": "Test timeout of 90000ms exceeded."
+    },
+    {
+      "file": "test/ui/helpCommunity.spec.ts",
+      "line": 106,
+      "title": "copying falls back to execCommand when the clipboard API is refused",
+      "project": "e2e",
+      "status": "unexpected",
+      "error": "Test timeout of 90000ms exceeded."
+    },
+    {
+      "file": "test/ui/libraryNavigation.spec.ts",
+      "line": 369,
+      "title": "[grid] browser back from a nested album plays the reverse transition",
+      "project": "e2e",
+      "status": "unexpected",
+      "error": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: true\nReceived: false\n\nCall Log:\n- Timeout 15000ms exceeded while waiting on the predicate"
+    },
+    {
+      "file": "test/ui/localPureMusicMark.spec.ts",
+      "line": 191,
+      "title": "the player lyric match window marks the playing song as instrumental in place and unmarks it again",
+      "project": "e2e",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByTestId('unified-panel-surface').getByTitle('Local', { exact: true })\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByTestId('unified-panel-surface').getByTitle('Local', { exact: true }) with timeout 15000ms\n  - waiting for getByTestId('unified-panel-surface').getByTitle('Local', { exact: true })\n"
+    },
+    {
+      "file": "test/ui/localPureMusicMark.spec.ts",
+      "line": 236,
+      "title": "a marked song is not auto-matched when replayed, and the mark survives a reload",
+      "project": "e2e",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByTestId('unified-panel-surface').getByTitle('Local / Instrumental', { exact: true })\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByTestId('unified-panel-surface').getByTitle('Local / Instrumental', { exact: true }) with timeout 15000ms\n  - waiting for getByTestId('unified-panel-surface').getByTitle('Local / Instrumental', { exact: t"
+    },
+    {
+      "file": "test/ui/localPureMusicMark.spec.ts",
+      "line": 268,
+      "title": "the library match dialog toggles the mark and the playing song follows in place",
+      "project": "e2e",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByTestId('unified-panel-surface').getByTitle('Local', { exact: true })\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByTestId('unified-panel-surface').getByTitle('Local', { exact: true }) with timeout 15000ms\n  - waiting for getByTestId('unified-panel-surface').getByTitle('Local', { exact: true })\n"
+    },
+    {
+      "file": "test/ui/localPureMusicMark.spec.ts",
+      "line": 340,
+      "title": "saving a provider result that is pure music in the player window marks the song too",
+      "project": "e2e",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByTestId('unified-panel-surface').getByTitle('Local / Instrumental', { exact: true })\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByTestId('unified-panel-surface').getByTitle('Local / Instrumental', { exact: true }) with timeout 15000ms\n  - waiting for getByTestId('unified-panel-surface').getByTitle('Local / Instrumental', { exact: t"
+    },
+    {
+      "file": "test/ui/playingSongLocator.spec.ts",
+      "line": 205,
+      "title": "\"playing from\" on a Navidrome album whose read failed says the list is not whole, until a read succeeds",
+      "project": "e2e",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toHaveCount(expected) failed\n\nLocator:  locator('[data-folia-grid-item-id]')\nExpected: 1\nReceived: 0\nTimeout:  15000ms\n\nCall log:\n  - Expect \"toHaveCount\" locator('[data-folia-grid-item-id]') with timeout 15000ms\n  - waiting for locator('[data-folia-grid-item-id]')\n    33 × locator resolved to 0 elements\n       - unexpected value \"0\"\n"
+    },
+    {
+      "file": "test/ui/wallHandoff.spec.ts",
+      "line": 132,
+      "title": "[bravais] entering and leaving Lattice flips one wall into the other, with one tools button throughout",
+      "project": "e2e",
+      "status": "unexpected",
+      "error": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: true\nReceived: false"
+    },
+    {
+      "file": "test/ui/wallHandoff.spec.ts",
+      "line": 176,
+      "title": "[bravais] the tools panel goes to Lattice through the host entry: the same flip handoff and the same tools button",
+      "project": "e2e",
+      "status": "unexpected",
+      "error": "Error: expect(received).toBeLessThan(expected)\n\nExpected: < 0.5\nReceived:   52"
+    },
+    {
+      "file": "test/ui/wallHandoff.spec.ts",
+      "line": 256,
+      "title": "[bravais] a solid wall never brings the visualizer up during a handoff",
+      "project": "e2e",
+      "status": "unexpected",
+      "error": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: true\nReceived: false"
+    },
+    {
+      "file": "test/component/accountBehavior.spec.ts",
+      "line": 346,
+      "title": "[grid] switching to a signed-in provider asks first; cancel keeps it, confirm switches and cleans up once",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByTestId('online-provider-switcher').getByRole('menu')\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByTestId('online-provider-switcher').getByRole('menu') with timeout 15000ms\n  - waiting for getByTestId('online-provider-switcher').getByRole('menu')\n"
+    },
+    {
+      "file": "test/component/accountBehavior.spec.ts",
+      "line": 381,
+      "title": "[grid] a provider without accounts still asks before switching",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByTestId('online-provider-switcher').getByRole('menu')\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByTestId('online-provider-switcher').getByRole('menu') with timeout 15000ms\n  - waiting for getByTestId('online-provider-switcher').getByRole('menu')\n"
+    },
+    {
+      "file": "test/component/accountBehavior.spec.ts",
+      "line": 396,
+      "title": "[grid] the signed-out home picker follows the same rules as the switcher",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByRole('group', { name: 'Connect platform accounts' })\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByRole('group', { name: 'Connect platform accounts' }) with timeout 15000ms\n  - waiting for getByRole('group', { name: 'Connect platform accounts' })\n"
+    },
+    {
+      "file": "test/component/accountBehavior.spec.ts",
+      "line": 418,
+      "title": "[grid] signing in to another provider opens the login first, then asks to activate; declining keeps the account",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByTestId('online-provider-switcher').getByRole('menu')\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByTestId('online-provider-switcher').getByRole('menu') with timeout 15000ms\n  - waiting for getByTestId('online-provider-switcher').getByRole('menu')\n"
+    },
+    {
+      "file": "test/component/accountBehavior.spec.ts",
+      "line": 457,
+      "title": "[grid] accepting the activation switches and cleans up exactly once",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByTestId('online-provider-switcher').getByRole('menu')\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByTestId('online-provider-switcher').getByRole('menu') with timeout 15000ms\n  - waiting for getByTestId('online-provider-switcher').getByRole('menu')\n"
+    },
+    {
+      "file": "test/component/accountBehavior.spec.ts",
+      "line": 469,
+      "title": "[grid] signing in to the current provider needs no confirmation",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByTestId('online-provider-switcher').getByRole('menu')\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByTestId('online-provider-switcher').getByRole('menu') with timeout 15000ms\n  - waiting for getByTestId('online-provider-switcher').getByRole('menu')\n"
+    },
+    {
+      "file": "test/component/accountBehavior.spec.ts",
+      "line": 483,
+      "title": "[grid] a failed account refresh after confirmation reopens the login with the failure and diagnostics",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByTestId('online-provider-switcher').getByRole('menu')\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByTestId('online-provider-switcher').getByRole('menu') with timeout 15000ms\n  - waiting for getByTestId('online-provider-switcher').getByRole('menu')\n"
+    },
+    {
+      "file": "test/component/accountBehavior.spec.ts",
+      "line": 498,
+      "title": "[grid] several sign-in methods: no QR before a choice, one live session across choices",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByTestId('online-provider-switcher').getByRole('menu')\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByTestId('online-provider-switcher').getByRole('menu') with timeout 15000ms\n  - waiting for getByTestId('online-provider-switcher').getByRole('menu')\n"
+    },
+    {
+      "file": "test/component/accountBehavior.spec.ts",
+      "line": 546,
+      "title": "[grid] the TTL expires and cancels the code; an unscanned expiry is not a failure",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByTestId('online-provider-switcher').getByRole('menu')\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByTestId('online-provider-switcher').getByRole('menu') with timeout 15000ms\n  - waiting for getByTestId('online-provider-switcher').getByRole('menu')\n"
+    },
+    {
+      "file": "test/component/accountBehavior.spec.ts",
+      "line": 568,
+      "title": "[grid] expiring after a scan counts as a failure and offers diagnostics",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByTestId('online-provider-switcher').getByRole('menu')\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByTestId('online-provider-switcher').getByRole('menu') with timeout 15000ms\n  - waiting for getByTestId('online-provider-switcher').getByRole('menu')\n"
+    },
+    {
+      "file": "test/component/accountBehavior.spec.ts",
+      "line": 601,
+      "title": "[grid] a login canceled on the phone says so and holds the retry until the backend cooldown ends",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByTestId('online-provider-switcher').getByRole('menu')\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByTestId('online-provider-switcher').getByRole('menu') with timeout 15000ms\n  - waiting for getByTestId('online-provider-switcher').getByRole('menu')\n"
+    },
+    {
+      "file": "test/component/accountBehavior.spec.ts",
+      "line": 625,
+      "title": "[grid] a failed QQ sign-in offers retry and diagnostics like other providers",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByTestId('online-provider-switcher').getByRole('menu')\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByTestId('online-provider-switcher').getByRole('menu') with timeout 15000ms\n  - waiting for getByTestId('online-provider-switcher').getByRole('menu')\n"
+    },
+    {
+      "file": "test/component/accountBehavior.spec.ts",
+      "line": 663,
+      "title": "[grid] a failed sign-in runs the automatic check once and shows where the connection broke",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByTestId('online-provider-switcher').getByRole('menu')\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByTestId('online-provider-switcher').getByRole('menu') with timeout 15000ms\n  - waiting for getByTestId('online-provider-switcher').getByRole('menu')\n"
+    },
+    {
+      "file": "test/component/accountBehavior.spec.ts",
+      "line": 699,
+      "title": "[grid] no automatic check for a login canceled on the phone, and a check that fails says so",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByTestId('online-provider-switcher').getByRole('menu')\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByTestId('online-provider-switcher').getByRole('menu') with timeout 15000ms\n  - waiting for getByTestId('online-provider-switcher').getByRole('menu')\n"
+    },
+    {
+      "file": "test/component/accountBehavior.spec.ts",
+      "line": 723,
+      "title": "[grid] closing the login cancels the session and stops polling",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByTestId('online-provider-switcher').getByRole('menu')\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByTestId('online-provider-switcher').getByRole('menu') with timeout 15000ms\n  - waiting for getByTestId('online-provider-switcher').getByRole('menu')\n"
+    },
+    {
+      "file": "test/component/accountBehavior.spec.ts",
+      "line": 742,
+      "title": "[grid] a backend failure shows the cause and restart instead of retry; a successful restart asks for a code",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByTestId('online-provider-switcher').getByRole('menu')\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByTestId('online-provider-switcher').getByRole('menu') with timeout 15000ms\n  - waiting for getByTestId('online-provider-switcher').getByRole('menu')\n"
+    },
+    {
+      "file": "test/component/accountBehavior.spec.ts",
+      "line": 795,
+      "title": "[grid] only the current signed-in provider offers logout, and it runs that provider's injected logout",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByTestId('online-provider-switcher').getByRole('menu')\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByTestId('online-provider-switcher').getByRole('menu') with timeout 15000ms\n  - waiting for getByTestId('online-provider-switcher').getByRole('menu')\n"
+    },
+    {
+      "file": "test/component/accountBehavior.spec.ts",
+      "line": 346,
+      "title": "[tui] switching to a signed-in provider asks first; cancel keeps it, confirm switches and cleans up once",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(received).toEqual(expected) // deep equality\n\n- Expected  - 6\n+ Received  + 1\n\n- Array [\n-   ObjectContaining {\n-     \"ok\": true,\n-     \"providerId\": \"acct-beta\",\n-   },\n- ]\n+ Array []\n\nCall Log:\n- Timeout 15000ms exceeded while waiting on the predicate"
+    },
+    {
+      "file": "test/component/accountBehavior.spec.ts",
+      "line": 418,
+      "title": "[tui] signing in to another provider opens the login first, then asks to activate; declining keeps the account",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toHaveAccessibleName(expected) failed\n\nLocator:  getByRole('dialog')\nExpected: \"Scan with Netease App\"\nReceived: \"Log in to Gamma\"\nTimeout:  15000ms\n\nCall log:\n  - Expect \"toHaveAccessibleName\" getByRole('dialog') with timeout 15000ms\n  - waiting for getByRole('dialog')\n    32 × locator resolved to <div role=\"dialog\" tabindex=\"-1\" aria-modal=\"true\" data-ponder=\"sign-in\" aria-labelledby=\"_r_3_\" class=\"st-window relative flex"
+    },
+    {
+      "file": "test/component/accountBehavior.spec.ts",
+      "line": 457,
+      "title": "[tui] accepting the activation switches and cleans up exactly once",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(received).toEqual(expected) // deep equality\n\n- Expected  - 3\n+ Received  + 1\n\n- Array [\n-   \"acct-gamma\",\n- ]\n+ Array []"
+    },
+    {
+      "file": "test/component/accountBehavior.spec.ts",
+      "line": 483,
+      "title": "[tui] a failed account refresh after confirmation reopens the login with the failure and diagnostics",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(received).toEqual(expected) // deep equality\n\n- Expected  - 6\n+ Received  + 1\n\n- Array [\n-   ObjectContaining {\n-     \"ok\": false,\n-     \"providerId\": \"acct-gamma\",\n-   },\n- ]\n+ Array []\n\nCall Log:\n- Timeout 15000ms exceeded while waiting on the predicate"
+    },
+    {
+      "file": "test/component/accountBehavior.spec.ts",
+      "line": 498,
+      "title": "[tui] several sign-in methods: no QR before a choice, one live session across choices",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toContainText(expected) failed\n\nLocator: getByRole('dialog').locator('[data-tui-login-method][data-focused=\"true\"]')\nExpected substring: \"QQ scan\"\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toContainText\" getByRole('dialog').locator('[data-tui-login-method][data-focused=\"true\"]') with timeout 15000ms\n  - waiting for getByRole('dialog').locator('[data-tui-login-method][data-focused=\"true\"]')\n"
+    },
+    {
+      "file": "test/component/accountBehavior.spec.ts",
+      "line": 546,
+      "title": "[tui] the TTL expires and cancels the code; an unscanned expiry is not a failure",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByRole('dialog').getByText('Please scan the QR code', { exact: true })\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByRole('dialog').getByText('Please scan the QR code', { exact: true }) with timeout 15000ms\n  - waiting for getByRole('dialog').getByText('Please scan the QR code', { exact: true })\n"
+    },
+    {
+      "file": "test/component/accountBehavior.spec.ts",
+      "line": 568,
+      "title": "[tui] expiring after a scan counts as a failure and offers diagnostics",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByRole('dialog').getByText('QR Code expired. Refresh to try again.', { exact: true })\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByRole('dialog').getByText('QR Code expired. Refresh to try again.', { exact: true }) with timeout 15000ms\n  - waiting for getByRole('dialog').getByText('QR Code expired. Refresh to try again.', { exact: t"
+    },
+    {
+      "file": "test/component/accountBehavior.spec.ts",
+      "line": 601,
+      "title": "[tui] a login canceled on the phone says so and holds the retry until the backend cooldown ends",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByRole('dialog').getByText(/^Login was canceled on your phone\\. You can get a new QR code in \\d+s\\.$/)\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByRole('dialog').getByText(/^Login was canceled on your phone\\. You can get a new QR code in \\d+s\\.$/) with timeout 15000ms\n  - waiting for getByRole('dialog').getByText(/^Login was cancel"
+    },
+    {
+      "file": "test/component/accountBehavior.spec.ts",
+      "line": 625,
+      "title": "[tui] a failed QQ sign-in offers retry and diagnostics like other providers",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByRole('dialog').getByText('Login Error', { exact: true })\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByRole('dialog').getByText('Login Error', { exact: true }) with timeout 15000ms\n  - waiting for getByRole('dialog').getByText('Login Error', { exact: true })\n"
+    },
+    {
+      "file": "test/component/accountBehavior.spec.ts",
+      "line": 663,
+      "title": "[tui] a failed sign-in runs the automatic check once and shows where the connection broke",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByRole('dialog').getByText('Login Error', { exact: true })\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByRole('dialog').getByText('Login Error', { exact: true }) with timeout 15000ms\n  - waiting for getByRole('dialog').getByText('Login Error', { exact: true })\n"
+    },
+    {
+      "file": "test/component/accountBehavior.spec.ts",
+      "line": 699,
+      "title": "[tui] no automatic check for a login canceled on the phone, and a check that fails says so",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByRole('dialog').getByText(/^Login was canceled on your phone\\./)\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByRole('dialog').getByText(/^Login was canceled on your phone\\./) with timeout 15000ms\n  - waiting for getByRole('dialog').getByText(/^Login was canceled on your phone\\./)\n"
+    },
+    {
+      "file": "test/component/accountBehavior.spec.ts",
+      "line": 723,
+      "title": "[tui] closing the login cancels the session and stops polling",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByRole('dialog').getByText('Please scan the QR code', { exact: true })\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByRole('dialog').getByText('Please scan the QR code', { exact: true }) with timeout 15000ms\n  - waiting for getByRole('dialog').getByText('Please scan the QR code', { exact: true })\n"
+    },
+    {
+      "file": "test/component/accountBehavior.spec.ts",
+      "line": 742,
+      "title": "[tui] a backend failure shows the cause and restart instead of retry; a successful restart asks for a code",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByRole('dialog').getByText('Please scan the QR code', { exact: true })\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByRole('dialog').getByText('Please scan the QR code', { exact: true }) with timeout 15000ms\n  - waiting for getByRole('dialog').getByText('Please scan the QR code', { exact: true })\n"
+    },
+    {
+      "file": "test/component/accountBehavior.spec.ts",
+      "line": 822,
+      "title": "[grid-only] a new sign-in stops the previous session first, keyed to the provider that started it",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByTestId('online-provider-switcher').getByRole('menu')\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByTestId('online-provider-switcher').getByRole('menu') with timeout 15000ms\n  - waiting for getByTestId('online-provider-switcher').getByRole('menu')\n"
+    },
+    {
+      "file": "test/component/accountBehavior.spec.ts",
+      "line": 853,
+      "title": "[switch] with the TUI selected, its own account surface (not the grid fallback) answers a sign-in and a switch request",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByRole('dialog')\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByRole('dialog') with timeout 15000ms\n  - waiting for getByRole('dialog')\n"
+    },
+    {
+      "file": "test/component/accountBehavior.spec.ts",
+      "line": 889,
+      "title": "[switch] the QQ-style two-step sign-in works in the TUI with keys only",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toHaveAttribute(expected) failed\n\nLocator: getByRole('dialog')\nExpected: \"acct-quill\"\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toHaveAttribute\" getByRole('dialog') with timeout 15000ms\n  - waiting for getByRole('dialog')\n"
+    },
+    {
+      "file": "test/component/accountBehavior.spec.ts",
+      "line": 906,
+      "title": "[switch] a sign-in started on the grid keeps its session in the TUI and completes there",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByTestId('online-provider-switcher').getByRole('menu')\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByTestId('online-provider-switcher').getByRole('menu') with timeout 15000ms\n  - waiting for getByTestId('online-provider-switcher').getByRole('menu')\n"
+    },
+    {
+      "file": "test/component/accountBehavior.spec.ts",
+      "line": 938,
+      "title": "[switch] a pending switch asked in one suite can be answered in the other",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByTestId('online-provider-switcher').getByRole('menu')\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByTestId('online-provider-switcher').getByRole('menu') with timeout 15000ms\n  - waiting for getByTestId('online-provider-switcher').getByRole('menu')\n"
+    },
+    {
+      "file": "test/component/artistBehavior.spec.ts",
+      "line": 491,
+      "title": "a local album opens the album entity with its songs",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: true\nReceived: false"
+    },
+    {
+      "file": "test/component/artistBehavior.spec.ts",
+      "line": 510,
+      "title": "the filter lives in the browse session: an album opened and closed comes back filtered",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: true\nReceived: false"
+    },
+    {
+      "file": "test/component/bravaisChrome.spec.ts",
+      "line": 137,
+      "title": "the tools button opens its panel, the slide opens the command palette, Escape only closes the panel",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByRole('menu', { name: 'Wall tools', exact: true }).getByRole('menuitem', { name: 'Locate the playing song', exact: true })\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByRole('menu', { name: 'Wall tools', exact: true }).getByRole('menuitem', { name: 'Locate the playing song', exact: true }) with timeout 15000ms\n  - waiting for getByR"
+    },
+    {
+      "file": "test/component/bravaisChrome.spec.ts",
+      "line": 204,
+      "title": "the tools panel groups one-shot actions on top, the volume below them and the wall appearance last",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 1\n\n@@ -1,7 +1,7 @@\n  Array [\n-   \"quick:locate-playing,shuffle-queue,generate-theme,queue,open-lattice,open-player\",\n+   \"quick:shuffle-queue,generate-theme,queue,open-lattice,open-player\",\n    \"slider\",\n    \"heading\",\n    \"Wall\",\n    \"Poster\",\n    \"lights+help\","
+    },
+    {
+      "file": "test/component/bravaisPerf.spec.ts",
+      "line": 50,
+      "title": "the first screen and a whole-wall flip cost the same for 500 and 5000 tracks",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(received).toBeLessThan(expected)\n\nExpected: < 400\nReceived:   648"
+    },
+    {
+      "file": "test/component/collectionGrid.spec.ts",
+      "line": 48,
+      "title": "a collection stays where the listener scrolled to when further tracks arrive",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(received).not.toEqual(expected) // deep equality\n\nExpected: not [0, -392]\n"
+    },
+    {
+      "file": "test/component/collectionGrid.spec.ts",
+      "line": 326,
+      "title": "a list that was read to its end is still whole after reading it anew has failed",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: \"The playing song is not in this list\"\nReceived: \"This list is not fully loaded yet, so the song cannot be located\"\n\nCall Log:\n- Timeout 15000ms exceeded while waiting on the predicate"
+    },
+    {
+      "file": "test/component/exploreSurface.spec.ts",
+      "line": 443,
+      "title": "explore tab opens with the songs last played in the app, newest first",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: 808\nReceived: 404\n\nCall Log:\n- Timeout 15000ms exceeded while waiting on the predicate"
+    },
+    {
+      "file": "test/component/foliumSelectField.spec.ts",
+      "line": 36,
+      "title": "a mouse pick lands: pressing an option moves focus onto it without closing the menu first",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeFocused() failed\n\nLocator:  getByRole('listbox', { name: 'Codec' }).getByRole('option', { name: 'H.264', exact: true })\nExpected: focused\nReceived: inactive\nTimeout:  15000ms\n\nCall log:\n  - Expect \"toBeFocused\" getByRole('listbox', { name: 'Codec' }).getByRole('option', { name: 'H.264', exact: true }) with timeout 15000ms\n  - waiting for getByRole('listbox', { name: 'Codec' }).getByRole('option', { name: 'H.264', exact:"
+    },
+    {
+      "file": "test/component/gridEntrancePerf.spec.ts",
+      "line": 414,
+      "title": "the cards keep flying in on the screen while the main thread is held",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(received).toBeGreaterThan(expected)\n\nExpected: > 2\nReceived:   0"
+    },
+    {
+      "file": "test/component/gridEntrancePerf.spec.ts",
+      "line": 460,
+      "title": "a page opened for a flying cover puts a stand-in on its centred card, and takes it away",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(received).not.toBeNull()\n\nReceived: null"
+    },
+    {
+      "file": "test/component/lattice.spec.ts",
+      "line": 156,
+      "title": "touch swipe coasts and a secondary pointer cannot replace the gesture",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(received).toBeGreaterThan(expected)\n\nExpected: > 611\nReceived:   609"
+    },
+    {
+      "file": "test/component/libraryBehavior.spec.ts",
+      "line": 264,
+      "title": "a private playlist says so instead of showing an empty grid; an empty one shows no error",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByText('This playlist is not public, so the current music source cannot read its contents')\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByText('This playlist is not public, so the current music source cannot read its contents') with timeout 15000ms\n  - waiting for getByText('This playlist is not public, so the current music source ca"
+    },
+    {
+      "file": "test/component/libraryBehavior.spec.ts",
+      "line": 264,
+      "title": "a private playlist says so instead of showing an empty grid; an empty one shows no error",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByText('This playlist is not public, so the current music source cannot read its contents')\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByText('This playlist is not public, so the current music source cannot read its contents') with timeout 15000ms\n  - waiting for getByText('This playlist is not public, so the current music source ca"
+    },
+    {
+      "file": "test/component/libraryBehavior.spec.ts",
+      "line": 264,
+      "title": "a private playlist says so instead of showing an empty grid; an empty one shows no error",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByText('This playlist is not public, so the current music source cannot read its contents')\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByText('This playlist is not public, so the current music source cannot read its contents') with timeout 15000ms\n  - waiting for getByText('This playlist is not public, so the current music source ca"
+    },
+    {
+      "file": "test/component/libraryBehavior.spec.ts",
+      "line": 362,
+      "title": "queueing the focused song routes online, local and Navidrome songs to their own enqueue path",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: locator('[data-bravais-list=\"null\"]')\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" locator('[data-bravais-list=\"null\"]') with timeout 15000ms\n  - waiting for locator('[data-bravais-list=\"null\"]')\n"
+    },
+    {
+      "file": "test/component/libraryBehavior.spec.ts",
+      "line": 528,
+      "title": "removing a song from a local playlist persists it and refreshes the library",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: locator('[data-bravais-list=\"null\"]')\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" locator('[data-bravais-list=\"null\"]') with timeout 15000ms\n  - waiting for locator('[data-bravais-list=\"null\"]')\n"
+    },
+    {
+      "file": "test/component/libraryBehavior.spec.ts",
+      "line": 606,
+      "title": "a background page arriving right after the removal does not bring the removed song back",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: locator('[data-bravais-list=\"null\"]')\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" locator('[data-bravais-list=\"null\"]') with timeout 15000ms\n  - waiting for locator('[data-bravais-list=\"null\"]')\n"
+    },
+    {
+      "file": "test/component/libraryBehavior.spec.ts",
+      "line": 638,
+      "title": "a slow removal with a background page landing meanwhile still ends without the removed song",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: locator('[data-bravais-list=\"null\"]')\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" locator('[data-bravais-list=\"null\"]') with timeout 15000ms\n  - waiting for locator('[data-bravais-list=\"null\"]')\n"
+    },
+    {
+      "file": "test/component/libraryBehavior.spec.ts",
+      "line": 1083,
+      "title": "an online track opens its provider album and artist, and going back restores the focus",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toHaveCount(expected) failed\n\nLocator:  locator('.bravais-tile[data-bravais-focused]')\nExpected: 1\nReceived: 0\nTimeout:  15000ms\n\nCall log:\n  - Expect \"toHaveCount\" locator('.bravais-tile[data-bravais-focused]') with timeout 15000ms\n  - waiting for locator('.bravais-tile[data-bravais-focused]')\n    33 × locator resolved to 0 elements\n       - unexpected value \"0\"\n"
+    },
+    {
+      "file": "test/component/libraryBehavior.spec.ts",
+      "line": 1397,
+      "title": "[grid] browser back from a nested album plays the reverse transition",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: 1\nReceived: 0\n\nCall Log:\n- Timeout 15000ms exceeded while waiting on the predicate"
+    },
+    {
+      "file": "test/component/libraryBehavior.spec.ts",
+      "line": 1409,
+      "title": "[grid] Escape from a nested album still plays it",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: 1\nReceived: 0\n\nCall Log:\n- Timeout 15000ms exceeded while waiting on the predicate"
+    },
+    {
+      "file": "test/component/libraryBehavior.spec.ts",
+      "line": 2024,
+      "title": "the star sits at the end of the play / enqueue row instead of a row of its own",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(received).toBeLessThan(expected)\n\nExpected: < 988\nReceived:   994"
+    },
+    {
+      "file": "test/component/libraryBehavior.spec.ts",
+      "line": 2066,
+      "title": "sorting from the list panel reorders the wall and stays on the infinite collage",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: locator('[data-bravais-list=\"null\"]')\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" locator('[data-bravais-list=\"null\"]') with timeout 15000ms\n  - waiting for locator('[data-bravais-list=\"null\"]')\n"
+    },
+    {
+      "file": "test/component/libraryBehavior.spec.ts",
+      "line": 2197,
+      "title": "entering the collection right below folds into one back: one reverse flip, no push, no origin left over",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(received).not.toBeNull()\n\nReceived: null"
+    },
+    {
+      "file": "test/component/pixiVisualizerResize.spec.ts",
+      "line": 44,
+      "title": "nested Pixi filters render after a resize prunes their pass textures",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: page.evaluate: TypeError: Failed to fetch dynamically imported module: http://127.0.0.1:4173/src/components/visualizer/loadPixi.ts"
+    },
+    {
+      "file": "test/component/playerLayout.spec.ts",
+      "line": 8,
+      "title": "full chat preserves the hidden back-button reveal region and native card clicks",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: locator('[data-layout-demo-chat]')\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" locator('[data-layout-demo-chat]') with timeout 15000ms\n  - waiting for locator('[data-layout-demo-chat]')\n"
+    },
+    {
+      "file": "test/component/playerLayout.spec.ts",
+      "line": 21,
+      "title": "the private demo avoids a side panel and updates after viewport resizing",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: locator('[data-layout-demo-dialog]')\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" locator('[data-layout-demo-dialog]') with timeout 15000ms\n  - waiting for locator('[data-layout-demo-dialog]')\n"
+    },
+    {
+      "file": "test/component/playerLayout.spec.ts",
+      "line": 37,
+      "title": "moving the bottom baseline raises the native card and the chat clearance together",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: locator('[data-layout-demo-chat]')\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" locator('[data-layout-demo-chat]') with timeout 15000ms\n  - waiting for locator('[data-layout-demo-chat]')\n"
+    },
+    {
+      "file": "test/component/playerLayout.spec.ts",
+      "line": 49,
+      "title": "publishes native status toasts and returns null immediately outside the player",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Test timeout of 90000ms exceeded."
+    },
+    {
+      "file": "test/component/playerLayout.spec.ts",
+      "line": 63,
+      "title": "static visuals keep live app-overlay geometry and hidden control reveal regions",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Test timeout of 90000ms exceeded."
+    },
+    {
+      "file": "test/component/playerLayout.spec.ts",
+      "line": 80,
+      "title": "a lower side panel leaves the non-overlapping upper-right dialog in place",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: Timeout 15000ms exceeded while waiting on the predicate"
+    },
+    {
+      "file": "test/component/playerLayout.spec.ts",
+      "line": 101,
+      "title": "app.overlay content cannot reveal the native back button behind it",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: locator('[data-layout-demo-chat]')\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" locator('[data-layout-demo-chat]') with timeout 15000ms\n  - waiting for locator('[data-layout-demo-chat]')\n"
+    },
+    {
+      "file": "test/component/playerLayout.spec.ts",
+      "line": 125,
+      "title": "shell capture receives a descendant mouse move even if it stops bubbling",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toHaveCSS(expected) failed\n\nLocator: getByRole('button', { name: 'Back to home' })\nExpected: \"none\"\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toHaveCSS\" getByRole('button', { name: 'Back to home' }) with timeout 15000ms\n  - waiting for getByRole('button', { name: 'Back to home' })\n"
+    },
+    {
+      "file": "test/component/playerLayout.spec.ts",
+      "line": 136,
+      "title": "settings outside the shell does not reveal the back button without any mod",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Test timeout of 90000ms exceeded."
+    },
+    {
+      "file": "test/component/playerLayout.spec.ts",
+      "line": 136,
+      "title": "command outside the shell does not reveal the back button without any mod",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Test timeout of 90000ms exceeded."
+    },
+    {
+      "file": "test/component/playerLayout.spec.ts",
+      "line": 157,
+      "title": "publishes the complete 120px return hotspot independently of the button rem size",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: Timeout 15000ms exceeded while waiting on the predicate"
+    },
+    {
+      "file": "test/component/playerLayout.spec.ts",
+      "line": 177,
+      "title": "reserves a full-width 56px titlebar only with custom window chrome",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: Timeout 15000ms exceeded while waiting on the predicate"
+    },
+    {
+      "file": "test/component/playerLayout.spec.ts",
+      "line": 189,
+      "title": "disabling the appended layer restores native geometry and can re-enable cleanly",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: locator('[data-layout-demo-chat]')\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" locator('[data-layout-demo-chat]') with timeout 15000ms\n  - waiting for locator('[data-layout-demo-chat]')\n"
+    },
+    {
+      "file": "test/component/standInHandover.spec.ts",
+      "line": 260,
+      "title": "nothing turns before the centred card has its picture",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: 0\nReceived: 0.304836"
+    },
+    {
+      "file": "test/component/standInHandover.spec.ts",
+      "line": 349,
+      "title": "a centred card that shows the same picture is not turned into: the stand-in fades over it",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(received).toBeGreaterThan(expected)\n\nExpected: > 0\nReceived:   0"
+    },
+    {
+      "file": "test/component/standInHandover.spec.ts",
+      "line": 485,
+      "title": "a reading that comes after those 150 ms is still heeded where the stand-in has not given way yet",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(received).toBeLessThan(expected)\n\nExpected: < 2849.399999976158\nReceived:   2952.099999964237"
+    },
+    {
+      "file": "test/component/standInHandover.spec.ts",
+      "line": 666,
+      "title": "tracks that come after the flight has landed: the stand-in waits for them, the cards fly in, and it turns over",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: expect(received).toBeNull()\n\nReceived: 26.8939"
+    },
+    {
+      "file": "test/component/wallReflowMotion.spec.ts",
+      "line": 198,
+      "title": "expanding, folding back and switching blocks all ride the Lattice spring, without overshoot",
+      "project": "components",
+      "status": "unexpected",
+      "error": "Error: switch: old block -1,-1,2[1] -544→-408: 667–800ms vs 427ms\n\nexpect(received).toBeGreaterThanOrEqual(expected)\n\nExpected: >= 636.5999999999985\nReceived:    427"
+    }
+  ]
+}

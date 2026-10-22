@@ -74,7 +74,7 @@ const CommandPaletteQueueRow = ({
                         onActiveIndexChange(index);
                         void onExecuteMatch(index);
                     }}
-                    className="flex h-full w-full items-center gap-1.5 rounded-2xl px-2 pr-[7.5rem] text-left"
+                    className="flex h-full w-full items-center gap-1.5 rounded-2xl px-2 pr-[7.5rem] text-left [@media(hover:none)]:pr-36 [@media(pointer:coarse)]:pr-36"
                 >
                     <span
                         className={`h-7 w-1 shrink-0 rounded-full ${
@@ -95,7 +95,7 @@ const CommandPaletteQueueRow = ({
                         </span>
                         <span className="block truncate text-xs opacity-45">{getSongArtistLabel(song)}</span>
                         {match.queueReasons && match.queueReasons.length > 0 && (
-                            <span className="absolute bottom-1.5 right-[7.5rem] flex gap-1">
+                            <span className="absolute bottom-1.5 right-[7.5rem] flex gap-1 [@media(hover:none)]:right-36 [@media(pointer:coarse)]:right-36">
                                 {match.queueReasons.map(reason => (
                                     <span
                                         key={reason}
@@ -112,7 +112,9 @@ const CommandPaletteQueueRow = ({
                     className={`absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-0.5
                         pointer-events-none opacity-0
                         group-hover/queue-row:pointer-events-auto group-hover/queue-row:opacity-100
-                        focus-within:pointer-events-auto focus-within:opacity-100`}
+                        focus-within:pointer-events-auto focus-within:opacity-100
+                        [@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100
+                        [@media(pointer:coarse)]:pointer-events-auto [@media(pointer:coarse)]:opacity-100`}
                 >
                     {[
                         { label: labels.playNext, icon: ListPlus, action: onMoveSongToNext },
@@ -131,7 +133,7 @@ const CommandPaletteQueueRow = ({
                                 }
                                 action(queueIndex);
                             }}
-                            className={`rounded-lg p-2 transition-colors ${
+                            className={`grid place-items-center rounded-lg p-2 transition-colors [@media(hover:none)]:min-h-11 [@media(hover:none)]:min-w-11 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11 ${
                                 isDaylight ? 'hover:bg-black/10' : 'hover:bg-white/10'
                             }`}
                         >

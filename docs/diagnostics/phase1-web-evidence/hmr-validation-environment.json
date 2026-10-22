@@ -1,0 +1,10 @@
+{
+  "invalidRun": "phase1-browser-hmr-invalid.log",
+  "reason": "Vite hot-update query identity differed from direct dynamic module imports used by tests",
+  "appImport": "/src/stores/useVisualizerSettingsStore.ts?t=1792650036071",
+  "testImport": "/src/stores/useVisualizerSettingsStore.ts",
+  "observedUI": "Cadenza (心象)",
+  "observedTestStore": "classic",
+  "clickCaptured": true,
+  "remedy": "Stop invalid browser run; restart Vite after all production/probe edits; rerun tests. No player/mode fix."
+}

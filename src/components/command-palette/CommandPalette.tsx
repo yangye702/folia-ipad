@@ -480,7 +480,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
                             <button
                                 type="button"
                                 onClick={() => setIsShowingAllCommands(current => !current)}
-                                className={`rounded-full p-2 transition-colors ${isShowingAllCommands ? itemActiveBg : (isDaylight ? 'hover:bg-black/10' : 'hover:bg-white/10')}`}
+                                className={`rounded-full p-2 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11 [@media(hover:none)]:min-h-11 [@media(hover:none)]:min-w-11 transition-colors ${isShowingAllCommands ? itemActiveBg : (isDaylight ? 'hover:bg-black/10' : 'hover:bg-white/10')}`}
                                 aria-label={t('commandPalette.showAllCommands') || 'Show all commands'}
                                 title={t('commandPalette.showAllCommands') || 'Show all commands'}
                             >
@@ -489,7 +489,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
                             <button
                                 type="button"
                                 onClick={onClose}
-                                className={`rounded-full p-2 transition-colors ${isDaylight ? 'hover:bg-black/10' : 'hover:bg-white/10'}`}
+                                className={`rounded-full p-2 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11 [@media(hover:none)]:min-h-11 [@media(hover:none)]:min-w-11 transition-colors ${isDaylight ? 'hover:bg-black/10' : 'hover:bg-white/10'}`}
                                 aria-label={t('commandPalette.close') || 'Close command palette'}
                             >
                                 <X size={16} />

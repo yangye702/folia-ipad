@@ -333,7 +333,7 @@ const SheetFrame: React.FC<SheetFrameProps> = ({
                                 aria-label={t('ui.close')}
                                 // Not `disabled`: the dimmed X still takes the pointer and the keyboard, so its tip can show.
                                 aria-disabled={closeDisabled || undefined}
-                                className={`st-t-fast grid h-8 w-8 place-items-center rounded-lg text-[color:var(--st-t2)] transition-[background-color,color,opacity] ${closeDisabled ? 'cursor-not-allowed opacity-40' : 'hover:bg-[var(--st-fill)] hover:text-[color:var(--st-t1)]'}`}
+                                className={`st-t-fast grid h-8 w-8 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11 [@media(hover:none)]:min-h-11 [@media(hover:none)]:min-w-11 place-items-center rounded-lg text-[color:var(--st-t2)] transition-[background-color,color,opacity] ${closeDisabled ? 'cursor-not-allowed opacity-40' : 'hover:bg-[var(--st-fill)] hover:text-[color:var(--st-t1)]'}`}
                             >
                                 <X size={16} />
                             </button>
