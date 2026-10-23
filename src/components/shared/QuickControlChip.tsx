@@ -21,7 +21,7 @@ export const QuickControlChip: React.FC<QuickControlChipProps> = ({
     <button
         type="button"
         onClick={onClick}
-        className={`h-6 rounded-md px-1.5 text-[10px] font-bold transition-all ${isDaylight ? 'bg-white shadow-sm hover:bg-white/90' : 'bg-white/20 shadow-sm hover:bg-white/30'}`}
+        className={`h-6 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11 rounded-md px-1.5 text-[10px] font-bold transition-all ${isDaylight ? 'bg-white shadow-sm hover:bg-white/90' : 'bg-white/20 shadow-sm hover:bg-white/30'}`}
         title={title}
         aria-label={title}
     >
@@ -47,7 +47,7 @@ export const QuickControlToggle: React.FC<QuickControlToggleProps> = ({
     <button
         type="button"
         onClick={onToggle}
-        className={`flex h-6 w-6 items-center justify-center rounded-md transition-all ${active ? '' : 'opacity-40 hover:opacity-100'}`}
+        className={`flex h-6 w-6 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11 items-center justify-center rounded-md transition-all ${active ? '' : 'opacity-40 hover:opacity-100'}`}
         style={active ? { color: theme.accentColor } : undefined}
         title={label}
         aria-label={label}

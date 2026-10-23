@@ -1,3 +1,4 @@
+import { SourceSearchDiagnostics } from './SourceSearchDiagnostics';
 import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Check, FileAudio, Loader2, Music, Search, X } from 'lucide-react';
@@ -117,13 +118,13 @@ export const LyricMatchWindow: React.FC<LyricMatchWindowProps> = ({
     return (
         <div
             data-folia-keyboard-window={keepsHotkeys ? undefined : 'true'}
-            className={`fixed inset-0 ${overAllLayers ? 'z-[200]' : 'z-50'} bg-black/60 backdrop-blur-xl flex items-center justify-center p-6`}
+            className={`fixed inset-0 ${overAllLayers ? 'z-[200]' : 'z-50'} bg-black/60 backdrop-blur-xl flex items-center justify-center p-3 md:p-6`}
             onMouseDown={closesOnBackdropClick ? event => { isMouseDownOnOverlayRef.current = event.target === event.currentTarget; } : undefined}
             onClick={closesOnBackdropClick ? event => { if (event.target === event.currentTarget && isMouseDownOnOverlayRef.current) onClose(); } : undefined}
         >
             <div
                 data-ponder="lyric-match"
-                className={`${bgClass} border rounded-2xl max-w-5xl w-full max-h-[80vh] flex flex-col shadow-2xl backdrop-blur-md`}
+                className={`${bgClass} border rounded-2xl max-w-5xl w-full max-h-[92dvh] md:max-h-[80vh] flex flex-col shadow-2xl backdrop-blur-md`}
                 onClick={closesOnBackdropClick ? event => event.stopPropagation() : undefined}
             >
                 {/* Header */}
@@ -141,19 +142,19 @@ export const LyricMatchWindow: React.FC<LyricMatchWindowProps> = ({
                     </div>
                     <button
                         onClick={onClose}
-                        className={`p-2 ${closeBtnHover} rounded-lg transition-colors ${textPrimary}`}
+                        className={`p-2 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11 ${closeBtnHover} rounded-lg transition-colors ${textPrimary}`}
                     >
                         <X size={20} />
                     </button>
                 </div>
 
                 {/* Body: Two-panel layout */}
-                <div className="flex-1 flex min-h-0 overflow-hidden">
+                <div className="flex-1 flex min-h-0 flex-col md:flex-row overflow-hidden">
                     {/* LEFT PANEL: Search + Results (wider) */}
-                    <div className={`w-[62%] flex flex-col border-r ${borderColor}`}>
+                    <div className={`w-full md:w-[62%] flex min-h-[210px] min-w-0 flex-1 md:flex-none flex-col md:border-r ${borderColor}`}>
                         {/* Search Bar */}
-                        <div className="p-4">
-                            <div className={`flex border-b ${borderColor} pb-2 mb-3.5 gap-4`}>
+                        <div className="p-3 md:p-4">
+                            <div className={`flex min-w-0 overflow-x-auto border-b ${borderColor} pb-1 mb-3 gap-3 md:gap-4`}>
                                 {sources.map(id => {
                                     const activeTabClass = source === id
                                         ? isDaylight
@@ -165,7 +166,7 @@ export const LyricMatchWindow: React.FC<LyricMatchWindowProps> = ({
                                             key={id}
                                             type="button"
                                             onClick={() => search.setSource(id)}
-                                            className={`pb-2 border-b-2 text-sm transition-all px-1 cursor-pointer ${activeTabClass}`}
+                                            className={`min-h-9 [@media(pointer:coarse)]:min-h-11 shrink-0 border-b-2 text-sm transition-all px-2 cursor-pointer ${activeTabClass}`}
                                         >
                                             {getLyricMatchSourceLabel(id)}
                                         </button>
@@ -193,11 +194,12 @@ export const LyricMatchWindow: React.FC<LyricMatchWindowProps> = ({
                                 <button
                                     type="submit"
                                     disabled={isSearching}
-                                    className={`px-4 rounded-2xl text-sm font-medium transition-colors ${searchBtnBg}`}
+                                    className={`min-w-14 [@media(pointer:coarse)]:min-h-11 px-4 rounded-2xl text-sm font-medium transition-colors ${searchBtnBg}`}
                                 >
                                     {isSearching ? <Loader2 size={16} className="animate-spin" /> : t('localMusic.search')}
                                 </button>
                             </form>
+                            <SourceSearchDiagnostics source={source} />
                         </div>
 
                         {/* Results List */}
@@ -209,7 +211,16 @@ export const LyricMatchWindow: React.FC<LyricMatchWindowProps> = ({
                             ) : results.length === 0 ? (
                                 <div className={`flex flex-col items-center justify-center h-40 opacity-50 ${textSecondary}`}>
                                     <Music size={40} className="mb-2" />
-                                    <p className="text-sm">{t('localMusic.noResults')}</p>
+                                    <p className="text-sm">{search.searchError ? (search.searchFailureMessageKey ? t(search.searchFailureMessageKey) : t('localMusic.matchFailed')) : t('localMusic.noResults')}</p>
+                                    {source === 'amll' && (
+                                        <button
+                                            type="button"
+                                            className="mt-3 min-h-11 rounded-lg border border-current px-3 py-2 text-sm"
+                                            onClick={() => search.setSource('lrclib')}
+                                        >
+                                            {t('localMusic.tryLrclib')}
+                                        </button>
+                                    )}
                                 </div>
                             ) : (
                                 <div className="space-y-1.5">
@@ -220,10 +231,12 @@ export const LyricMatchWindow: React.FC<LyricMatchWindowProps> = ({
                                         const resultAlbum = getMatchResultAlbumName(result);
                                         const matchDetails = calculateMatchScoreDetails(songInfo, result);
                                         return (
-                                            <div
+                                            <button
                                                 key={resultKey}
+                                                type="button"
+                                                aria-pressed={selectedKey === resultKey}
                                                 onClick={() => search.setSelectedResult(result)}
-                                                className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all border ${selectedKey === resultKey
+                                                className={`w-full text-left flex items-center gap-3 p-3 min-h-14 rounded-lg cursor-pointer transition-all border ${selectedKey === resultKey
                                                     ? resultItemSelected
                                                     : resultItemBg
                                                     }`}
@@ -256,7 +269,7 @@ export const LyricMatchWindow: React.FC<LyricMatchWindowProps> = ({
                                                 {selectedKey === resultKey && (
                                                     <Check size={16} className="text-blue-400 flex-shrink-0" />
                                                 )}
-                                            </div>
+                                            </button>
                                         );
                                     })}
                                 </div>
@@ -265,7 +278,7 @@ export const LyricMatchWindow: React.FC<LyricMatchWindowProps> = ({
                     </div>
 
                     {/* RIGHT PANEL: Centered-style preview with lower-half LyricPreviewPanel */}
-                    <div className={`w-[38%] flex flex-col items-center justify-between px-6 py-6 border-l ${borderColor} min-h-0 overflow-hidden`}>
+                    <div className={`w-full md:w-[38%] flex flex-col items-center justify-between px-3 py-3 md:px-6 md:py-6 border-t md:border-t-0 md:border-l ${borderColor} min-h-[190px] max-h-[36dvh] md:max-h-none overflow-hidden`}>
                         {/* Upper section: Cover, the kind's controls and Info centered (Scrollable when height is constrained) */}
                         <div className="flex flex-col items-center justify-start w-full flex-1 min-h-0 overflow-y-auto custom-scrollbar pr-1">
                             {/* Cover Image */}

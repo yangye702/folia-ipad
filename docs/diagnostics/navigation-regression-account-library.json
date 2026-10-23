@@ -1,0 +1,558 @@
+{
+  "recordedFailureCount": 55,
+  "sourceEvidence": "docs/diagnostics/phase1-web-evidence/browser-results.json",
+  "requestedBaseline": "21c90350",
+  "committedRepresentativeBaseline": "65226b866648148f46206a9f8170cfd1e12e42a8",
+  "baselineLimit": "Representative baseline runtime evidence and targeted source comparisons only; not a claim that all 55 were executed on baseline.",
+  "verificationState": "All 55 original recorded cases passed in the completed targeted runs; the narrow 9-case run passed 8/9 (all seven remaining account failures and the repeated Bravais palette coverage). The last Navidrome case then passed 1/1 after revealing the hidden Back control through its pointer hot area.",
+  "statusCounts": {
+    "passed": 55,
+    "failed": 0,
+    "unresolved": 0
+  },
+  "groups": [
+    {
+      "id": "account_contract",
+      "description": "Account shared-window, account-read and failure-detail fixture/assertion contracts",
+      "caseCount": 35,
+      "kind": "fixture/assertion"
+    },
+    {
+      "id": "library_private_copy",
+      "description": "Private-playlist named error copy",
+      "caseCount": 3,
+      "kind": "assertion"
+    },
+    {
+      "id": "bravais_stage_readiness",
+      "description": "Bravais stage commit/settling readiness: five null-layer, one focus, one layout-memory case",
+      "caseCount": 7,
+      "kind": "fixture/assertion"
+    },
+    {
+      "id": "library_reverse_fixture",
+      "description": "Reverse-flight fixture needs pictures and current directional carrier marker",
+      "caseCount": 2,
+      "kind": "fixture/assertion"
+    },
+    {
+      "id": "bravais_scope_wrap",
+      "description": "Product: collection scope action row wraps the star onto another row",
+      "caseCount": 1,
+      "kind": "product"
+    },
+    {
+      "id": "artist_fixture_readiness",
+      "description": "Artist fixture catalog and rendered-surface readiness",
+      "caseCount": 2,
+      "kind": "fixture/assertion"
+    },
+    {
+      "id": "collection_retained_complete",
+      "description": "Product: retained complete track snapshot incorrectly reported incomplete after reload failure",
+      "caseCount": 1,
+      "kind": "product"
+    },
+    {
+      "id": "collection_resize_readiness",
+      "description": "Resize assertion before breakpoint commit",
+      "caseCount": 1,
+      "kind": "assertion"
+    },
+    {
+      "id": "explore_arrow_race",
+      "description": "Redundant arrow clicks change a smooth scroll target before the first step finishes",
+      "caseCount": 1,
+      "kind": "assertion"
+    },
+    {
+      "id": "bravais_palette_query",
+      "description": "Visible seam field and retained browse query while --play leaves the collection",
+      "caseCount": 1,
+      "kind": "assertion"
+    },
+    {
+      "id": "navidrome_reopen_flow",
+      "description": "Reopen flow must leave the old collection and return from player to home",
+      "caseCount": 1,
+      "kind": "assertion"
+    }
+  ],
+  "cases": [
+    {
+      "id": "account-library-01",
+      "file": "test/ui/bravaisCollectionFilter.spec.ts",
+      "originalLine": 84,
+      "title": "the command palette filter still acts on the same query, with --play",
+      "classification": "bravais_palette_query",
+      "status": "passed",
+      "lastVerification": "/tmp/folia-account-library-last-nine.json"
+    },
+    {
+      "id": "account-library-02",
+      "file": "test/ui/playingSongLocator.spec.ts",
+      "originalLine": 205,
+      "title": "\"playing from\" on a Navidrome album whose read failed says the list is not whole, until a read succeeds",
+      "classification": "navidrome_reopen_flow",
+      "status": "passed",
+      "lastVerification": "/tmp/folia-account-library-nav-final.json"
+    },
+    {
+      "id": "account-library-03",
+      "file": "test/component/accountBehavior.spec.ts",
+      "originalLine": 346,
+      "title": "[grid] switching to a signed-in provider asks first; cancel keeps it, confirm switches and cleans up once",
+      "classification": "account_contract",
+      "status": "passed"
+    },
+    {
+      "id": "account-library-04",
+      "file": "test/component/accountBehavior.spec.ts",
+      "originalLine": 381,
+      "title": "[grid] a provider without accounts still asks before switching",
+      "classification": "account_contract",
+      "status": "passed"
+    },
+    {
+      "id": "account-library-05",
+      "file": "test/component/accountBehavior.spec.ts",
+      "originalLine": 396,
+      "title": "[grid] the signed-out home picker follows the same rules as the switcher",
+      "classification": "account_contract",
+      "status": "passed"
+    },
+    {
+      "id": "account-library-06",
+      "file": "test/component/accountBehavior.spec.ts",
+      "originalLine": 418,
+      "title": "[grid] signing in to another provider opens the login first, then asks to activate; declining keeps the account",
+      "classification": "account_contract",
+      "status": "passed"
+    },
+    {
+      "id": "account-library-07",
+      "file": "test/component/accountBehavior.spec.ts",
+      "originalLine": 457,
+      "title": "[grid] accepting the activation switches and cleans up exactly once",
+      "classification": "account_contract",
+      "status": "passed"
+    },
+    {
+      "id": "account-library-08",
+      "file": "test/component/accountBehavior.spec.ts",
+      "originalLine": 469,
+      "title": "[grid] signing in to the current provider needs no confirmation",
+      "classification": "account_contract",
+      "status": "passed"
+    },
+    {
+      "id": "account-library-09",
+      "file": "test/component/accountBehavior.spec.ts",
+      "originalLine": 483,
+      "title": "[grid] a failed account refresh after confirmation reopens the login with the failure and diagnostics",
+      "classification": "account_contract",
+      "status": "passed"
+    },
+    {
+      "id": "account-library-10",
+      "file": "test/component/accountBehavior.spec.ts",
+      "originalLine": 498,
+      "title": "[grid] several sign-in methods: no QR before a choice, one live session across choices",
+      "classification": "account_contract",
+      "status": "passed"
+    },
+    {
+      "id": "account-library-11",
+      "file": "test/component/accountBehavior.spec.ts",
+      "originalLine": 546,
+      "title": "[grid] the TTL expires and cancels the code; an unscanned expiry is not a failure",
+      "classification": "account_contract",
+      "status": "passed"
+    },
+    {
+      "id": "account-library-12",
+      "file": "test/component/accountBehavior.spec.ts",
+      "originalLine": 568,
+      "title": "[grid] expiring after a scan counts as a failure and offers diagnostics",
+      "classification": "account_contract",
+      "status": "passed"
+    },
+    {
+      "id": "account-library-13",
+      "file": "test/component/accountBehavior.spec.ts",
+      "originalLine": 601,
+      "title": "[grid] a login canceled on the phone says so and holds the retry until the backend cooldown ends",
+      "classification": "account_contract",
+      "status": "passed",
+      "lastVerification": "/tmp/folia-account-library-last-nine.json"
+    },
+    {
+      "id": "account-library-14",
+      "file": "test/component/accountBehavior.spec.ts",
+      "originalLine": 625,
+      "title": "[grid] a failed QQ sign-in offers retry and diagnostics like other providers",
+      "classification": "account_contract",
+      "status": "passed"
+    },
+    {
+      "id": "account-library-15",
+      "file": "test/component/accountBehavior.spec.ts",
+      "originalLine": 663,
+      "title": "[grid] a failed sign-in runs the automatic check once and shows where the connection broke",
+      "classification": "account_contract",
+      "status": "passed"
+    },
+    {
+      "id": "account-library-16",
+      "file": "test/component/accountBehavior.spec.ts",
+      "originalLine": 699,
+      "title": "[grid] no automatic check for a login canceled on the phone, and a check that fails says so",
+      "classification": "account_contract",
+      "status": "passed",
+      "lastVerification": "/tmp/folia-account-library-last-nine.json"
+    },
+    {
+      "id": "account-library-17",
+      "file": "test/component/accountBehavior.spec.ts",
+      "originalLine": 723,
+      "title": "[grid] closing the login cancels the session and stops polling",
+      "classification": "account_contract",
+      "status": "passed"
+    },
+    {
+      "id": "account-library-18",
+      "file": "test/component/accountBehavior.spec.ts",
+      "originalLine": 742,
+      "title": "[grid] a backend failure shows the cause and restart instead of retry; a successful restart asks for a code",
+      "classification": "account_contract",
+      "status": "passed",
+      "lastVerification": "/tmp/folia-account-library-last-nine.json"
+    },
+    {
+      "id": "account-library-19",
+      "file": "test/component/accountBehavior.spec.ts",
+      "originalLine": 795,
+      "title": "[grid] only the current signed-in provider offers logout, and it runs that provider's injected logout",
+      "classification": "account_contract",
+      "status": "passed"
+    },
+    {
+      "id": "account-library-20",
+      "file": "test/component/accountBehavior.spec.ts",
+      "originalLine": 346,
+      "title": "[tui] switching to a signed-in provider asks first; cancel keeps it, confirm switches and cleans up once",
+      "classification": "account_contract",
+      "status": "passed"
+    },
+    {
+      "id": "account-library-21",
+      "file": "test/component/accountBehavior.spec.ts",
+      "originalLine": 418,
+      "title": "[tui] signing in to another provider opens the login first, then asks to activate; declining keeps the account",
+      "classification": "account_contract",
+      "status": "passed"
+    },
+    {
+      "id": "account-library-22",
+      "file": "test/component/accountBehavior.spec.ts",
+      "originalLine": 457,
+      "title": "[tui] accepting the activation switches and cleans up exactly once",
+      "classification": "account_contract",
+      "status": "passed"
+    },
+    {
+      "id": "account-library-23",
+      "file": "test/component/accountBehavior.spec.ts",
+      "originalLine": 483,
+      "title": "[tui] a failed account refresh after confirmation reopens the login with the failure and diagnostics",
+      "classification": "account_contract",
+      "status": "passed"
+    },
+    {
+      "id": "account-library-24",
+      "file": "test/component/accountBehavior.spec.ts",
+      "originalLine": 498,
+      "title": "[tui] several sign-in methods: no QR before a choice, one live session across choices",
+      "classification": "account_contract",
+      "status": "passed"
+    },
+    {
+      "id": "account-library-25",
+      "file": "test/component/accountBehavior.spec.ts",
+      "originalLine": 546,
+      "title": "[tui] the TTL expires and cancels the code; an unscanned expiry is not a failure",
+      "classification": "account_contract",
+      "status": "passed"
+    },
+    {
+      "id": "account-library-26",
+      "file": "test/component/accountBehavior.spec.ts",
+      "originalLine": 568,
+      "title": "[tui] expiring after a scan counts as a failure and offers diagnostics",
+      "classification": "account_contract",
+      "status": "passed"
+    },
+    {
+      "id": "account-library-27",
+      "file": "test/component/accountBehavior.spec.ts",
+      "originalLine": 601,
+      "title": "[tui] a login canceled on the phone says so and holds the retry until the backend cooldown ends",
+      "classification": "account_contract",
+      "status": "passed",
+      "lastVerification": "/tmp/folia-account-library-last-nine.json"
+    },
+    {
+      "id": "account-library-28",
+      "file": "test/component/accountBehavior.spec.ts",
+      "originalLine": 625,
+      "title": "[tui] a failed QQ sign-in offers retry and diagnostics like other providers",
+      "classification": "account_contract",
+      "status": "passed",
+      "lastVerification": "/tmp/folia-account-library-last-nine.json"
+    },
+    {
+      "id": "account-library-29",
+      "file": "test/component/accountBehavior.spec.ts",
+      "originalLine": 663,
+      "title": "[tui] a failed sign-in runs the automatic check once and shows where the connection broke",
+      "classification": "account_contract",
+      "status": "passed"
+    },
+    {
+      "id": "account-library-30",
+      "file": "test/component/accountBehavior.spec.ts",
+      "originalLine": 699,
+      "title": "[tui] no automatic check for a login canceled on the phone, and a check that fails says so",
+      "classification": "account_contract",
+      "status": "passed",
+      "lastVerification": "/tmp/folia-account-library-last-nine.json"
+    },
+    {
+      "id": "account-library-31",
+      "file": "test/component/accountBehavior.spec.ts",
+      "originalLine": 723,
+      "title": "[tui] closing the login cancels the session and stops polling",
+      "classification": "account_contract",
+      "status": "passed"
+    },
+    {
+      "id": "account-library-32",
+      "file": "test/component/accountBehavior.spec.ts",
+      "originalLine": 742,
+      "title": "[tui] a backend failure shows the cause and restart instead of retry; a successful restart asks for a code",
+      "classification": "account_contract",
+      "status": "passed",
+      "lastVerification": "/tmp/folia-account-library-last-nine.json"
+    },
+    {
+      "id": "account-library-33",
+      "file": "test/component/accountBehavior.spec.ts",
+      "originalLine": 822,
+      "title": "[grid-only] a new sign-in stops the previous session first, keyed to the provider that started it",
+      "classification": "account_contract",
+      "status": "passed"
+    },
+    {
+      "id": "account-library-34",
+      "file": "test/component/accountBehavior.spec.ts",
+      "originalLine": 853,
+      "title": "[switch] with the TUI selected, its own account surface (not the grid fallback) answers a sign-in and a switch request",
+      "classification": "account_contract",
+      "status": "passed"
+    },
+    {
+      "id": "account-library-35",
+      "file": "test/component/accountBehavior.spec.ts",
+      "originalLine": 889,
+      "title": "[switch] the QQ-style two-step sign-in works in the TUI with keys only",
+      "classification": "account_contract",
+      "status": "passed"
+    },
+    {
+      "id": "account-library-36",
+      "file": "test/component/accountBehavior.spec.ts",
+      "originalLine": 906,
+      "title": "[switch] a sign-in started on the grid keeps its session in the TUI and completes there",
+      "classification": "account_contract",
+      "status": "passed"
+    },
+    {
+      "id": "account-library-37",
+      "file": "test/component/accountBehavior.spec.ts",
+      "originalLine": 938,
+      "title": "[switch] a pending switch asked in one suite can be answered in the other",
+      "classification": "account_contract",
+      "status": "passed"
+    },
+    {
+      "id": "account-library-38",
+      "file": "test/component/artistBehavior.spec.ts",
+      "originalLine": 491,
+      "title": "a local album opens the album entity with its songs",
+      "classification": "artist_fixture_readiness",
+      "status": "passed"
+    },
+    {
+      "id": "account-library-39",
+      "file": "test/component/artistBehavior.spec.ts",
+      "originalLine": 510,
+      "title": "the filter lives in the browse session: an album opened and closed comes back filtered",
+      "classification": "artist_fixture_readiness",
+      "status": "passed"
+    },
+    {
+      "id": "account-library-40",
+      "file": "test/component/collectionGrid.spec.ts",
+      "originalLine": 48,
+      "title": "a collection stays where the listener scrolled to when further tracks arrive",
+      "classification": "collection_resize_readiness",
+      "status": "passed"
+    },
+    {
+      "id": "account-library-41",
+      "file": "test/component/collectionGrid.spec.ts",
+      "originalLine": 326,
+      "title": "a list that was read to its end is still whole after reading it anew has failed",
+      "classification": "collection_retained_complete",
+      "status": "passed"
+    },
+    {
+      "id": "account-library-42",
+      "file": "test/component/exploreSurface.spec.ts",
+      "originalLine": 443,
+      "title": "explore tab opens with the songs last played in the app, newest first",
+      "classification": "explore_arrow_race",
+      "status": "passed"
+    },
+    {
+      "id": "account-library-43",
+      "file": "test/component/libraryBehavior.spec.ts",
+      "originalLine": 264,
+      "title": "a private playlist says so instead of showing an empty grid; an empty one shows no error",
+      "classification": "library_private_copy",
+      "status": "passed"
+    },
+    {
+      "id": "account-library-44",
+      "file": "test/component/libraryBehavior.spec.ts",
+      "originalLine": 264,
+      "title": "a private playlist says so instead of showing an empty grid; an empty one shows no error",
+      "classification": "library_private_copy",
+      "status": "passed"
+    },
+    {
+      "id": "account-library-45",
+      "file": "test/component/libraryBehavior.spec.ts",
+      "originalLine": 264,
+      "title": "a private playlist says so instead of showing an empty grid; an empty one shows no error",
+      "classification": "library_private_copy",
+      "status": "passed"
+    },
+    {
+      "id": "account-library-46",
+      "file": "test/component/libraryBehavior.spec.ts",
+      "originalLine": 362,
+      "title": "queueing the focused song routes online, local and Navidrome songs to their own enqueue path",
+      "classification": "bravais_stage_readiness",
+      "status": "passed"
+    },
+    {
+      "id": "account-library-47",
+      "file": "test/component/libraryBehavior.spec.ts",
+      "originalLine": 528,
+      "title": "removing a song from a local playlist persists it and refreshes the library",
+      "classification": "bravais_stage_readiness",
+      "status": "passed"
+    },
+    {
+      "id": "account-library-48",
+      "file": "test/component/libraryBehavior.spec.ts",
+      "originalLine": 606,
+      "title": "a background page arriving right after the removal does not bring the removed song back",
+      "classification": "bravais_stage_readiness",
+      "status": "passed"
+    },
+    {
+      "id": "account-library-49",
+      "file": "test/component/libraryBehavior.spec.ts",
+      "originalLine": 638,
+      "title": "a slow removal with a background page landing meanwhile still ends without the removed song",
+      "classification": "bravais_stage_readiness",
+      "status": "passed"
+    },
+    {
+      "id": "account-library-50",
+      "file": "test/component/libraryBehavior.spec.ts",
+      "originalLine": 1083,
+      "title": "an online track opens its provider album and artist, and going back restores the focus",
+      "classification": "bravais_stage_readiness",
+      "status": "passed"
+    },
+    {
+      "id": "account-library-51",
+      "file": "test/component/libraryBehavior.spec.ts",
+      "originalLine": 1397,
+      "title": "[grid] browser back from a nested album plays the reverse transition",
+      "classification": "library_reverse_fixture",
+      "status": "passed"
+    },
+    {
+      "id": "account-library-52",
+      "file": "test/component/libraryBehavior.spec.ts",
+      "originalLine": 1409,
+      "title": "[grid] Escape from a nested album still plays it",
+      "classification": "library_reverse_fixture",
+      "status": "passed"
+    },
+    {
+      "id": "account-library-53",
+      "file": "test/component/libraryBehavior.spec.ts",
+      "originalLine": 2024,
+      "title": "the star sits at the end of the play / enqueue row instead of a row of its own",
+      "classification": "bravais_scope_wrap",
+      "status": "passed"
+    },
+    {
+      "id": "account-library-54",
+      "file": "test/component/libraryBehavior.spec.ts",
+      "originalLine": 2066,
+      "title": "sorting from the list panel reorders the wall and stays on the infinite collage",
+      "classification": "bravais_stage_readiness",
+      "status": "passed"
+    },
+    {
+      "id": "account-library-55",
+      "file": "test/component/libraryBehavior.spec.ts",
+      "originalLine": 2197,
+      "title": "entering the collection right below folds into one back: one reverse flip, no push, no origin left over",
+      "classification": "bravais_stage_readiness",
+      "status": "passed"
+    }
+  ],
+  "currentAccountCaseMapping": {
+    "currentAccountCases": 43,
+    "originalRecordedAccountFailures": 35,
+    "additionalAccountCasesOutsideOriginalFailures": 8,
+    "earlierSignedInSwitchCasesPassed": 2,
+    "combinedRunAccountCases": 41,
+    "finalRerunAccountCases": 7,
+    "note": "The final 7 account cases repeat failures from the 41-case account subset; they are not additional cases."
+  },
+  "finalTargetedRun": {
+    "resultFile": "/tmp/folia-account-library-last-nine.json",
+    "logFile": "/tmp/folia-account-library-last-nine.log",
+    "passed": 8,
+    "failed": 1,
+    "skipped": 0,
+    "durationMs": 178302.00799999997,
+    "originalFailuresNewlyPassed": 7,
+    "previouslyPassedOriginalCaseRepeatedForCoverage": 1,
+    "lastNavidromeRun": {
+      "resultFile": "/tmp/folia-account-library-nav-final.json",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "durationMs": 17927.332
+    }
+  }
+}

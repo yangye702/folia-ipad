@@ -18,7 +18,7 @@ import { PanelIconButton } from './shell/PanelIconButton';
 // queue as a list that scrolls inside itself. The list is as tall as its rows, seven and a half
 // of them at most, and lower where the window leaves less (--pn-tab-room, from the panel's frame);
 // while more rows follow it fades at the bottom. A row plays its song; its three actions show
-// under the pointer and when the keyboard reaches them.
+// under the pointer and when the keyboard reaches them, or always for non-hover input.
 
 const ROW_PX = 48;
 /** The line above the list. */
@@ -97,8 +97,8 @@ const QueueRow = ({
                 </div>
                 <div className="truncate text-xs leading-[17px] text-[color:var(--st-t3)]">{getSongArtistLabel(song)}</div>
             </div>
-            {/* No width until the pointer or the keyboard is on the row, so a long name has the whole row. Tab changes the panel's tab, so the keyboard does not walk into a row: the actions are the pointer's, as before. */}
-            <div className="st-t-fast flex w-0 shrink-0 items-center gap-0.5 overflow-hidden opacity-0 transition-opacity group-focus-within:ml-2 group-focus-within:w-auto group-focus-within:opacity-100 group-hover:ml-2 group-hover:w-auto group-hover:opacity-100">
+            {/* Keep desktop names full-width until hover; touch edits must not require playing the row first. */}
+            <div className="st-t-fast flex w-0 shrink-0 items-center gap-0.5 overflow-hidden opacity-0 transition-opacity group-focus-within:ml-2 group-focus-within:w-auto group-focus-within:opacity-100 group-hover:ml-2 group-hover:w-auto group-hover:opacity-100 [@media(hover:none)]:ml-2 [@media(hover:none)]:w-auto [@media(hover:none)]:opacity-100 [@media(pointer:coarse)]:ml-2 [@media(pointer:coarse)]:w-auto [@media(pointer:coarse)]:opacity-100 [@media(hover:none)]:[&_button]:min-h-11 [@media(hover:none)]:[&_button]:min-w-11 [@media(pointer:coarse)]:[&_button]:min-h-11 [@media(pointer:coarse)]:[&_button]:min-w-11">
                 {[
                     { label: labels.playNext, icon: ListPlus, action: onMoveSongToNext },
                     { label: labels.moveToEnd, icon: ListEnd, action: onMoveSongToEnd },

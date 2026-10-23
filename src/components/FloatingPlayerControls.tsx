@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Play, Pause } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward } from 'lucide-react';
 import { MotionValue } from 'framer-motion';
 import ProgressBar from './ProgressBar';
 import { PlayerState, LyricData, Theme } from '../types';
@@ -352,7 +352,7 @@ const FloatingPlayerControls: React.FC<FloatingPlayerControlsProps> = ({
                 onClick={(e) => e.stopPropagation()}
             >
                 <div
-                    className="pointer-events-auto w-full flex justify-center"
+                    className="pointer-events-auto w-full flex items-center justify-center gap-2"
                     onMouseEnter={handleMouseEnter}
                     onMouseLeave={handleMouseLeave}
                     style={{
@@ -362,6 +362,24 @@ const FloatingPlayerControls: React.FC<FloatingPlayerControlsProps> = ({
                         marginBottom: `${-hoverHitboxBufferPx}px`,
                     }}
                 >
+                    {/* Touch-first transport: preserve the original Folia capsule and
+                        reuse its queue actions. No hover, keyboard or palette required.
+                        Disabled edges remain visible so the last-song state is clear. */}
+                    {currentView === 'player' && trackNavigation && !isPositioning && (
+                        <button
+                            type="button"
+                            aria-label={trackNavigation.prevLabel}
+                            title={trackNavigation.prevTitle ?? trackNavigation.prevLabel}
+                            disabled={controlsDisabled || !trackNavigation.canPrev}
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                trackNavigation.onPrev();
+                            }}
+                            className={`hidden [@media(pointer:coarse)]:flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/15 backdrop-blur-xl transition-opacity disabled:opacity-30 ${isDaylight ? 'bg-white/60 text-black' : 'bg-black/40 text-white'}`}
+                        >
+                            <SkipBack size={19} fill="currentColor" aria-hidden="true" />
+                        </button>
+                    )}
                     <motion.div
                         ref={layoutRef}
                         onUpdate={invalidateLayout}
@@ -378,7 +396,7 @@ const FloatingPlayerControls: React.FC<FloatingPlayerControlsProps> = ({
                         onPointerUp={handlePositionDragEnd}
                         onPointerCancel={handlePositionDragEnd}
                         style={{ touchAction: isPositioning ? 'none' : undefined }}
-                        className={`backdrop-blur-xl shadow-2xl overflow-hidden rounded-full relative transition-colors duration-300
+                        className={`min-w-0 flex-1 backdrop-blur-xl shadow-2xl overflow-hidden rounded-full relative transition-colors duration-300
                             ${isPositioning ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}
                             ${showExpanded ? `p-3 ${glassBgExpanded} w-full` : `px-4 py-2 ${glassBgCollapsed} ${COLLAPSED_WIDTH_CLASS}`}`}
                     >
@@ -422,6 +440,21 @@ const FloatingPlayerControls: React.FC<FloatingPlayerControlsProps> = ({
                             )}
                         </motion.div>
                     </motion.div>
+                    {currentView === 'player' && trackNavigation && !isPositioning && (
+                        <button
+                            type="button"
+                            aria-label={trackNavigation.nextLabel}
+                            title={trackNavigation.nextTitle ?? trackNavigation.nextLabel}
+                            disabled={controlsDisabled || !trackNavigation.canNext}
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                trackNavigation.onNext();
+                            }}
+                            className={`hidden [@media(pointer:coarse)]:flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/15 backdrop-blur-xl transition-opacity disabled:opacity-30 ${isDaylight ? 'bg-white/60 text-black' : 'bg-black/40 text-white'}`}
+                        >
+                            <SkipForward size={19} fill="currentColor" aria-hidden="true" />
+                        </button>
+                    )}
                 </div>
             </motion.div>
             </motion.div>

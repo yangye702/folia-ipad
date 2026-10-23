@@ -213,12 +213,26 @@ test('"playing from" on a Navidrome album whose read failed says the list is not
 
     // The server answers again, and the album is opened anew: its list is whole now, and the song is not in it.
     refused.clear();
+    await page.keyboard.press('Escape');
+    await expect.poll(() => openCollection(page)).not.toBe('Navi Album');
+    await expect(page.locator('[data-library-surface="collection"]')).toHaveCount(0);
+    await expect.poll(() => view(page)).toBe('player');
+    // The player's back control is revealed by its top-left pointer hot area.
+    await page.mouse.move(40, 40);
+    const backHome = page.getByRole('button', { name: 'Back to Home', exact: true });
+    await expect(backHome).toHaveCSS('opacity', '1');
+    await backHome.click();
+    await expect.poll(() => view(page)).toBe('home');
     await page.evaluate(async () => {
         const storeModulePath = '/src/stores/useCollectionNavigationStore.ts';
         const { useCollectionNavigationStore } = await import(storeModulePath);
         useCollectionNavigationStore.getState().openRoot({ source: 'navidrome', id: 'navi-album', name: 'Navi Album', type: 'album' }, 'home');
     });
-    await expect(page.locator('[data-folia-grid-item-id]')).toHaveCount(1);
-    await page.locator('[data-grid-locate]').click();
+    await expect.poll(() => openCollection(page)).toBe('Navi Album');
+    const reopenedCollection = page.locator('[data-library-surface="collection"]');
+    await expect(reopenedCollection).toHaveCount(1);
+    await expect(reopenedCollection.getByRole('heading', { level: 2 })).toContainText('Navi Album');
+    await expect(reopenedCollection.locator('[data-folia-grid-item-id]')).toHaveCount(1);
+    await reopenedCollection.locator('[data-grid-locate]').click();
     await expect.poll(() => saidLines(page)).toEqual([NOT_WHOLE, NOT_HERE]);
 });

@@ -77,10 +77,11 @@ export const clearSession = async (): Promise<void> => {
   }
 };
 
-export const saveToCache = async (key: string, data: unknown): Promise<void> => {
+export const saveToCache = async (key: string, data: unknown, options?: { throwOnError?: boolean }): Promise<void> => {
   try {
     await putCacheEntry(key, data);
   } catch (error) {
+    if (options?.throwOnError) throw error;
     console.error('Cache save failed', error);
   }
 };

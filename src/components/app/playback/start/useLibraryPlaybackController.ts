@@ -467,14 +467,19 @@ export function useLibraryPlaybackController({
             && (!localSong.matchedLyrics && !localSong.matchedIsPureMusic
                 || shouldRefreshLocalSongLyricsFromMetadata(localSong))
         );
-        const needsCoverMatch = !hasLocalSongCover(localSong) && !localSong.onlineMetadata?.coverUrl;
+        const { completeLocalSongCover, needsLocalSongCoverMatch } = await import('../../../../services/localSongCoverMatchService');
+        const needsCoverMatch = await needsLocalSongCoverMatch(localSong);
 
         // 标记为纯音乐的歌 matchLyrics 整个不做（封面也是），这里就别提示「正在匹配歌词和封面」。
         if (!localSong.markedPureMusic && (needsLyricsMatch || needsCoverMatch) && shouldRunLocalSongAutomaticMatch(localSong)) {
             setStatusMsg({ type: 'info', text: t('status.matchingLyricsAndCover') || '' });
             try {
                 const { matchLyrics } = await import('../../../../services/localMusicService');
-                await matchLyrics(localSong);
+                if (needsLyricsMatch) await matchLyrics(localSong);
+                if (needsCoverMatch) {
+                    const latest = await getLocalSong(localSong.id);
+                    if (latest) await completeLocalSongCover(latest);
+                }
             } catch (error) {
                 console.warn('Auto-match failed:', error);
             }
@@ -591,11 +596,16 @@ export function useLibraryPlaybackController({
             && (!localSong.matchedLyrics && !localSong.matchedIsPureMusic
                 || shouldRefreshLocalSongLyricsFromMetadata(localSong))
         );
-        const needsCoverMatch = !hasLocalSongCover(localSong) && !localSong.onlineMetadata?.coverUrl;
+        const { completeLocalSongCover, needsLocalSongCoverMatch } = await import('../../../../services/localSongCoverMatchService');
+        const needsCoverMatch = await needsLocalSongCoverMatch(localSong);
         if (!localSong.markedPureMusic && (needsLyricsMatch || needsCoverMatch) && shouldRunLocalSongAutomaticMatch(localSong)) {
             try {
                 const { matchLyrics } = await import('../../../../services/localMusicService');
-                await matchLyrics(localSong);
+                if (needsLyricsMatch) await matchLyrics(localSong);
+                if (needsCoverMatch) {
+                    const latest = await getLocalSong(localSong.id);
+                    if (latest) await completeLocalSongCover(latest);
+                }
             } catch (error) {
                 console.warn('[LocalPrewarm] Failed to prewarm local song metadata:', error);
             }

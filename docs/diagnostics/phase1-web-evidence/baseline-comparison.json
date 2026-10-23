@@ -1,0 +1,99 @@
+{
+  "baseline": "65226b866648148f46206a9f8170cfd1e12e42a8",
+  "method": "git archive baseline; separate Vite cache; port4182; unchanged existing test source; one worker",
+  "stats": {
+    "startTime": "2026-10-22T11:12:08.933Z",
+    "duration": 249263.126,
+    "expected": 1,
+    "skipped": 0,
+    "unexpected": 11,
+    "flaky": 0
+  },
+  "cases": [
+    {
+      "file": "test/ui/app.screenshot.spec.ts",
+      "line": 20,
+      "title": "test/ui/app.screenshot.spec.ts / captures the Netease playlist home view",
+      "status": "unexpected",
+      "error": "Error: expect(page).toHaveScreenshot(expected) failed\n\n  2916 pixels (ratio 0.01 of all image pixels) are different.\n\n  Snapshot: netease-home.png\n\nCall log:\n  - Expect \"toHaveScreenshot(netease-home.png)\" with timeout 15000ms\n    - verifying given screenshot expectation\n  - taking page screenshot\n    - disabled all CSS animations\n  - waiting for fonts to load...\n  - fonts loaded\n  - 2916 pixels ("
+    },
+    {
+      "file": "test/ui/bravaisSettingsGroup.spec.ts",
+      "line": 36,
+      "title": "the Bravais group holds the transparency, the windows per block and the stack edges",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: locator('[data-bravais-settings]')\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" locator('[data-bravais-settings]') with timeout 15000ms\n  - waiting for locator('[data-bravais-settings]')\n"
+    },
+    {
+      "file": "test/ui/commandPalette.spec.ts",
+      "line": 217,
+      "title": "queue song selection closes the palette by default",
+      "status": "unexpected",
+      "error": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: 2\nReceived: 1\n\nCall Log:\n- Timeout 15000ms exceeded while waiting on the predicate"
+    },
+    {
+      "file": "test/ui/dioramaSettings.spec.ts",
+      "line": 11,
+      "title": "switches between clouds and corridor mode and keeps particle controls interactive",
+      "status": "expected",
+      "error": ""
+    },
+    {
+      "file": "test/ui/helpCommunity.spec.ts",
+      "line": 50,
+      "title": "one community capsule replaces the separate Discord and QQ buttons",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByRole('button', { name: 'Join the community', exact: true })\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByRole('button', { name: 'Join the community', exact: true }) with timeout 15000ms\n  - waiting for getByRole('button', { name: 'Join the community', exact: true })\n"
+    },
+    {
+      "file": "test/component/accountBehavior.spec.ts",
+      "line": 346,
+      "title": "test/component/accountBehavior.spec.ts / [grid] switching to a signed-in provider asks first; cancel keeps it, confirm switches and cleans up once",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByTestId('online-provider-switcher').getByRole('menu')\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByTestId('online-provider-switcher').getByRole('menu') with timeout 15000ms\n  - waiting for getByTestId('online-provider-switcher').getByRole('menu')\n"
+    },
+    {
+      "file": "test/component/accountBehavior.spec.ts",
+      "line": 346,
+      "title": "test/component/accountBehavior.spec.ts / [tui] switching to a signed-in provider asks first; cancel keeps it, confirm switches and cleans up once",
+      "status": "unexpected",
+      "error": "Error: expect(received).toEqual(expected) // deep equality\n\n- Expected  - 6\n+ Received  + 1\n\n- Array [\n-   ObjectContaining {\n-     \"ok\": true,\n-     \"providerId\": \"acct-beta\",\n-   },\n- ]\n+ Array []\n\nCall Log:\n- Timeout 15000ms exceeded while waiting on the predicate"
+    },
+    {
+      "file": "test/component/libraryBehavior.spec.ts",
+      "line": 264,
+      "title": "test/component/libraryBehavior.spec.ts / a private playlist says so instead of showing an empty grid; an empty one shows no error",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByText('This playlist is not public, so the current music source cannot read its contents')\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByText('This playlist is not public, so the current music source cannot read its contents') with timeout 15000ms\n  - waiting for getByText('This play"
+    },
+    {
+      "file": "test/component/libraryBehavior.spec.ts",
+      "line": 264,
+      "title": "test/component/libraryBehavior.spec.ts / a private playlist says so instead of showing an empty grid; an empty one shows no error",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByText('This playlist is not public, so the current music source cannot read its contents')\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByText('This playlist is not public, so the current music source cannot read its contents') with timeout 15000ms\n  - waiting for getByText('This play"
+    },
+    {
+      "file": "test/component/libraryBehavior.spec.ts",
+      "line": 264,
+      "title": "test/component/libraryBehavior.spec.ts / a private playlist says so instead of showing an empty grid; an empty one shows no error",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByText('This playlist is not public, so the current music source cannot read its contents')\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByText('This playlist is not public, so the current music source cannot read its contents') with timeout 15000ms\n  - waiting for getByText('This play"
+    },
+    {
+      "file": "test/component/pixiVisualizerResize.spec.ts",
+      "line": 44,
+      "title": "nested Pixi filters render after a resize prunes their pass textures",
+      "status": "unexpected",
+      "error": "Error: page.evaluate: TypeError: Failed to fetch dynamically imported module: http://127.0.0.1:4182/src/components/visualizer/loadPixi.ts"
+    },
+    {
+      "file": "test/component/playerLayout.spec.ts",
+      "line": 8,
+      "title": "full chat preserves the hidden back-button reveal region and native card clicks",
+      "status": "unexpected",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: locator('[data-layout-demo-chat]')\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" locator('[data-layout-demo-chat]') with timeout 15000ms\n  - waiting for locator('[data-layout-demo-chat]')\n"
+    }
+  ],
+  "limits": "12 representative cases only; not proof that every one of 105 current failures is inherited. Diorama passed in baseline single-worker run."
+}

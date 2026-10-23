@@ -1,4 +1,7 @@
-import { pickLocalFiles, copyLocalFiles } from './localFilesImport';
+import { isAutomaticMetadataCandidateReliable } from './metadataMatchPolicy';
+import { recordMatchDiagnostic } from './matchingDiagnostics';
+import { sourceProvidesSongMetadata } from '../utils/lyrics/matchResult';
+import { pickLocalFiles, copyLocalFiles, getCopiedLocalFilesDirectory, readCopiedLocalAudio } from './localFilesImport';
 import { LocalSong, LyricData, LocalLibrarySnapshot, LocalLibrarySnapshotFile, LocalLibrarySnapshotNode, type SongResult } from '../types';
 import { saveLocalSong, saveLocalSongs, deleteLocalSong as dbDeleteLocalSong, deleteLocalSongs as dbDeleteLocalSongs, saveDirHandles, getDirHandles, deleteDirHandle, getLocalSongs, getLocalLibrarySnapshot, saveLocalLibrarySnapshot, deleteLocalLibrarySnapshot } from './db';
 import { getLocalPlaylists, saveLocalPlaylists } from './localPlaylistService';
@@ -155,7 +158,9 @@ function notifyLocalMusicScanProgress(detail: LocalMusicScanProgressDetail) {
 async function getImportDirectoryHandle(expectedRootName?: string): Promise<FileSystemDirectoryHandle | null> {
     if (expectedRootName) {
         const dirHandles = await getDirHandles();
-        const persistedHandle = dirHandles[expectedRootName];
+        // Prefer reopening Folia's own OPFS folder over a potentially stale
+        // IndexedDB-serialized handle on Safari.
+        const persistedHandle = await getCopiedLocalFilesDirectory(expectedRootName) ?? dirHandles[expectedRootName];
 
         if (!persistedHandle) {
             throw new Error(REIMPORT_HANDLE_MISSING_ERROR);
@@ -1400,7 +1405,11 @@ export async function matchLyrics(song: LocalSong): Promise<LyricData | null> {
                             durationMs: matchContext.durationMs,
                         },
                     );
-                    const coverUrl = matchedMetadata.coverUrl;
+                    if (!sourceProvidesSongMetadata(bestMatch.source) || !isAutomaticMetadataCandidateReliable({ title: matchContext.title, artist: matchContext.artist, album: matchContext.album, durationMs: matchContext.durationMs }, matchedMetadata)) {
+                        await applyMatchedMetadata(song.id, {}, { lyricsOnly: true, songPatch: song, skipIfMarkedPureMusic: true, skipIfAutoMatchDisabled: true });
+                        return bestMatch.lyrics;
+                    }
+                    const coverUrl = !hasLocalSongCover(song) && !song.onlineMetadata?.coverUrl && isAutomaticMetadataCandidateReliable(matchContext, matchedMetadata, 'cover') ? matchedMetadata.coverUrl : undefined;
                     await applyMatchedMetadata(song.id, {
                         source: matchedMetadata.source,
                         songId: matchedMetadata.songId,
@@ -1411,9 +1420,10 @@ export async function matchLyrics(song: LocalSong): Promise<LyricData | null> {
                     }, {
                         songPatch: {
                             ...song,
-                            useOnlineCover: Boolean(coverUrl && !hasLocalSongCover(song)),
+                            useOnlineCover: coverUrl ? true : song.useOnlineCover,
                         },
                         protectOrigins: ['manual', 'manual-match', 'split'],
+                preserveCover: !coverUrl,
                         skipIfMarkedPureMusic: true,
                     });
                     return bestMatch.lyrics;
@@ -1423,8 +1433,9 @@ export async function matchLyrics(song: LocalSong): Promise<LyricData | null> {
             return null;
         }
 
+        const fallbackSource = 'netease' as const;
         // Search on Netease
-        const searchPage = await getOnlineMusicProvider('netease')?.search?.searchSongs(searchQuery, 50, 0);
+        const searchPage = await getOnlineMusicProvider(fallbackSource)?.search?.searchSongs(searchQuery, 50, 0);
 
         if (!searchPage?.items?.length) {
             console.warn(`[LocalMusic] No search results for: "${searchQuery}"`);
@@ -1433,7 +1444,7 @@ export async function matchLyrics(song: LocalSong): Promise<LyricData | null> {
 
         // Try to find a song with matching title
         const localTitle = matchContext.title;
-        const matchedSong = searchPage.items.find(candidate => isTitleMatch(localTitle, candidate.name));
+        const matchedSong = searchPage.items.find(candidate => isTitleMatch(localTitle, candidate.name) && isAutomaticMetadataCandidateReliable({ title: matchContext.title, artist: matchContext.artist, album: matchContext.album, durationMs: matchContext.durationMs }, normalizeLyricMatchMetadataCandidate(fallbackSource, candidate, matchContext)));
 
         // If no exact title match found, return null to trigger manual selection
         if (!matchedSong) {
@@ -1441,7 +1452,7 @@ export async function matchLyrics(song: LocalSong): Promise<LyricData | null> {
             return null;
         }
 
-        const matchedMetadata = getProviderSongMetadata(matchedSong, 'netease');
+        const matchedMetadata = getProviderSongMetadata(matchedSong, fallbackSource);
         console.log(`[LocalMusic] Found exact title match: ${matchedSong.name} by ${matchedMetadata.artists.map(artist => artist.name).join(', ')}`);
 
         // Preserve local and embedded lyrics when the configured priority keeps them first.
@@ -1449,7 +1460,7 @@ export async function matchLyrics(song: LocalSong): Promise<LyricData | null> {
             console.log(`[LocalMusic] Local/embedded lyrics exist, skipping online lyrics fetch. Only fetching cover/metadata.`);
 
             // Only update metadata and cover, preserve local lyrics
-            const coverUrl = matchedMetadata.coverUrl;
+            const coverUrl = !hasLocalSongCover(song) && !song.onlineMetadata?.coverUrl && isAutomaticMetadataCandidateReliable(matchContext, normalizeLyricMatchMetadataCandidate(fallbackSource, matchedSong, matchContext), 'cover') ? matchedMetadata.coverUrl : undefined;
             await applyMatchedMetadata(song.id, {
                 source: 'netease',
                 songId: matchedSong.id,
@@ -1458,8 +1469,9 @@ export async function matchLyrics(song: LocalSong): Promise<LyricData | null> {
                 album: matchedMetadata.album,
                 coverUrl: coverUrl?.replace('http:', 'https:'),
             }, {
-                songPatch: { ...song, useOnlineCover: Boolean(coverUrl && !hasLocalSongCover(song)) },
+                songPatch: { ...song, useOnlineCover: coverUrl ? true : song.useOnlineCover },
                 protectOrigins: ['manual', 'manual-match', 'split'],
+                preserveCover: !coverUrl,
                 skipIfMarkedPureMusic: true,
             });
 
@@ -1468,7 +1480,7 @@ export async function matchLyrics(song: LocalSong): Promise<LyricData | null> {
         }
 
         // Fetch lyrics (only when NO local lyrics)
-        const processed = await getOnlineMusicProvider('netease')?.lyrics?.getLyrics(matchedSong);
+        const processed = await getOnlineMusicProvider(fallbackSource)?.lyrics?.getLyrics(matchedSong);
         if (!processed) return null;
 
         song.matchedLyricsSongId = matchedSong.id;
@@ -1481,7 +1493,7 @@ export async function matchLyrics(song: LocalSong): Promise<LyricData | null> {
             return processed.lyrics;
         }
 
-        const coverUrl = matchedMetadata.coverUrl;
+        const coverUrl = !hasLocalSongCover(song) && !song.onlineMetadata?.coverUrl && isAutomaticMetadataCandidateReliable(matchContext, normalizeLyricMatchMetadataCandidate(fallbackSource, matchedSong, matchContext), 'cover') ? matchedMetadata.coverUrl : undefined;
         await applyMatchedMetadata(song.id, {
             source: 'netease',
             songId: matchedSong.id,
@@ -1490,12 +1502,14 @@ export async function matchLyrics(song: LocalSong): Promise<LyricData | null> {
             album: matchedMetadata.album,
             coverUrl: coverUrl?.replace('http:', 'https:'),
         }, {
-            songPatch: { ...song, useOnlineCover: Boolean(coverUrl && !hasLocalSongCover(song)) },
+            songPatch: { ...song, useOnlineCover: coverUrl ? true : song.useOnlineCover },
             protectOrigins: ['manual', 'manual-match', 'split'],
+            preserveCover: !coverUrl,
             skipIfMarkedPureMusic: true,
         });
         return processed.lyrics;
     } catch (error) {
+        recordMatchDiagnostic({ stage: 'automatic-lyrics', error });
         console.error('[LocalMusic] Failed to match lyrics:', error);
         return null;
     }
@@ -1541,33 +1555,35 @@ async function resolveFileHandleFromDirHandle(
 
 async function recoverFileHandleFromPersistedDirectory(song: LocalSong): Promise<FileSystemFileHandle | null> {
     const rootFolderName = getRootFolderName(song);
-    if (!rootFolderName || !song.filePath) {
-        return null;
-    }
+    if (!rootFolderName || !song.filePath) return null;
 
-    const dirHandles = await getDirHandles();
-    const rootDirHandle = dirHandles[rootFolderName];
-    if (!rootDirHandle) {
-        return null;
-    }
+    // Safari may deserialize the IndexedDB song index but lose the directory
+    // handle. Files imported from iPad Files are already stored in our OPFS
+    // directory; resolve that deterministic path without asking to re-import.
+    const copiedRoot = await getCopiedLocalFilesDirectory(rootFolderName);
+    const cachedRoot = copiedRoot ? null : (await getDirHandles())[rootFolderName];
+    const rootDirHandle = copiedRoot ?? cachedRoot;
+    if (!rootDirHandle) return null;
 
     const permissionAwareHandle = rootDirHandle as FileSystemDirectoryHandle & {
-        queryPermission?: (descriptor: { mode: 'read' | 'readwrite'; }) => Promise<PermissionState>;
+        queryPermission?: (descriptor: { mode: 'read' | 'readwrite' }) => Promise<PermissionState>;
     };
-    const permission = (await permissionAwareHandle.queryPermission?.({ mode: 'read' })) ?? 'granted';
-    if (permission !== 'granted') {
-        return null;
-    }
-
-    const relativePathFromRoot = song.filePath.startsWith(`${rootFolderName}/`)
-        ? song.filePath.slice(rootFolderName.length + 1)
-        : song.filePath;
-
     try {
+        // OPFS handles are origin-private; Safari does not require a Files picker
+        // permission on each visit. External directory handles still do.
+        if (!copiedRoot) {
+            const permission = (await permissionAwareHandle.queryPermission?.({ mode: 'read' })) ?? 'granted';
+            if (permission !== 'granted') return null;
+        }
+
+        const relativePathFromRoot = song.filePath.startsWith(`${rootFolderName}/`)
+            ? song.filePath.slice(rootFolderName.length + 1)
+            : song.filePath;
         const recoveredHandle = await resolveFileHandleFromDirHandle(rootDirHandle, relativePathFromRoot);
+        // Hot path only: writing a FileSystemHandle back to IDB can itself fail
+        // in Safari; don't turn successfully recovered audio into a false error.
         fileHandleMap.set(song.id, recoveredHandle);
         song.fileHandle = recoveredHandle;
-        await saveLocalSong(song);
         return recoveredHandle;
     } catch (error) {
         console.warn(`[LocalMusic] Failed to recover file handle for ${song.filePath}:`, error);
@@ -1608,6 +1624,11 @@ async function cleanupDirHandleIfUnused(rootFolderName: string): Promise<void> {
 // Get audio blob from local song using fileHandle
 // Returns blob URL if fileHandle exists, null otherwise
 export async function getAudioFromLocalSong(song: LocalSong): Promise<string | null> {
+    // OPFS imports are our own files, not external Files-app handles. Reopen by
+    // the persisted path even when Safari has dropped the IDB directory handle.
+    const copiedFile = await readCopiedLocalAudio(getRootFolderName(song) ?? '', song.filePath);
+    if (copiedFile) return getAudioFromFile(copiedFile);
+
     const fileHandle = await getAccessibleFileHandle(song);
 
     if (fileHandle) {
@@ -1639,6 +1660,8 @@ export async function getAudioFromLocalSong(song: LocalSong): Promise<string | n
 
 /** Resolves the current File for playback recovery without changing the song or minting a URL. */
 export async function getFileFromLocalSong(song: LocalSong): Promise<File | null> {
+    const copiedFile = await readCopiedLocalAudio(getRootFolderName(song) ?? '', song.filePath);
+    if (copiedFile) return copiedFile;
     const fileHandle = await getAccessibleFileHandle(song);
     if (fileHandle) {
         try {
@@ -1669,6 +1692,8 @@ export async function getFileFromLocalSong(song: LocalSong): Promise<File | null
  * but returns the ArrayBuffer. Null when no handle can be reached - permission not restored, or moved.
  */
 export async function getLocalSongArrayBuffer(song: LocalSong): Promise<ArrayBuffer | null> {
+    const copiedFile = await readCopiedLocalAudio(getRootFolderName(song) ?? '', song.filePath);
+    if (copiedFile) return copiedFile.arrayBuffer();
     const fileHandle = await getAccessibleFileHandle(song);
     if (!fileHandle) {
         console.warn(`[LocalMusic] No accessible handle for song ${song.id} (automix bytes)`);

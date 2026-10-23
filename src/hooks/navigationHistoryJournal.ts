@@ -1,3 +1,4 @@
+import type { SettingsModalState, SettingsPageSnapshot } from '../stores/useSettingsModalStore';
 import type { AppView, LatticeSource } from '../stores/useAppViewStore';
 import type { SearchReturnView, SearchSource } from '../stores/useSearchNavigationStore';
 import type { CollectionNavigationSnapshot } from '../library/core/collection/collection.contract';
@@ -23,6 +24,8 @@ export type NavigationHistoryState = {
     collection?: CollectionNavigationSnapshot | null;
     /** Set on a 'lattice' entry that shows the explore page's entries; one without it shows the play queue. */
     latticeSource?: LatticeSource;
+    /** Settings is a layer over this exact base view/search/collection, not another base route. */
+    settings?: { modal: SettingsModalState; page: SettingsPageSnapshot | null; baseIndex: number };
     appHistoryIndex: number;
     /** 写这条记录的页面会话（每次加载页面一个新值）；旧记录没有它。 */
     appHistorySession?: string;

@@ -2,6 +2,52 @@ import { writeOpfsFile } from '../utils/writeOpfsFile';
 
 // Imports Files-app selections into device-only OPFS for the existing directory scanner.
 const IMPORTS_DIRECTORY = 'folia-file-imports';
+const IMPORTED_ROOT_NAME = /^Files-[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+
+/**
+ * Safari can reopen our origin-private import folder directly, even if the
+ * FileSystemDirectoryHandle persisted in IndexedDB was not restored.
+ * Only resolve Folia-created UUID roots; never scan arbitrary device files.
+ */
+export async function getCopiedLocalFilesDirectory(rootFolderName: string): Promise<FileSystemDirectoryHandle | null> {
+    if (!IMPORTED_ROOT_NAME.test(rootFolderName)) return null;
+    if (typeof navigator === 'undefined' || typeof navigator.storage?.getDirectory !== 'function') return null;
+    try {
+        const root = await navigator.storage.getDirectory();
+        const imports = await root.getDirectoryHandle(IMPORTS_DIRECTORY);
+        return await imports.getDirectoryHandle(rootFolderName);
+    } catch (error) {
+        console.warn('[LocalFiles] OPFS imported folder unavailable:', rootFolderName, error);
+        return null;
+    }
+}
+
+/**
+ * Read an iPad Files import straight from its copied OPFS file, without
+ * depending on a previously serialized FileSystemFileHandle in IndexedDB.
+ * Reading (rather than a new import or scan) is safe on every playback.
+ */
+export async function readCopiedLocalAudio(rootFolderName: string, storedFilePath: string): Promise<File | null> {
+    const root = await getCopiedLocalFilesDirectory(rootFolderName);
+    if (!root) return null;
+    const relativePath = storedFilePath.startsWith(`${rootFolderName}/`)
+        ? storedFilePath.slice(rootFolderName.length + 1)
+        : storedFilePath;
+    const segments = relativePath.split('/').filter(Boolean);
+    if (!segments.length || segments.some(x => x === '.' || x === '..')) return null;
+    try {
+        let directory = root;
+        for (const segment of segments.slice(0, -1)) {
+            directory = await directory.getDirectoryHandle(segment);
+        }
+        const handle = await directory.getFileHandle(segments[segments.length - 1]);
+        const file = await handle.getFile();
+        return file.size > 0 ? file : null;
+    } catch (error) {
+        console.warn('[LocalFiles] Could not reopen copied audio:', (error as Error)?.name ?? 'unknown');
+        return null;
+    }
+}
 
 export function pickLocalFiles(): Promise<File[]> {
     return new Promise((resolve, reject) => {

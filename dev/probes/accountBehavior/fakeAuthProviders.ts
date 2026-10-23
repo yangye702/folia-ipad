@@ -1,5 +1,8 @@
 import type { UnifiedSong } from '../../../src/types';
 import type { LoginSelfCheckResult, OnlineMusicProvider } from '../../../src/types/onlineMusic';
+import { NETEASE_API_UNAVAILABLE } from '../../../src/services/onlineMusic/netease/netease';
+import { describeNeteaseLoginFailure } from '../../../src/services/onlineMusic/netease/neteaseLoginFailure';
+import { neteaseLocalService } from '../../../src/services/onlineMusic/netease/neteaseLocalService';
 import { useNeteaseApiStatusStore } from '../../../src/services/onlineMusic/netease/useNeteaseApiStatusStore';
 import { diagnosticLine } from '../../../src/services/onlineMusic/login/loginDiagnosticReport';
 import { ACCOUNT_CANCEL_COOLDOWN_MS, ACCOUNT_NETEASE, accountUser, qrKeyOf, type AccountProviderRule } from './accountFixtureRules';
@@ -129,7 +132,14 @@ export const createFakeAuthProvider = (rule: AccountProviderRule): OnlineMusicPr
     return {
         ...base,
         auth: {
-            getLoginStatus: async () => accountUser(providerId),
+            ...(providerId === ACCOUNT_NETEASE ? { localService: neteaseLocalService, describeLoginFailure: describeNeteaseLoginFailure } : {}),
+            getLoginStatus: async () => {
+                await new Promise(resolve => window.setTimeout(resolve, 30));
+                const ok = !shouldFailRefresh(providerId);
+                recordAccountCall({ op: 'refresh', providerId, ok });
+                if (!ok) throw new Error('probe: account refresh failed');
+                return accountUser(providerId);
+            },
             logout: async () => {
                 recordAccountCall({ op: 'auth-logout', providerId });
             },
@@ -147,7 +157,10 @@ export const createFakeAuthProvider = (rule: AccountProviderRule): OnlineMusicPr
                 // 网易本地后端没起来时，真实的要码请求必然失败。
                 const backendDown = providerId === ACCOUNT_NETEASE
                     && useNeteaseApiStatusStore.getState().status?.status === 'error';
-                if (backendDown || takeFailure(createFailures, providerId)) {
+                if (backendDown) {
+                    throw Object.assign(new Error(`probe: cannot create QR for ${providerId}`), { code: NETEASE_API_UNAVAILABLE });
+                }
+                if (takeFailure(createFailures, providerId)) {
                     throw new Error(`probe: cannot create QR for ${providerId}`);
                 }
                 return key;
@@ -160,10 +173,8 @@ export const createFakeAuthProvider = (rule: AccountProviderRule): OnlineMusicPr
                 qrQueues.set(providerId, queue);
                 if (state === 'canceled') {
                     return {
-                        state: 'error' as const,
-                        message: 'probe: canceled on device',
-                        reason: 'canceled-on-device' as const,
-                        retryAfterMs: ACCOUNT_CANCEL_COOLDOWN_MS,
+                        state: 'expired' as const,
+                        failure: { retryAfterMs: ACCOUNT_CANCEL_COOLDOWN_MS },
                     };
                 }
                 return state === 'error' ? { state, message: 'probe: check error' } : { state };

@@ -33,7 +33,24 @@ test('Files fallback imports two MP3s, retains them after reload and plays both 
     await page.getByRole('heading', { name: 'All Songs' }).first().click();
     const cards = page.locator('[data-library-renderer="grid"] [data-grid-card-play="play"]');
     await expect(cards).toHaveCount(2);
-    await cards.first().dispatchEvent('click');
+
+    // Reproduce Safari restoring IndexedDB songs but not its serialized
+    // FileSystemDirectoryHandle. OPFS audio copies must still be playable.
+    await page.evaluate(async () => {
+        const db = await (window as any).__appModule('/src/services/db.ts');
+        const { appDatabase } = await (window as any).__appModule('/src/services/appDatabase.ts');
+        await db.removeFromCache('local_dir_handles');
+        await appDatabase.local_music.toCollection().modify((song: any) => {
+            delete song.fileHandle;
+        });
+    });
+    await page.reload();
+    await waitForAppMounted(page);
+    await page.getByRole('button', { name: 'Folder', exact: true }).last().click();
+    await page.getByRole('heading', { name: 'All Songs' }).first().click();
+    const restoredCards = page.locator('[data-library-renderer="grid"] [data-grid-card-play="play"]');
+    await expect(restoredCards).toHaveCount(2);
+    await restoredCards.first().dispatchEvent('click');
     const snapshot = () => page.evaluate(async () => {
         const state = (await (window as any).__appModule('/src/stores/usePlaybackStore.ts')).usePlaybackStore.getState();
         return { title: state.currentSong?.name, lines: state.lyrics?.lines.map((line: any) => line.fullText), playing: [...document.querySelectorAll('audio')].some(audio => !audio.paused && audio.currentTime > 0.1) };

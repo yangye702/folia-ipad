@@ -1,3 +1,6 @@
+import { useTranslation } from 'react-i18next';
+import { beginMediaDiagnostic, diagnosticsEnabled, diagnosticTrack, mountMediaDiagnostics, recordMediaDiagnostic, recordMediaDiagnosticError } from '../utils/mediaSessionDiagnostics';
+import { getPlaybackSongKey } from '../utils/appPlaybackGuards';
 import { useEffect } from 'react';
 import type { RefObject } from 'react';
 import { PlayerState } from '../types';
@@ -50,6 +53,30 @@ export const useMediaSessionBridge = ({
     mediaSessionNextRef,
     isNowPlayingControlDisabledRef,
 }: UseMediaSessionBridgeOptions) => {
+    const { t } = useTranslation();
+    useEffect(() => mountMediaDiagnostics({
+        entry: t('mediaDiagnostics.entry'), close: t('mediaDiagnostics.close'),
+        copy: t('mediaDiagnostics.copy'), disable: t('mediaDiagnostics.disable'), select: t('mediaDiagnostics.select'),
+        controlCenter: t('mediaDiagnostics.controlCenter'), lockScreen: t('mediaDiagnostics.lockScreen'),
+    }), [t]);
+    useEffect(() => {
+        if (!diagnosticsEnabled()) return;
+        recordMediaDiagnostic('playback.observed', {
+            track: diagnosticTrack(currentSong ? getPlaybackSongKey(currentSong) : null),
+            playerState, hasSource: Boolean(audioSrc),
+        });
+        const audio = audioRef.current;
+        if (!audio) return;
+        const observe = (event: Event) => recordMediaDiagnostic(`audio.${event.type}`, {
+            effectTrack: diagnosticTrack(currentSong ? getPlaybackSongKey(currentSong) : null),
+            expectedSourceReady: Boolean(audioSrc && isMediaSessionSourceReady(audio, audioSrc, document.baseURI)),
+            paused: audio.paused, readyState: audio.readyState, networkState: audio.networkState,
+            errorCode: audio.error?.code ?? 0,
+        });
+        const names = ['playing', 'pause', 'error', 'waiting', 'stalled', 'ended', 'loadedmetadata', 'emptied'];
+        names.forEach(name => audio.addEventListener(name, observe));
+        return () => names.forEach(name => audio.removeEventListener(name, observe));
+    }, [audioRef, audioSrc, currentSong, playerState]);
     useEffect(() => {
         if (!('mediaSession' in navigator)) {
             return;
@@ -62,40 +89,64 @@ export const useMediaSessionBridge = ({
         ) => {
             try {
                 mediaSession.setActionHandler(action, handler);
+                recordMediaDiagnostic('handler.registered', { action, bound: handler !== null });
             } catch (e) {
+                recordMediaDiagnosticError(`handler.registration-error.${action}`, e);
                 console.warn(`[MediaSession] Failed to bind ${action} handler`, e);
             }
         };
 
         setActionHandlerSafely('play', async () => {
+            beginMediaDiagnostic('play');
             if (isNowPlayingControlDisabledRef.current || !audioRef.current) {
+                recordMediaDiagnostic('callback.blocked', { disabled: isNowPlayingControlDisabledRef.current, missingAudio: !audioRef.current });
                 return;
             }
 
             try {
+                recordMediaDiagnostic('transport.invoke', { action: 'play' });
                 await mediaSessionPlayRef.current();
             } catch (e) {
+                recordMediaDiagnosticError('transport.play-error', e);
                 console.error('MediaSession play failed', e);
             }
         });
         setActionHandlerSafely('pause', () => {
+            beginMediaDiagnostic('pause');
             if (isNowPlayingControlDisabledRef.current || !audioRef.current) {
+                recordMediaDiagnostic('callback.blocked', { disabled: isNowPlayingControlDisabledRef.current, missingAudio: !audioRef.current });
                 return;
             }
 
-            mediaSessionPauseRef.current();
+            recordMediaDiagnostic('transport.invoke', { action: 'pause' });
+            try { mediaSessionPauseRef.current(); } catch (error) {
+                recordMediaDiagnosticError('transport.sync-error', error);
+                throw error;
+            }
         });
         setActionHandlerSafely('previoustrack', () => {
+            beginMediaDiagnostic('previoustrack');
             if (isNowPlayingControlDisabledRef.current) {
+                recordMediaDiagnostic('callback.blocked', { disabled: true });
                 return;
             }
-            mediaSessionPrevRef.current();
+            recordMediaDiagnostic('transport.invoke', { action: 'previous' });
+            try { mediaSessionPrevRef.current(); } catch (error) {
+                recordMediaDiagnosticError('transport.sync-error', error);
+                throw error;
+            }
         });
         setActionHandlerSafely('nexttrack', () => {
+            beginMediaDiagnostic('nexttrack');
             if (isNowPlayingControlDisabledRef.current) {
+                recordMediaDiagnostic('callback.blocked', { disabled: true });
                 return;
             }
-            void mediaSessionNextRef.current();
+            recordMediaDiagnostic('transport.invoke', { action: 'next' });
+            try { void mediaSessionNextRef.current(); } catch (error) {
+                recordMediaDiagnosticError('transport.sync-error', error);
+                throw error;
+            }
         });
 
         return () => {
@@ -134,17 +185,20 @@ export const useMediaSessionBridge = ({
         let disposableArtworkUrl: string | null = null;
         const publish = () => {
             if (disposed || !isMediaSessionSourceReady(audio, audioSrc, document.baseURI)) {
+                recordMediaDiagnostic('metadata.skipped', { disposed, readyState: audio.readyState });
                 return;
             }
 
             try {
-                publishMediaSessionTrack(navigator.mediaSession, audio, {
+                const published = publishMediaSessionTrack(navigator.mediaSession, audio, {
                     title: currentSong.name,
                     artist: getSongArtistLabel(currentSong) || unknownArtistLabel,
                     album: getSongAlbumLabel(currentSong),
                     artworkUrl,
                 });
+                recordMediaDiagnostic('metadata.published', { published, track: diagnosticTrack(getPlaybackSongKey(currentSong)) });
             } catch (e) {
+                recordMediaDiagnosticError('metadata.error', e);
                 console.warn('[MediaSession] Failed to update metadata', e);
             }
         };
@@ -202,7 +256,9 @@ export const useMediaSessionBridge = ({
                 : currentSong
                     ? (playerState === PlayerState.PLAYING ? 'playing' : 'paused')
                     : 'none';
+            recordMediaDiagnostic('session.playback-state', { state: navigator.mediaSession.playbackState });
         } catch (e) {
+            recordMediaDiagnosticError('session.playback-state-error', e);
             console.warn('[MediaSession] Failed to update playback state', e);
         }
     }, [currentSong, isNowPlayingStageActive, playerState]);

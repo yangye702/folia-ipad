@@ -1,0 +1,17 @@
+{
+  "kind": "isolated Chromium on a static production build; not Vercel or iPad; no music/backend service exercised",
+  "online": {
+    "worker": "http://127.0.0.1:4190/sw.js",
+    "caches": [
+      "workbox-precache-v2-http://127.0.0.1:4190/"
+    ],
+    "rootChildren": 1,
+    "title": "Folia"
+  },
+  "offline": {
+    "rootChildren": 1,
+    "title": "Folia",
+    "online": false
+  },
+  "pageErrors": []
+}

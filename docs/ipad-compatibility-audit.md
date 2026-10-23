@@ -1,0 +1,106 @@
+# Folia iPad — 原版功能兼容性审查（第一阶段）
+
+> 2026-10-18 · 审查范围：上游 `chthollyphile/folia-major`、我们的 `yangye702/folia-ipad`，以测试分支 `feat/ipad-lyrics-visual-touch-v1` 为验收对象。
+>
+> **状态**：第一轮源码/官方文档对照 + 用户已有 iPad 真机反馈，并非全部功能的实机测试已通过。本文件是待验收清单，不能将“源码存在”等同于“iPad 可用”。
+
+## 约束和目标
+
+- Phase 1：尽可能完整复用 Folia 原版 Web 可用的播放器、视觉、歌词、音乐库和交互；保留原版 UI 与所有内置视觉引擎。**只修兼容、稳定、触控和性能问题，不增加新玩法**。
+- Phase 2（暂缓）：自定义背景、节奏小游戏、AI 音乐相关功能等；另行评估版权、性能和成本。
+- 原生桌面 / Electron 能力应标注平台限制，不以改造 Safari 取得原生系统权限为验收目标。
+- 禁止把用户音频上传到云端；无需常驻 PC、自建服务器、付费 API；不动 CET Learning Space 或其他项目。
+- 不清理 Safari/PWA 站点数据、不删除 OPFS 音乐副本、不在真机验收前合并 PR #3；每次只采用固定的测试域名，避免浏览器按 origin 隔离导致误判为曲库丢失。
+
+## 证据和分类约定
+
+- **✅ 真机已反馈通过**：用户在 iPad Safari 的实际操作确认（不是自动化保证）。
+- **🟡 代码/界面存在，未实测**：源码或官方功能说明明确存在，但 iPad 稳定性尚未验收。
+- **🟠 依赖服务/配置**：功能需要 API、在线账户、密钥、服务端或联网，不能保证当前纯本地部署可用。
+- **⚪ 平台限制**：上游明确仅桌面端或要求 Safari 不提供的浏览器原生能力。
+- **🔴 已知问题**：用户实际遇到、仍需核实解决的故障。
+
+## 功能矩阵
+
+| 范围 | 上游功能与源码依据 | iPad 当前状态 | 必须验收的具体行为 |
+|---|---|---|---|
+| 文件导入 | 原版 `showDirectoryPicker` 扫描；分支 `localFilesImport.ts` 增加 Files 多选与 OPFS 私有副本 | ✅ 导入 MP3/M4A 已实测 | 多选、重复同名文件、配套歌词/封面、部分文件导入失败后的安全回滚 |
+| 曲库持久化 | Dexie/IndexedDB 存索引，OPFS 存 Safari 选入的音频；播放从 `localMusicService.ts` 读取 | ✅ 经多轮修复后已反馈“退出再进入可直接播放” | 连续关闭标签/重启/部署更新后仍可播放；不要求再次选择原始文件 |
+| 浏览器存储配额 | `navigator.storage.persist()`、OPFS；音频保存在设备，不是云备份 | 🟡 实机诊断显示文件可读，但 `persisted=false` | 本机存储不足及 Safari 回收站点数据时，安全提示，不清空已有歌曲 |
+| 本地歌单、文件夹和实体 | `localLibrary*`、`localPlaylistService`；官方文档含歌单 M3U/M3U8、艺术家/专辑整理 | 🟡 | 创建/加入/移除歌单，艺术家和专辑操作，导入/导出 M3U，关闭重开仍保留 |
+| 本地封面 | 元数据、文件夹封面、`localCoverAsset*`；OPFS Worker 写入 | ✅ 部分歌曲封面已在实机显示，其他流程 🟡 | 无封面/内嵌封面/文件夹封面/封面切换，重启后封面不丢失 |
+| 播放器 | 原版切歌/队列/播放时钟/`useMediaSessionBridge.ts` | ✅ 前台播放、切歌；后台切 App 静音问题已修复并验收 | 锁屏/系统媒体控制、耳机按钮、跨 App 后恢复、连续播放 1 小时 |
+| 歌词解析/匹配 | 原版 LRC/VTT/TTML/QRC/YRC/KRC，在线来源；分支新增 LRCLIB + 简繁体搜索优化 | ✅ LRCLIB 手动匹配、预览、动画显示及搜索速度已反馈 | 逐字/逐行、歌词时间轴/偏移、翻译、手工更正、无法匹配时的解释 |
+| 内置视觉 | `src/types/visualizerModes.ts` 定义 **14** 种内置歌词视觉模式 | 🟡 部分模式实机运行；尚未逐个验收 | 14 种逐一切换，长句/横屏比例/字体、不卡顿、不空白 |
+| 内置背景 | `src/types/visualizerModes.ts` 定义 **6** 种背景模式（common/latent/monet/nomand/sora/url） | 🟡 部分模式/氛围预设已实机运行 | 6 种逐一切换；无封面、暗色封面、纯音乐、动画强度/节奏 |
+| “封面律动” | 原版 Latent 使用 `coverUrl/audioPower/audioBands`；分支仅增加参数组合 | 🔴 早期实机反馈“有封面但没有明显响应”；调参后未收到明确验收 | 同一首有节奏音乐对比“暂停/播放”，判断视觉是随音乐驱动还是仅自动漂移 |
+| 触控快捷操作 | `UnifiedPanel`、`ModeStepperRow`、命令面板、快捷设置 | ✅ 歌词/背景滑动切换已反馈通过，其他操作 🟡 | 全屏手势、关闭/恢复控件、歌词定位、歌单、搜索、删除操作避免误触 |
+| 沉浸与 PWA | Web manifest standalone，`VitePWA` service worker | 🟡 Safari/PWA 能打开，但完整离线/恢复未验收 | 主屏幕独立运行、屏幕旋转、状态栏、离线打开与本地音频 |
+| 均衡器和切歌过渡 | `AudioEqualizerDialog.tsx`、`PlaybackPage.tsx` Automix/Crossfade | 🟡 | iPad 上是否可用、无声/卡顿/音频上下文冲突；性能不达标需提供降级 |
+| 图形与性能 | `GraphicsPage.tsx`；多个 Visualizer 渲染器与着色器 | 🟡 | 11 英寸 iPad 的复杂动画帧率、10~30 分钟发热与耗电、后台回前台恢复 |
+| 在线平台音乐 | 上游 README 列出网易云/QQ/酷狗/Navidrome，桌面另支持 Spotify/YouTube Music/波点 | 🟠 当前部署没有承诺相应 API/登录服务 | 仅在用户决定接入且满足账号、版权、服务配置时测试；绝不当作纯本地必备 |
+| AI 主题生成 | `AppearancePage.tsx` 的模型密钥配置标记 electronOnly；封面取色是独立路径 | 🟠 Web 端独立 AI 生成路径需单独核验 | 当前不自动承诺 AI 主题生成；不用未经授权的密钥、付费接口 |
+| Folium 模组/壁纸等原生扩展 | 上游 README 明确 Folium 属于桌面端实验功能；原生桌面集成依赖 Electron/系统接口 | ⚪ 不作为 Web iPad 功能缺陷 | 记录原生不可用能力；将来若在 Web 自建扩展机制，归 Phase 2 |
+
+> 之前口头把内置歌词模式说成 13 种不准确：`src/types/visualizerModes.ts` 的权威数组实际有 **14** 个，背景有 **6** 个。
+
+## 尚未完成的自动化验证
+
+1. 分支最新提交虽经过 Vercel **构建 READY**，但**尚未重新运行**新增的 OPFS 读路径单元测试与更新后的 `test/ui/ipadLocalFiles.spec.ts`。不能把旧版的 9,533 项测试记录当作当前分支全量通过。
+2. 原 `test/ui/ipadLocalFiles.spec.ts` 只在 Chromium 模拟“Safari 不支持的部分接口”场景；**它不是 WebKit/iPadOS 真机测试**。
+3. PWA 缓存可能导致同域名客户端暂时执行旧 JS；排障须核对部署 SHA、活动 Service Worker 与浏览器实际版本，不能仅以 Vercel READY 断定已更新到设备。
+4. 对“文件句柄被撤销”的真实故障，优先验证音频能从 `folia-file-imports/Files-UUID` 安全重开；索引和音频副本应一一对应。不得静默删除曲目/元数据。
+5. 禁止在演示环境调用“清除全部数据”作为排障方法。
+
+## 集中验收顺序
+
+- **P0 — 播放与存储**：重启后曲库、队列/封面/歌词/音频皆可恢复；后台/锁屏/耳机控制；PWA 不因更新丢失本地音频。
+- **P1 — 视觉/触控**：14 种歌词样式 × 6 种背景逐项烟雾测试；封面律动真实音频响应；设置、操作面板、手势和横屏布局。
+- **P1 — 本地功能**：歌单、收藏、均衡器、过渡、歌词手动修正、歌曲信息整理/备份导出。
+- **P2 — 性能边界**：长时间播放、存储不足、离线/PWA、U 盘文件选取与设备间迁移；U 盘整目录持续访问不承诺。
+- **独立待决策（不阻塞纯本地阶段）**：在线流媒体账号/API、AI 主题、桌面专属功能的 Web 替代。
+
+## 交付门槛
+
+- 通过最新分支的类型检查、Web 构建、相关单测与真实文件的端到端测试；列出 **实际运行命令和结果**。
+- 上述 P0 场景由 iPad Safari + 主屏幕 App 各做一次实测；关键用户场景无明显故障。
+- 对无法支持的功能给出具体浏览器/权限边界；不假装“所有桌面功能都可以完美移植”。
+- 审核 PR #3 的累计改动及回退路径之后，用户同意再合并稳定主分支；测试阶段不污染现有固定站点存储。
+
+
+## 2026-10-18 回归与原版能力专项复核
+
+### 回归检查（有执行证据）
+
+- GitHub Actions **PR Unit Tests** 最终通过，工作流运行 [39098990547](https://github.com/yangye702/folia-ipad/actions/runs/39098990547)，提交 `ff1cb126de86181e4dd0f5c2b131da5f3589d13b`。
+- 主项目 TypeScript 类型检查：PASS。
+- sync-server TypeScript 类型检查：PASS。
+- Vitest：**9,538 passed，2 skipped，0 failed**（838 个测试文件通过、1 文件跳过，合计 839）。
+- PR #3 目前仍为 Draft，未合并 `main`。
+- **未运行** WebKit 真机 / Playwright 浏览器端到端测试，不能将 Vitest 的全绿视为 iPad 全面兼容。
+
+### 代码复核：锁屏与系统媒体控制
+
+- `src/hooks/useMediaSessionBridge.ts` 已绑定 Web Media Session 的 `play`、`pause`、`previoustrack`、`nexttrack`，并发布歌曲标题、歌手、专辑、封面及播放状态。
+- `src/utils/mediaSessionSync.ts` 会检查音频来源及时间轴，防止旧歌曲事件覆盖新歌锁屏信息；单元测试 `test/unit/utils/mediaSessionSync.test.ts` 覆盖元数据、时间轴和封面 URL 规则。
+- **仍未核实** iPadOS 锁屏切歌/进度/封面、耳机控制和 Safari-PWA 后台切换。Web Media Session 接口存在不代表每一种控制在所有 iPadOS 版本都可靠。
+
+### 代码复核：本地歌单与收藏
+
+- `src/services/localPlaylistService.ts` 保存本地歌单 ID 列表，处理重复导入时的 canonical ID，避免重复文件在收藏或歌单中表现为不同歌曲。
+- `src/services/localPlaylistFileService.ts` 支持 M3U 解析、按现有本地曲库路径匹配与导出；`test/unit/services/localPlaylistService.test.ts`、`test/unit/services/localPlaylistFileService.test.ts` 均纳入本轮全量单元测试。
+- **仍未核实** iPad 上从界面创建歌单、保存/重新打开后恢复、M3U 文件导入与分享导出。测试使用模拟数据，不等于真机文件选择器验证。
+
+### 代码复核：视觉引擎
+
+- `test/unit/visualizer/builtinModeLists.test.ts` 断言静态模式 ID 和动态 registry 一致；`test/unit/visualizer/backgroundRegistry.test.ts` 检查 6 种背景的注册/渲染入口。
+- `src/components/visualizer/VisualizerRenderer.tsx` 使用延迟切换 + Suspense 与过渡层，目标是切换时保留旧画面直至新引擎加载，但浏览器真机 GPU 占用和帧率**尚未测量**。
+- 因此 14 种歌词样式、6 种背景应在 iPad 横屏下逐项试运行；对黑屏、字体截断、页面冻结、显著卡顿单独记录模式名称，不先改渲染架构。
+
+### 下一步最低成本真机验收
+
+1. **锁屏/耳机媒体控制**：在已经导入的歌曲上播放 → 锁屏 → 观察标题/封面，试暂停、下一首，再解锁继续；不重新导入。
+2. **本地歌单持久化**：新建测试歌单 → 添加两首现有 MP3 → 关闭 Safari 标签再从固定测试 URL 打开 → 查看歌单与歌曲是否仍在。
+3. **视觉快速巡检**：横屏逐一切换歌词样式和背景，记录是否黑屏/卡顿；只有确认存在具体问题才修改源码。
+4. 完成以上后再评估 Playwright WebKit E2E 与 30–60 分钟长时间播放测试；它们没有被本轮 CI 代替。
+

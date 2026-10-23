@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildAmllDbSearchQueries, toAmllDbSongResult, toAmllDbSongResults } from '@/utils/lyrics/amllDbCandidates';
+import { buildAmllDbSearchQueries, lyricChineseVariants, toAmllDbSongResult, toAmllDbSongResults } from '@/utils/lyrics/amllDbCandidates';
 import type { AmllApiSongItem } from '@/utils/lyrics/providers/amllApi';
 
 // test/unit/lyrics/amllDbCandidates.test.ts
@@ -22,6 +22,16 @@ const songItem = (overrides: Partial<AmllApiSongItem> = {}): AmllApiSongItem => 
 });
 
 describe('buildAmllDbSearchQueries', () => {
+    it('covers both Chinese scripts automatically and keeps the original query first', () => {
+        expect(lyricChineseVariants('几分之几')).toEqual(['几分之几', '幾分之幾']);
+        expect(buildAmllDbSearchQueries('几分之几 - 卢广仲')).toEqual([
+            { musicName: '几分之几', artistName: '卢广仲' },
+            { musicName: '幾分之幾', artistName: '盧廣仲' },
+            { musicName: '几分之几' },
+            { musicName: '幾分之幾' },
+        ]);
+    });
+
     it('turns the structured default query into musicName + first artist, then musicName only', () => {
         expect(buildAmllDbSearchQueries('Idol - YOASOBI, Ikura - Idol')).toEqual([
             { musicName: 'Idol', artistName: 'YOASOBI' },

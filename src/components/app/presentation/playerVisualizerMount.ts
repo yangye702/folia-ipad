@@ -19,9 +19,11 @@ type PlayerVisualizerMountInput = {
     hasLibraryOcclusionSettled: boolean;
     /** 翻牌交接要求 visualizer 挂着（首页墙的窗还开着 / 马上要开）。 */
     handoffKeepsVisualizer?: boolean;
+    /** 两面墙交接期间由交接决定背景挂载，不提前恢复普通首页规则。 */
+    handoffActive?: boolean;
 };
 
-/** visualizer 是否挂载。三项遮挡条件缺一不可，任何一项失效都立即恢复挂载；交接要求挂着时一定挂着。 */
+/** visualizer 是否挂载。交接由窗的状态决定；其余时候遵循 Lattice 与稳定首页遮挡规则。 */
 export const shouldMountPlayerVisualizer = ({
     currentView,
     hasLatticeExited,
@@ -29,8 +31,10 @@ export const shouldMountPlayerVisualizer = ({
     libraryOccludesPlayer,
     hasLibraryOcclusionSettled,
     handoffKeepsVisualizer = false,
+    handoffActive = false,
 }: PlayerVisualizerMountInput) => handoffKeepsVisualizer || (
-    currentView !== 'lattice'
+    !handoffActive
+    && currentView !== 'lattice'
     && hasLatticeExited
     && !(shouldRevealHomeSurface && libraryOccludesPlayer && hasLibraryOcclusionSettled)
 );

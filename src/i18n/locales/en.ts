@@ -1,6 +1,9 @@
 
 
 export default {
+  "qqLyricSearch": {
+    "timeout": "QQ search timed out. Please try again later.","network": "QQ search request failed. Please retry.", "http": "QQ search proxy returned an HTTP error.", "upstream": "QQ Music rejected the search request.", "invalid-response": "QQ search returned an unexpected response format.", "diagnostics": "QQ lyric search diagnostics", "hint": "Debug only: latest 30 lyric searches, including typed query, proxy HTTP status, QQ codes and result count. HTTP alone does not prove QQ accepted the request. No credentials or raw responses. If copying fails, select the text and use Copy. Remove qqLyricDebug from the URL to hide this panel.", "copy": "Copy diagnostics", "select": "Select diagnostics"},
+  "mediaDiagnostics": {"controlCenter": "Control Center", "lockScreen": "Lock Screen", "entry": "Media diagnostics", "close": "Close", "copy": "Copy logs", "disable": "Disable and clear diagnostics", "select": "Select logs"},
   "libraryBravais": {
     "suiteName": "Bravais wall",
     "homeTitle": "Library",
@@ -1634,6 +1637,7 @@ export default {
     "kugou": "Kugou Music",
     "spotify": "Spotify",
     "amll": "AMLLDB",
+    "lrclib": "LRCLIB (Synced Lyrics)",
   },
   "globalLyricOffset": {
     "title": "Global Timing Offset",
@@ -3382,6 +3386,9 @@ export default {
     "unknownAlbum": "Unknown Album",
   },
   "localMusic": {
+    "matchDiagnostics": "Matching diagnostics",
+    "copyMatchDiagnostics": "Copy diagnostics",
+    "matchFailure": "{{source}} · {{stage}}: {{kind}}",
     "foldersAndPlaylists": "Folders",
     "albums": "Albums",
     "artists": "Artists",
@@ -3435,6 +3442,7 @@ export default {
     "forceServer": "Force Server",
     "skipOnlineMatch": "Skip Online Match",
     "saving": "Saving...",
+    "tryLrclib": "Try LRCLIB synced lyrics",
     "matchFailed": "Failed to fetch lyrics for selected song",
     "noLyricsAvailable": "No lyrics available",
     "dontUseOnlineMetadata": "Don't use online metadata",
@@ -3557,8 +3565,13 @@ export default {
     "startAutoMatch": "Match {{count}} songs",
     "selectAllSongs": "Select all",
     "deselectAllSongs": "Deselect all",
+    "matchSourceUnavailable": "{{source}} is unavailable for this batch; repeated requests were skipped ({{reason}})",
+    "recoveringMetadata": "Waiting for sources and retrying unfinished items (up to two recovery passes)…",
     "matchingMetadata": "Matching song info...",
     "autoMatchStatus": {
+      "matched-cover-missing": "Information matched; no reliable artwork",
+      "cancelled": "Cancelled",
+      "low-confidence": "Low confidence",
       "matched": "Matched",
       "matched-cover-failed": "Metadata matched; cover cache failed",
       "no-match": "No suitable candidate",

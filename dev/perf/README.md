@@ -5,6 +5,12 @@ frame, before and after a change. It measures; it changes no visual code.
 
 Windows only (processor affinity, Windows' GPU counters, the project's `electron.exe`).
 
+For a **browser-only** Linux/macOS/cloud compatibility check, `web.mjs` can serve a frozen build of
+this same measuring page with the synthetic `perf-song/` fixtures. It records RAF gaps and long
+animation frames, not Windows GPU counters or an iPad frame rate. See
+[`docs/diagnostics/ipad-phase1.md`](../../docs/diagnostics/ipad-phase1.md#可复现浏览器性能方法) for the exact
+before/after scope and limitations. `FOLIA_PERF_SMOKE=1` also walks all 14 styles and 6 backgrounds.
+
 **The whole app** (how long it takes to start, to change the song, to switch a page, and how much
 memory it holds) is measured by a second tool, in `dev/perf/app/`, with a README of its own
 (`dev/perf/app/README.md`). It starts the real app (`electron/main.cjs` and a production build)

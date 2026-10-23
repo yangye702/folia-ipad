@@ -172,18 +172,19 @@ const VisualizerBackgroundTransition: React.FC<VisualizerBackgroundTransitionPro
     const [backgrounds, onLeft, onStart] = useShownLayers(shown, animate, animate);
     const under = useMemo(() => (transition ? underNext(transition) : null), [transition]);
     // A background going to none fades out as the style switch's own; one with another coming stays under it.
-    const nextDrawn = backgrounds[backgrounds.length - 1].value !== null;
+    const onScreen = backgrounds.findIndex(background => !background.leaving);
+    const nextDrawn = onScreen >= 0 && backgrounds[onScreen].value !== null;
 
     // Oldest first: the new background is drawn over the leaving one.
     return (
         <>
-            {backgrounds.map(background => (
+            {backgrounds.map((background, index) => (
                 <BackgroundLayer
                     key={background.key}
                     background={background}
                     inputs={inputs}
                     now={now}
-                    transition={background.leaving && nextDrawn ? under : transition}
+                    transition={background.leaving && nextDrawn && index < onScreen ? under : transition}
                     styleWaits={waits}
                     onLeft={onLeft}
                     onStart={onStart}

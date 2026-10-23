@@ -1,0 +1,12 @@
+[
+  {
+    "stage": "attached-0",
+    "connected": true,
+    "lost": false
+  },
+  {
+    "stage": "replaced-0",
+    "connected": false,
+    "lost": false
+  }
+]

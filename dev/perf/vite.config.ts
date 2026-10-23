@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { commandPinyinPlugin } from '../pinyin/commandPinyinPlugin.mjs';
+import { icuFoliaDataPlugin } from '../icuFolia/icuFoliaDataPlugin.mjs';
 
 // dev/perf/vite.config.ts
 // Builds the measuring page (dev/perf/page.html) as a production bundle of its own.
@@ -53,6 +54,7 @@ export default defineConfig({
     },
     plugins: [
         commandPinyinPlugin(),
+        icuFoliaDataPlugin(),
         react(),
     ],
     define: {

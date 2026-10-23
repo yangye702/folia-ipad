@@ -55,7 +55,17 @@ const LocalSongLyricMatch: React.FC<LocalSongLyricMatchProps> = ({ song, onClose
         return { title, artist, album, durationMs };
     }, [song]);
 
-    const search = useLyricMatchSearch(song, songInfo);
+    // On touchscreen web players the direct, unauthenticated AMLL TTML source is
+    // more useful as the first lyric match tab than an unconfigured online-provider API.
+    // The other sources remain available via the same tabs.
+    const preferDirectLyricSearch = typeof window !== 'undefined'
+        && !window.electron
+        && typeof window.matchMedia === 'function'
+        && window.matchMedia('(pointer: coarse)').matches;
+    const search = useLyricMatchSearch(song, songInfo, {
+        initialSource: preferDirectLyricSearch ? 'amll' : undefined,
+        autoPublicSources: preferDirectLyricSearch,
+    });
     const { source, selectedResult } = search;
 
     // A chosen result turns the lyrics switch to the match.
@@ -152,7 +162,8 @@ const LocalSongLyricMatch: React.FC<LocalSongLyricMatchProps> = ({ song, onClose
         <button
             onClick={onToggle}
             disabled={disabled}
-            className="flex items-center gap-1.5 group disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex items-center gap-1.5 group rounded-lg [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:px-2 disabled:opacity-40 disabled:cursor-not-allowed"
+            aria-pressed={isOn}
             title={label}
         >
             <div className={`w-2 h-2 rounded-full transition-all duration-200 ${isOn ? dotActive + ' shadow-sm shadow-blue-400/50' : dotBase} group-hover:scale-150`} />

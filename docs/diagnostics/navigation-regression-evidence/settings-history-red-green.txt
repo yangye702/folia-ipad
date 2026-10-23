@@ -1,0 +1,67 @@
+Environment: disposable Chromium profiles; actual History API, synthetic page inputs. Not iPad acceptance.
+
+RED before production edits:
+Running 1 test using 1 worker
+
+(node:522305) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/1] [components] › test/component/settingsHistory.spec.ts:4:1 › Back consumes settings before player; Forward reopens and close preserves base history
+  1) [components] › test/component/settingsHistory.spec.ts:4:1 › Back consumes settings before player; Forward reopens and close preserves base history
+
+    Error: expect(locator).toHaveCount(expected) failed
+
+    Locator:  getByRole('dialog')
+    Expected: 0
+    Received: 1
+    Timeout:  15000ms
+
+    Call log:
+      - Expect "toHaveCount" getByRole('dialog') with timeout 15000ms
+      - waiting for getByRole('dialog')
+        32 × locator resolved to 1 element
+           - unexpected value "1"
+
+
+       9 |     await expect(page.getByRole('dialog')).toBeVisible();
+      10 |     await page.goBack();
+    > 11 |     await expect(page.getByRole('dialog')).toHaveCount(0);
+         |                                            ^
+      12 |     await expect(page.getByTestId('view')).toHaveText('player');
+      13 |     await page.goForward();
+      14 |     await expect(page.getByRole('dialog')).toBeVisible();
+        at /workspace/folia-ipad/test/component/settingsHistory.spec.ts:11:44
+
+    Error Context: ../scratch/settings-probe-red/settingsHistory-Back-consu-5b8f7-lose-preserves-base-history-components/error-context.md
+
+
+  1 failed
+    [components] › test/component/settingsHistory.spec.ts:4:1 › Back consumes settings before player; Forward reopens and close preserves base history
+
+GREEN integrated browser tests:
+Running 5 tests using 1 worker
+
+(node:531089) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/5] [e2e] › test/ui/settingsHistory.spec.ts:22:1 › browser Back closes settings before leaving player; Forward restores settings
+[2/5] [e2e] › test/ui/settingsHistory.spec.ts:45:1 › nested settings Back/Forward and touch Cancel restore the parent before closing
+(node:532411) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[3/5] [components] › test/component/settingsHistory.spec.ts:6:1 › Back consumes settings before player; Forward reopens and close preserves base history
+[4/5] [components] › test/component/settingsHistory.spec.ts:25:1 › nested touch return, Back/Forward and repeated Back restore settings pages in order
+[5/5] [components] › test/component/settingsHistory.spec.ts:47:1 › closing settings over a collection preserves its search and original browser history
+  5 passed (2.0m)
+
+Navigation bridge units:
+ RUN  v4.1.11 /workspace/folia-ipad
+
+
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+   Start at  12:01:45
+   Duration  4.81s (transform 1.68s, setup 0ms, import 2.46s, tests 62ms, environment 1.46s)

@@ -1,0 +1,87 @@
+{
+  "baseline": "65226b866648148f46206a9f8170cfd1e12e42a8",
+  "upstream": "ced47852c64c2709faebe0190d430c3ab75ca2a4",
+  "productionPatchSha256": "cafe5267f36031dfc7afba943c4ebaa89bc140efaac4db5ff96df110fdeae23f",
+  "evidenceKind": "isolated automated verification; not iPad acceptance",
+  "typecheck": {
+    "exitCode": 0
+  },
+  "build": {
+    "exitCode": 0,
+    "viteSeconds": 65,
+    "pwaPrecacheEntries": 203
+  },
+  "unit": {
+    "passed": 9711,
+    "skipped": 2,
+    "filesPassed": 855,
+    "filesSkipped": 1,
+    "seconds": 895.99
+  },
+  "newComponentSpecs": {
+    "passed": 8,
+    "seconds": 39.2
+  },
+  "nativeTouchVisualEntry": {
+    "passed": 2,
+    "seconds": 37.2,
+    "viewports": [
+      [
+        820,
+        1180
+      ],
+      [
+        1180,
+        820
+      ]
+    ],
+    "checks": [
+      "native panel entry",
+      "mode arrows",
+      "14 lyric entries",
+      "6 background entries",
+      "refresh retains selected mode/background"
+    ]
+  },
+  "fullBrowser": {
+    "startTime": "2026-10-22T07:03:20.768Z",
+    "duration": 6336229.116,
+    "expected": 974,
+    "skipped": 2,
+    "unexpected": 105,
+    "flaky": 0,
+    "command": "PLAYWRIGHT_JSON_OUTPUT_NAME=... npx playwright test --workers=3 --reporter=line,json"
+  },
+  "visualSmoke": {
+    "styles": 14,
+    "backgrounds": 6,
+    "pageErrors": [],
+    "settledCanvasCounts": [
+      1,
+      0,
+      0,
+      0,
+      1,
+      1,
+      1,
+      1,
+      0,
+      2,
+      1,
+      0,
+      1,
+      0
+    ],
+    "kind": "standalone production renderer with synthetic media; not iPad performance"
+  },
+  "productionPwaOffline": {
+    "passed": true,
+    "pageErrors": 0,
+    "kind": "local static production shell, fresh Chromium context; not real Vercel/iPad or music persistence"
+  },
+  "dioramaLowConcurrencyRepeat": {
+    "passed": 1,
+    "seconds": 46.6,
+    "note": "full-run timeout remains in original 105 failures; no production change"
+  }
+}

@@ -92,9 +92,12 @@ const VisualizerMonet: React.FC<VisualizerMonetProps> = (props) => {
 
     const songIdentifier = seed ?? songTitle ?? '';
 
-    useEffect(() => {
+    // Match the new song and its intro nodes in the same commit, before it can paint old nodes.
+    const [introSong, setIntroSong] = useState(songIdentifier);
+    if (introSong !== songIdentifier) {
+        setIntroSong(songIdentifier);
         setIntroKey(prev => prev + 1);
-    }, [songIdentifier]);
+    }
 
     const {
         activeLine,
@@ -478,7 +481,7 @@ const VisualizerMonet: React.FC<VisualizerMonetProps> = (props) => {
                                         {/* Square cover with enhanced shadow, no transparent border */}
                                         {monetTuning.portraitStyle === 'square' ? (
                                             <div
-                                                className="relative w-full aspect-square overflow-hidden rounded-[2rem] bg-center"
+                                                className="relative w-full aspect-square overflow-hidden rounded-[2rem] bg-center transition-[box-shadow,background-color] duration-1000"
                                                 style={{
                                                     boxShadow: `0 36px 80px ${colorWithAlpha(theme.backgroundColor, 0.45)}, 0 20px 42px ${colorWithAlpha(theme.accentColor, 0.22)}, 0 0 0 1px ${colorWithAlpha(theme.primaryColor, 0.06)}`,
                                                     backgroundColor: colorWithAlpha(theme.primaryColor, 0.08),
@@ -488,7 +491,7 @@ const VisualizerMonet: React.FC<VisualizerMonetProps> = (props) => {
                                             </div>
                                         ) : (
                                             <div
-                                                className="relative w-full aspect-[0.74] p-1.5 rounded-[2.15rem] border backdrop-blur-sm"
+                                                className="relative w-full aspect-[0.74] p-1.5 rounded-[2.15rem] border backdrop-blur-sm transition-[box-shadow,background-color,border-color] duration-1000"
                                                 style={{
                                                     borderColor: colorWithAlpha(theme.primaryColor, 0.1),
                                                     backgroundColor: colorWithAlpha(theme.backgroundColor, 0.15),
@@ -496,7 +499,7 @@ const VisualizerMonet: React.FC<VisualizerMonetProps> = (props) => {
                                                 }}
                                             >
                                                 <div
-                                                    className="w-full h-full overflow-hidden rounded-[1.85rem] bg-center"
+                                                    className="w-full h-full overflow-hidden rounded-[1.85rem] bg-center transition-colors duration-1000"
                                                     style={{
                                                         backgroundColor: colorWithAlpha(theme.primaryColor, 0.08),
                                                     }}

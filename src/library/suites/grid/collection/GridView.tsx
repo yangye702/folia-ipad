@@ -1491,7 +1491,7 @@ export const GridView: React.FC<GridViewProps> = ({
     // the background; a read that failed (the first page, a page of the background fill, or a
     // Navidrome read) brings nothing more and leaves the list short of what it did not reach. The
     // snapshot says both in one update with the tracks they speak of.
-    const hasReadFailed = Boolean(loadError || backgroundLoadError);
+    const hasReadFailed = Boolean(loadError || backgroundLoadError) && resourceSnapshot?.tracksComplete !== true;
     const cardsStillArriving = isLoading || loading || backgroundLoading;
     const pageKey = navigationKey ?? collectionKey(collection);
     const isLocateAsked = locateRequest !== null && mode === 'tracks' && locateRequest.collectionKey === pageKey;

@@ -105,6 +105,19 @@ describe('a change that waits to start', () => {
     });
 });
 
+describe('returning to a layer still on screen', () => {
+    it('reuses the original layer and fades the incoming one away without a third mount', () => {
+        const toB = nextShownLayers(first, mode('sonnet'), true, false);
+        const back = nextShownLayers(toB, mode('classic'), true, false);
+        expect(back.map(layer => [layer.key, layer.value, layer.leaving])).toEqual([
+            [0, 'classic', false], [1, 'sonnet', true],
+        ]);
+        expect(nextShownLayers(back, mode('classic'), true, false)).toBe(back);
+        const toC = nextShownLayers(back, mode('fume'), true, false);
+        expect(toC.map(layer => [layer.key, layer.value])).toEqual([[0, 'classic'], [2, 'fume']]);
+    });
+});
+
 describe('which background a backdrop draws', () => {
     const common = (patch: Partial<VisualizerBackgroundConfig> = {}): VisualizerBackgroundConfig => ({
         mode: 'common',

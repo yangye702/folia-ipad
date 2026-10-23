@@ -6,20 +6,22 @@
  */
 
 import { SongResult } from '../../../types';
+import * as OpenCC from 'opencc-js';
 import { parseLyricsByFormat } from '../../../utils/lyrics/parserCore';
 import { detectTimedLyricFormat } from '../../../utils/lyrics/formatDetection';
 import { qrcDecrypt } from './qrcDecrypt';
 import { applyDetectedChorusEffects, applyChorusRangesByTime } from '../../../utils/lyrics/chorusEffects';
 import type { ChorusRange } from '../../../utils/lyrics/chorusEffects';
 import { getOriginalCoverUrl } from '../../../utils/coverUrl';
-import { lyricProxyWebUrl } from '../../lyricProxy';
+import { lyricProxyWebUrl, readBrowserRequestFailure } from '../../lyricProxy';
+import { beginQqSearchDiagnostic, emptyQqSearchSummary, QqLyricSearchError, readQqSearchResponse, type QqSearchSummary } from './qqLyricSearchStatus';
 
 const isElectron = typeof window !== 'undefined' && (window as any).electron;
 
 /**
  * Sends a POST request to u.y.qq.com via proxy or directly in Electron.
  */
-async function requestQQ(method: string, module: string, param: any): Promise<any> {
+async function requestQQ(method: string, module: string, param: any, observeSearch?: (summary: QqSearchSummary) => void, signal?: AbortSignal): Promise<any> {
   const payload = {
     comm: {
       ct: 11,
@@ -43,16 +45,25 @@ async function requestQQ(method: string, module: string, param: any): Promise<an
   const targetUrl = 'https://u.y.qq.com/cgi-bin/musicu.fcg';
   const url = isElectron ? targetUrl : lyricProxyWebUrl(targetUrl);
 
-  const response = await fetch(url, {
-    method: 'POST',
-    credentials: isElectron ? 'omit' : 'same-origin',
-    headers: {
-      'Content-Type': 'application/json',
-      'Cookie': 'tmeLoginType=-1;',
-      'User-Agent': 'okhttp/3.14.9',
-    },
-    body: JSON.stringify(payload),
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(12000)]) : AbortSignal.timeout(12000),
+      credentials: isElectron ? 'omit' : 'same-origin',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': 'tmeLoginType=-1;',
+        'User-Agent': 'okhttp/3.14.9',
+      },
+      body: JSON.stringify(payload),
+    });
+
+  } catch (error) {
+    if (observeSearch) throw new QqLyricSearchError((error as Error).name === 'TimeoutError' ? 'timeout' : 'network', { ...emptyQqSearchSummary(), ...readBrowserRequestFailure(error) });
+    throw error;
+  }
+  if (observeSearch) return await readQqSearchResponse(response, observeSearch);
 
   if (!response.ok) {
     throw new Error(`QQ Music API request failed: ${response.status}`);
@@ -91,7 +102,7 @@ function detectIsQrc(content: string): boolean {
 /**
  * Searches songs on QQ Music anonymously and throws on upstream refusal (e.g. the frequent code 2001).
  */
-export async function searchQQSongs(keyword: string, page = 1, pageSize = 20): Promise<SongResult[]> {
+export async function searchQQSongs(keyword: string, page = 1, pageSize = 20, diagnoseLyrics = false, signal?: AbortSignal): Promise<SongResult[]> {
   const safeKeyword = keyword.trim();
   if (!safeKeyword) return [];
 
@@ -104,7 +115,9 @@ export async function searchQQSongs(keyword: string, page = 1, pageSize = 20): P
     ),
     remoteplace: "search.android.keyboard",
     query: safeKeyword.length > 60 ? safeKeyword.slice(0, 60) : safeKeyword,
-    search_type: 0, // 0 = SONG
+    // Upstream 82ca394e: QQ's current song discriminator is 7; 0 returns 2001.
+    // Keep the original anonymous RPC and bounded keyword fallbacks.
+    search_type: 7,
     num_per_page: pagesize,
     page_num: page,
     highlight: 0,
@@ -113,8 +126,17 @@ export async function searchQQSongs(keyword: string, page = 1, pageSize = 20): P
     grp: 1,
   };
 
-  const data = await requestQQ("DoSearchForQQMusicLite", "music.search.SearchCgiService", param);
-  const songs = data?.body?.item_song || [];
+  const update = beginQqSearchDiagnostic(param.query, isElectron ? 'direct' : '/api/lyric-proxy', diagnoseLyrics);
+  update({ searchType: param.search_type });
+  let data: any;
+  try {
+    data = await requestQQ("DoSearchForQQMusicLite", "music.search.SearchCgiService", param, summary => update(summary), signal);
+    update({ outcome: 'success' });
+  } catch (error) {
+    update({ ...(error instanceof QqLyricSearchError ? error.summary : {}), outcome: error instanceof QqLyricSearchError ? error.kind : 'invalid-response' });
+    throw error;
+  }
+  const songs = data.body.item_song;
 
   return songs.map((info: any) => {
     const artists = (info.singer || []).map((s: any, idx: number) => ({
@@ -143,15 +165,38 @@ export async function searchQQSongs(keyword: string, page = 1, pageSize = 20): P
 }
 
 /**
- * Searches songs on QQ Music for lyric and metadata matching: a refused search is just "no candidates".
+ * Searches anonymously for lyric matching, with bounded script/title fallback.
  */
-export async function searchQQLyrics(keyword: string, page = 1, pageSize = 20): Promise<SongResult[]> {
-  try {
-    return await searchQQSongs(keyword, page, pageSize);
-  } catch (error) {
-    console.error('[QQMusic] Search failed:', error);
-    return [];
+export async function searchQQLyrics(keyword: string, page = 1, pageSize = 20, signal?: AbortSignal, accept?: (songs: SongResult[]) => boolean): Promise<SongResult[]> {
+  const input = keyword.trim().slice(0, 60);
+  if (!input) return [];
+  const toTraditional = OpenCC.Converter({ from: 'cn', to: 't' });
+  const toSimplified = OpenCC.Converter({ from: 't', to: 'cn' });
+  // The matching dialog builds "title - artist - album"; preserve literal input first.
+  const title = input.split(/\s+-\s+/u)[0].trim();
+  const queries = [...new Set([input, toTraditional(input), toSimplified(input), title, toTraditional(title), toSimplified(title)])];
+  let refusal: QqLyricSearchError | undefined;
+  let fallback: SongResult[] = [];
+  for (const query of queries) {
+    signal?.throwIfAborted();
+    try {
+      const songs = await searchQQSongs(query, page, pageSize, true, signal);
+      if (songs.length) {
+        if (!accept || accept(songs)) return songs;
+        if (!fallback.length) fallback = songs;
+      }
+    } catch (error) {
+      // iPad evidence: code 2001 for simplified input, success for traditional.
+      // This is a recovery attempt, not an interpretation of what 2001 means.
+      if (!(error instanceof QqLyricSearchError) || error.kind !== 'upstream'
+          || error.summary.topCode !== 0 || error.summary.requestCode !== 2001) throw error;
+      refusal ??= error;
+    }
   }
+  // A successful empty fallback must not conceal an earlier rejected request.
+  if (fallback.length) return fallback;
+  if (refusal) throw refusal;
+  return [];
 }
 
 /**

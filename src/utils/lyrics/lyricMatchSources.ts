@@ -3,12 +3,15 @@ import { useOnlineProviderAccountStore } from '../../stores/useOnlineProviderAcc
 import type { AmllDbPlatform, LyricData, LyricProviderSource, SongResult } from '../../types';
 import type { ChorusRange, ProviderLyricsResult } from '../../types/onlineMusic';
 import { calculateMatchScore } from './matchScore';
-import { searchQQLyrics, fetchQQLyrics } from '../../services/onlineMusic/qq/qqLyricProvider';
+import { defaultMatchingSearchSession, type MatchingSearchSession } from '../../services/matchingSearchSession';
+import { qqLyricMatchAccess } from '../../services/onlineMusic/qq/qqLyricMatchAccess';
+import type { LyricSearchDiagnostics } from '../../types/lyricSearchDiagnostics';
 import { fetchAmllDbLyrics, getAmllDbMusicIds, searchAmllDbSongs } from './providers/amllDbProvider';
 import { buildAmllDbSearchQueries, toAmllDbSongResults } from './amllDbCandidates';
 import { applyChorusRangesByTime } from './chorusEffects';
 import { hasRenderableLyrics } from './validity';
 import { LYRIC_SOURCE_IDS, getLyricSource } from './lyricSources';
+import { searchLrclibLyrics, fetchLrclibLyrics } from './providers/lrclibProvider';
 
 // src/utils/lyrics/lyricMatchSources.ts
 // How each lyric source of lyricSources.ts is searched and fetched: for the match windows, for
@@ -17,8 +20,6 @@ import { LYRIC_SOURCE_IDS, getLyricSource } from './lyricSources';
 const AMLL_DB_SEARCH_PAGE_SIZE = 50;
 const AMLL_DB_MAX_RESULTS = 20;
 const MATCH_WINDOW_SEARCH_LIMIT = 50;
-// QQ's search has only ever been asked for one page of 20 songs at most.
-const QQ_SEARCH_PAGE_MAX = 20;
 
 export type LyricMatchSearchTarget = {
     title: string;
@@ -37,11 +38,14 @@ export type LyricMatchFetchResult = {
 export type LyricSourceLyrics = ProviderLyricsResult & { matchedLyricsProviderPlatform?: AmllDbPlatform };
 
 export interface LyricSourceAccess {
+    /** The adapter already performs its bounded query fallback or a title-only search. */
+    handlesQueryFallback?: boolean;
+    diagnostics?: LyricSearchDiagnostics;
     /**
      * The source's songs for `query`, `limit` of them at most. `target` is the song being matched,
      * for a source that has to choose its candidates itself.
      */
-    search(query: string, limit: number, target: LyricMatchSearchTarget): Promise<SongResult[]>;
+    search(query: string, limit: number, target: LyricMatchSearchTarget, signal?: AbortSignal, accept?: (songs: SongResult[]) => boolean): Promise<SongResult[]>;
     /**
      * The lyrics of one of the source's songs, or null when the source cannot be asked.
      * `lent.chorusRanges` are chorus ranges found elsewhere, for a fetch that marks the chorus itself.
@@ -80,16 +84,44 @@ export async function searchAmllDbLyricCandidates(
     query: string,
     target: LyricMatchSearchTarget,
 ): Promise<SongResult[]> {
-    for (const params of buildAmllDbSearchQueries(query)) {
-        const items = await searchAmllDbSongs(params, AMLL_DB_SEARCH_PAGE_SIZE);
-        if (items === null) {
-            return [];
+    const queries = buildAmllDbSearchQueries(query);
+    // Respect the relevance ordering: specific title+artist, title alone, then
+    // the broad lyric-body text query. Script variants inside each group run
+    // concurrently so 簡/简 does not add a second 5-second wait.
+    const paired = queries.filter(q => 'musicName' in q && Boolean(q.artistName));
+    const titleOnly = queries.filter(q => 'musicName' in q && !q.artistName);
+    const broad = queries.filter(q => 'q' in q);
+    let hadSuccessfulRequest = false;
+    let lastFailure: unknown = null;
+    for (const group of [paired, titleOnly, broad]) {
+        if (!group.length) continue;
+        const settled = await Promise.allSettled(group.map(params => searchAmllDbSongs(params, AMLL_DB_SEARCH_PAGE_SIZE)));
+        const candidates: SongResult[] = [];
+        let groupHasSuccess = false;
+        for (const response of settled) {
+            if (response.status === 'fulfilled' && response.value !== null) {
+                hadSuccessfulRequest = true;
+                groupHasSuccess = true;
+                candidates.push(...toAmllDbSongResults(response.value));
+            } else {
+                lastFailure = response.status === 'rejected' ? response.reason : new Error('AMLL service unavailable');
+            }
         }
-        const candidates = toAmllDbSongResults(items);
-        if (candidates.length > 0) {
-            return sortByMatchScore(candidates, target).slice(0, AMLL_DB_MAX_RESULTS);
+        // A failed service call is not an empty catalog: do not issue further
+        // broad fallback requests when every query in this group was unreachable.
+        if (!groupHasSuccess) throw lastFailure ?? new Error('AMLL service unavailable');
+        if (candidates.length) {
+            const ids = new Set<string>();
+            const distinct = candidates.filter(song => {
+                const key = `${song.amllDbPlatform}:${song.id}`;
+                if (ids.has(key)) return false;
+                ids.add(key);
+                return true;
+            });
+            return sortByMatchScore(distinct, target).slice(0, AMLL_DB_MAX_RESULTS);
         }
     }
+    if (!hadSuccessfulRequest) throw lastFailure ?? new Error('AMLL service unavailable');
     return [];
 }
 
@@ -137,15 +169,12 @@ const OWN_ACCESS: Partial<Record<LyricProviderSource, Partial<LyricSourceAccess>
         search: (query, _limit, target) => searchAmllDbLyricCandidates(query, target),
         fetch: song => fetchAmllDbCandidateLyrics(song),
     },
-    // QQ's lyrics are read from QQ's own lyric service, which needs no QQ account and knows a
-    // song by its mid.
-    qq: {
-        search: (query, limit) => searchQQLyrics(query, 1, Math.min(limit, QQ_SEARCH_PAGE_MAX)),
-        fetch: async (song, lent) => ({ lyrics: await fetchQQLyrics(song, lent) ?? null, isPureMusic: false }),
-        songKey: song => String(song.qqMid ?? song.id),
-        marksChorusOnFetch: true,
+    lrclib: {
+        search: (query, limit) => searchLrclibLyrics(query, limit),
+        fetch: async song => ({ lyrics: await fetchLrclibLyrics(song), isPureMusic: false }),
     },
-    kugou: {
+    qq: qqLyricMatchAccess,
+    kugou: { handlesQueryFallback: true,
         songKey: song => String(song.kgHash ?? song.id).toUpperCase(),
     },
 };
@@ -158,12 +187,50 @@ export const getLyricSourceAccess = (source: LyricProviderSource): LyricSourceAc
     accessBySource.get(source) as LyricSourceAccess
 );
 
-export async function searchLyricsByMatchSource(
+const matchSearchCache = new Map<string, { until: number; value: SongResult[] }>();
+const pendingMatchSearches = new Map<string, Promise<SongResult[]>>();
+const MAX_MATCH_SEARCH_CACHE = 80;
+
+// Shares the existing source access without caching target-specific scores or applied song state.
+export function searchMatchingSource(
+    source: LyricProviderSource, query: string, limit: number, target: LyricMatchSearchTarget,
+    options: { signal?: AbortSignal; session?: MatchingSearchSession; accept?: (songs: SongResult[]) => boolean } = {},
+): Promise<SongResult[]> {
+    const session = options.session ?? defaultMatchingSearchSession;
+    const account = useOnlineProviderAccountStore.getState().accounts[source];
+    const key = JSON.stringify([query.trim().normalize('NFC'), limit, target.title, target.artist, target.album, target.durationMs, Boolean(options.accept), account?.user?.id ?? null, account?.status ?? null]);
+    return session.search(source, key, signal => getLyricSourceAccess(source).search(query, limit, target, signal, options.accept), options.signal);
+}
+
+export function searchLyricsByMatchSource(
     source: LyricProviderSource,
     query: string,
     target: LyricMatchSearchTarget,
 ): Promise<SongResult[]> {
-    return sortByMatchScore(await getLyricSourceAccess(source).search(query, MATCH_WINDOW_SEARCH_LIMIT, target), target);
+    // Platform queries use account-scoped, short-lived matching sessions; lyric databases keep their existing cache.
+    if (source !== 'amll' && source !== 'lrclib') {
+        return searchMatchingSource(source, query, MATCH_WINDOW_SEARCH_LIMIT, target)
+            .then(songs => sortByMatchScore(songs, target));
+    }
+    const key = JSON.stringify([source, query.trim().normalize('NFC'), target.title, target.artist, target.album, target.durationMs]);
+    const cached = matchSearchCache.get(key);
+    if (cached && Date.now() < cached.until) return Promise.resolve(cached.value);
+    const active = pendingMatchSearches.get(key);
+    if (active) return active;
+    const task = getLyricSourceAccess(source).search(query, MATCH_WINDOW_SEARCH_LIMIT, target)
+        .then(songs => {
+            const sorted = sortByMatchScore(songs, target);
+            matchSearchCache.set(key, { until: Date.now() + (sorted.length ? 90_000 : 12_000), value: sorted });
+            while (matchSearchCache.size > MAX_MATCH_SEARCH_CACHE) {
+                const oldest = matchSearchCache.keys().next().value;
+                if (oldest === undefined) break;
+                matchSearchCache.delete(oldest);
+            }
+            return sorted;
+        })
+        .finally(() => { pendingMatchSearches.delete(key); });
+    pendingMatchSearches.set(key, task);
+    return task;
 }
 
 export async function fetchLyricsForMatchSource(

@@ -8,9 +8,10 @@ import {
     writeCoverAsset,
     type BinaryAssetWriteResult,
 } from './binaryAssetStore';
+import { MatchFailure, recordMatchDiagnostic } from './matchingDiagnostics';
 import { lyricProxyWebUrl } from './lyricProxy';
 
-interface StoredCoverDescriptor extends BinaryAssetWriteResult { }
+interface StoredCoverDescriptor extends BinaryAssetWriteResult { assetKey?: string; sourceUrl?: string; }
 
 const isStoredCoverDescriptor = (value: unknown): value is StoredCoverDescriptor => {
     if (!value || typeof value !== 'object') return false;
@@ -36,14 +37,76 @@ const buildCoverRequestUrl = (coverUrl: string): string => {
     return coverUrl;
 };
 
-const fetchCoverBlob = async (coverUrl: string): Promise<Blob> => {
-    const response = await fetch(buildCoverRequestUrl(coverUrl), { mode: 'cors' });
-    if (response.ok === false) throw new Error(`Cover request failed: ${response.status}`);
-    return await response.blob();
+const fetchCoverBlob = async (coverUrl: string, signal?: AbortSignal): Promise<Blob> => {
+    let response: Response;
+    try { response = await fetch(buildCoverRequestUrl(coverUrl), { mode: 'cors', signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(12000)]) : AbortSignal.timeout(12000) }); }
+    catch (error) { throw new MatchFailure((error as Error).name === 'TimeoutError' ? 'timeout' : 'network', 'cover-fetch'); }
+    if (response.ok === false) {
+        const error = new MatchFailure(response.status === 403 ? 'proxy-refused' : 'http', 'cover-fetch');
+        Object.assign(error, { status: response.status });
+        throw error;
+    }
+    const blob = await response.blob();
+    if (!blob.size || !blob.type.startsWith('image/')) throw new MatchFailure('invalid-image', 'cover-decode');
+    if (typeof createImageBitmap === 'function') {
+        try { const image = await createImageBitmap(blob); image.close(); }
+        catch { throw new MatchFailure('invalid-image', 'cover-decode'); }
+    }
+    return blob;
 };
 
-export async function getCachedCoverUrl(cacheKey: string): Promise<string | null> {
+export interface PreparedCover {
+    commit: () => Promise<void>;
+    finish: () => Promise<void>;
+    discard: () => Promise<void>;
+}
+
+// New bytes are staged first; callers can commit the descriptor in their existing song transaction.
+const stageCover = async (cacheKey: string, blob: Blob, sourceUrl: string, signal?: AbortSignal): Promise<PreparedCover> => {
+    const old = await getFromCache<unknown>(cacheKey);
+    const assetKey = `${cacheKey}_${crypto.randomUUID()}`;
+    let descriptor: BinaryAssetWriteResult | null;
+    try {
+        signal?.throwIfAborted();
+        descriptor = await writeCoverAsset(assetKey, blob);
+        signal?.throwIfAborted();
+        if (!descriptor) throw new Error('Cover storage unavailable');
+    } catch (error) {
+        await removeCoverAsset(assetKey).catch(() => undefined);
+        if ((error as Error).name === 'AbortError') throw error;
+        throw new MatchFailure('storage', 'cover-cache');
+    }
+    return {
+        commit: async () => {
+            signal?.throwIfAborted();
+            try { await saveToCache(cacheKey, { ...descriptor, assetKey, sourceUrl }, { throwOnError: true }); }
+            catch { throw new MatchFailure('storage', 'cover-cache'); }
+        },
+        discard: async () => { await removeCoverAsset(assetKey).catch(() => undefined); },
+        finish: async () => {
+            if (typeof caches !== 'undefined' && /^https:\/\//i.test(sourceUrl)) {
+                try { const cache = await caches.open('folia-online-covers-v1'); await cache.put(sourceUrl, new Response(blob, { headers: { 'Content-Type': blob.type } })); }
+                catch { /* OPFS remains the durable copy when Cache Storage is unavailable. */ }
+            }
+            if (isStoredCoverDescriptor(old)) await removeCoverAsset(old.assetKey || cacheKey).catch(() => undefined);
+        },
+    };
+};
+
+export const prepareLocalSongOnlineCover = async (songId: string, coverUrl: string, signal?: AbortSignal): Promise<PreparedCover> => (
+    await stageCover(`cover_local_${songId}`, await fetchCoverBlob(coverUrl, signal), coverUrl, signal)
+);
+
+const persistCover = async (cacheKey: string, blob: Blob, sourceUrl: string, signal?: AbortSignal): Promise<void> => {
+    const prepared = await stageCover(cacheKey, blob, sourceUrl, signal);
+    try { await prepared.commit(); }
+    catch { await prepared.discard(); throw new MatchFailure('storage', 'cover-cache'); }
+    await prepared.finish();
+};
+
+export async function getCachedCoverUrl(cacheKey: string, sourceUrl?: string): Promise<string | null> {
     const stored = await getFromCache<unknown>(cacheKey);
+    if (sourceUrl && (isBlob(stored) || isStoredCoverDescriptor(stored) && stored.sourceUrl !== sourceUrl)) return null;
     if (isBlob(stored)) {
         const descriptor = await writeCoverAsset(cacheKey, stored).catch(() => null);
         if (!descriptor) {
@@ -59,10 +122,14 @@ export async function getCachedCoverUrl(cacheKey: string): Promise<string | null
         return null;
     }
 
-    const cachedCover = await readCoverAsset(cacheKey, isStoredCoverDescriptor(stored) ? stored.mimeType : undefined);
+    const cachedCover = await readCoverAsset(isStoredCoverDescriptor(stored) ? stored.assetKey || cacheKey : cacheKey, isStoredCoverDescriptor(stored) ? stored.mimeType : undefined);
     if (!cachedCover) {
         if (stored) await removeFromCache(cacheKey);
         return null;
+    }
+    if (sourceUrl && typeof createImageBitmap === 'function') {
+        try { const image = await createImageBitmap(cachedCover); image.close(); }
+        catch { recordMatchDiagnostic({ stage: 'cover-decode', outcome: 'invalid-image' }); return null; }
     }
     return createSafeObjectUrl(cachedCover);
 }
@@ -72,29 +139,34 @@ export async function getCachedCoverUrl(cacheKey: string): Promise<string | null
  *
  * `getCachedCoverUrl` is the wrong question to ask when nothing is going to be displayed: it reads
  * the bytes and hands back a URL that a caller checking for mere existence then has to remember to
- * revoke. Reads the descriptor only, and accepts the legacy raw-Blob shape the same way the reader
- * above does, so a cover written before the asset store existed still counts as cached.
+ * revoke. Checks the descriptor and backing bytes without allocating a URL, and accepts the legacy
+ * raw-Blob shape, so a cover written before the asset store existed still counts as cached.
  */
 export async function hasCachedCover(cacheKey: string): Promise<boolean> {
     const stored = await getFromCache<unknown>(cacheKey);
-    return isBlob(stored) || isStoredCoverDescriptor(stored);
+    return isBlob(stored) || (isStoredCoverDescriptor(stored) && Boolean(await readCoverAsset(stored.assetKey || cacheKey, stored.mimeType)));
 }
 
 export async function loadCachedOrFetchCover(cacheKey: string, coverUrl?: string | null): Promise<string | null> {
     if (!coverUrl) return null;
 
     try {
-        const cachedCoverUrl = await getCachedCoverUrl(cacheKey);
+        const cachedCoverUrl = await getCachedCoverUrl(cacheKey, coverUrl);
         if (cachedCoverUrl) {
             return cachedCoverUrl;
         }
 
         const coverBlob = await fetchCoverBlob(coverUrl);
-        const descriptor = await writeCoverAsset(cacheKey, coverBlob).catch(() => null);
-        if (descriptor) await saveToCache(cacheKey, descriptor);
+        await persistCover(cacheKey, coverBlob, coverUrl).catch(() => undefined);
         return createSafeObjectUrl(coverBlob) || coverUrl;
     } catch (error) {
-        console.warn('Failed to cache cover:', error);
+        recordMatchDiagnostic({ stage: 'cover-cache', error });
+        const stored = await getFromCache<unknown>(cacheKey).catch(() => null);
+        // Older caches have no URL identity: retain their offline usability without blessing a known mismatch.
+        if (isBlob(stored) || isStoredCoverDescriptor(stored) && !stored.sourceUrl) {
+            const legacy = await getCachedCoverUrl(cacheKey);
+            if (legacy) return legacy;
+        }
         return coverUrl;
     }
 }
@@ -109,22 +181,24 @@ export async function saveCoverBlob(cacheKey: string, coverBlob: Blob): Promise<
 }
 
 // Replaces the cached online cover used by local-song playback without changing the audio file.
-export async function cacheLocalSongOnlineCover(songId: string, coverUrl: string): Promise<boolean> {
+export async function cacheLocalSongOnlineCover(songId: string, coverUrl: string, signal?: AbortSignal, onFailure?: (error: unknown) => void): Promise<boolean> {
     const cacheKey = `cover_local_${songId}`;
-    await removeCachedCover(cacheKey);
     try {
-        const descriptor = await writeCoverAsset(cacheKey, await fetchCoverBlob(coverUrl));
-        if (!descriptor) return false;
-        await saveToCache(cacheKey, descriptor);
+        signal?.throwIfAborted();
+        await persistCover(cacheKey, await fetchCoverBlob(coverUrl, signal), coverUrl, signal);
+        recordMatchDiagnostic({ stage: 'cover-cache', outcome: 'success' });
         return true;
     } catch (error) {
-        console.warn('[LocalMusic] Failed to cache matched cover:', error);
+        recordMatchDiagnostic({ stage: 'cover-cache', error });
+        onFailure?.(error);
         return false;
     }
 }
 
 export async function removeCachedCover(cacheKey: string): Promise<void> {
-    await Promise.all([removeFromCache(cacheKey), removeCoverAsset(cacheKey)]);
+    const stored = await getFromCache<unknown>(cacheKey);
+    await removeFromCache(cacheKey);
+    await removeCoverAsset(isStoredCoverDescriptor(stored) ? stored.assetKey || cacheKey : cacheKey);
 }
 
 export { clearCoverAssets, getCoverAssetUsage };

@@ -176,7 +176,7 @@ describe('KuGou Web transport', () => {
         expect(targetUrl.searchParams.get('pagesize')).toBe('50');
         expect(targetUrl.searchParams.get('token')).toBe('');
         expect(targetUrl.searchParams.get('signature')).toMatch(/^[a-f0-9]{32}$/);
-        expect(fetchMock.mock.calls[0][1]).toMatchObject({ credentials: 'omit' });
+        expect(fetchMock.mock.calls[0][1]).toMatchObject({ credentials: 'same-origin' });
     });
 
     it('uses the same anonymous signed search directly in Electron', async () => {

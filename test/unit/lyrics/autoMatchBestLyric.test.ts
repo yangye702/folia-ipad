@@ -227,7 +227,7 @@ describe('autoMatchBestLyric', () => {
             exactMatchOnly: true,
         }) as any;
 
-        expect(searchQQLyricsMock).toHaveBeenCalledWith('Correct title - Correct artist - Correct album', 1, 10);
+        expect(searchQQLyricsMock).toHaveBeenCalledWith('Correct title - Correct artist - Correct album', 1, 10, expect.any(AbortSignal));
         expect(fetchQQLyricsMock).toHaveBeenCalledWith(
             expect.objectContaining({ id: 202, qqMid: 'selected-mid' }),
             { chorusRanges: [] },
@@ -290,7 +290,7 @@ describe('autoMatchBestLyric', () => {
         }) as any;
 
         expect(getLyricMock).toHaveBeenCalledWith(987);
-        expect(searchQQLyricsMock).toHaveBeenCalledWith('Correct title - Correct artist - Correct album', 1, 10);
+        expect(searchQQLyricsMock).toHaveBeenCalledWith('Correct title - Correct artist - Correct album', 1, 10, expect.any(AbortSignal));
         expect(result).toMatchObject({ source: 'qq', id: 202, qqMid: 'word-mid' });
         expect(cloudSearchMock).not.toHaveBeenCalled();
     });
@@ -307,7 +307,7 @@ describe('autoMatchBestLyric', () => {
             metadataCandidate: { source: 'qq', songId: 'selected-mid' },
         }) as any;
 
-        expect(searchQQLyricsMock).toHaveBeenCalledWith('Correct title - Correct artist - Correct album', 1, 10);
+        expect(searchQQLyricsMock).toHaveBeenCalledWith('Correct title - Correct artist - Correct album', 1, 10, expect.any(AbortSignal));
         expect(fetchAmllDbLyricsMock).toHaveBeenCalledWith('qq', ['selected-mid', '202']);
         expect(result).toMatchObject({ source: 'amll', id: 202, matchedLyricsProviderPlatform: 'qq' });
         expect(fetchQQLyricsMock).not.toHaveBeenCalled();
@@ -482,7 +482,8 @@ describe('autoMatchBestLyric', () => {
         expect(searchQQLyricsMock).toHaveBeenCalledWith(
             'Night of Bloom (feat. nayuta) - Kirara Magic/Xomu/nayuta - Night of Bloom',
             1,
-            10
+            10,
+            expect.any(AbortSignal),
         );
         expect(fetchQQLyricsMock).toHaveBeenCalledTimes(1);
         expect(fetchQQLyricsMock).toHaveBeenCalledWith(

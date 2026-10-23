@@ -5,7 +5,7 @@ import { waitForAppMounted } from '../helpers/appState';
 // test/ui/localPureMusicMark.spec.ts
 // 本地歌曲的「标记为纯音乐」在真实应用里的三条入口与它的后果：
 // - 播放页右侧面板 → 本地页签 → 在线匹配（LyricMatchModal）里的开关：关窗、不重新播放、当前歌词就地清空，
-//   本地页签的歌词来源读作「纯音乐」，再打开窗口按钮变成「取消纯音乐标记」；在同一个窗口里选中并保存一个
+//   本地页签保留可用本地歌词文件的来源，匹配窗口显示「纯音乐」并提供「取消纯音乐标记」；在同一个窗口里选中并保存一个
 //   网易判定为纯音乐（没有歌词行）的候选，也按纯音乐标记保存；
 // - 资料库网格聚焦卡上的铅笔（LocalSongMetadataMatchDialog）：同一个开关，徽标「纯音乐」，取消后本地歌词就地回来；
 // - 命令面板的 playback-toggle-pure-music：只在当前是本地歌曲时出现，执行一次标记、再执行一次取消。
@@ -117,6 +117,8 @@ const expectLyricsCleared = async (page: Page) => {
     await expect(page.getByText(LOCAL_LYRIC_LINE, { exact: true })).toHaveCount(0);
 };
 
+// The source row describes available lyric files; the store/DB assertions below verify
+// whether the playing track is instrumental, independently of an available local file.
 const panel = (page: Page) => page.getByTestId('unified-panel-surface');
 
 /** 用面板开关打开播放页右侧面板，切到本地页签。 */
@@ -192,7 +194,7 @@ test('the player lyric match window marks the playing song as instrumental in pl
     await boot(page);
     await playFromGrid(page);
     await openLocalTab(page);
-    await expect(panel(page).getByTitle('Local', { exact: true })).toBeVisible();
+    await expect(panel(page).getByText('Local', { exact: true })).toBeVisible();
     await expect(panel(page).getByRole('button', { name: 'Instrumental', exact: true })).toHaveCount(0);
     const playing = await playbackSnapshot(page);
 
@@ -211,10 +213,10 @@ test('the player lyric match window marks the playing song as instrumental in pl
         .toEqual({ song: playing.song, audioSrc: playing.audioSrc, view: 'player' });
     expect(await storedSong(page)).toEqual({ markedPureMusic: true, matchedIsPureMusic: true, lyricsSource: 'online' });
 
-    // 本地页签：歌词状态与来源都读作「纯音乐」，选中的是它。
+    // The source row keeps the available local file; marking is shown in the match dialog.
     await openLocalTab(page);
-    await expect(panel(page).getByTitle('Local / Instrumental', { exact: true })).toBeVisible();
-    await expect(panel(page).getByRole('button', { name: 'Instrumental', exact: true })).toBeVisible();
+    await expect(panel(page).getByText('Local', { exact: true })).toBeVisible();
+    await expect(panel(page).getByRole('button', { name: 'Instrumental', exact: true })).toHaveCount(0);
 
     // 再打开窗口：按钮变成取消，歌词来源标签读作「纯音乐」。
     await panel(page).getByRole('button', { name: 'Match Online' }).click();
@@ -230,7 +232,7 @@ test('the player lyric match window marks the playing song as instrumental in pl
     expect((await playbackSnapshot(page)).audioSrc).toBe(playing.audioSrc);
     expect(await storedSong(page)).toEqual({ markedPureMusic: false, matchedIsPureMusic: false, lyricsSource: null });
     await openLocalTab(page);
-    await expect(panel(page).getByTitle('Local', { exact: true })).toBeVisible();
+    await expect(panel(page).getByText('Local', { exact: true })).toBeVisible();
 });
 
 test('a marked song is not auto-matched when replayed, and the mark survives a reload', async ({ page }) => {
@@ -245,14 +247,14 @@ test('a marked song is not auto-matched when replayed, and the mark survives a r
     await runPaletteToggle(page);
     await expectLyricsCleared(page);
 
-    // 重新播放：匹配流程跑完了，一次搜索都没有，歌词仍是空的，本地页签仍读作「纯音乐」。
+    // 重新播放：匹配流程跑完了，一次搜索都没有，歌词仍是空的，本地文件来源仍可见。
     searches.length = 0;
     await replayFromGrid(page);
     await page.waitForTimeout(1000);
     expect(searches).toEqual([]);
     await expectLyricsCleared(page);
     await openLocalTab(page);
-    await expect(panel(page).getByTitle('Local / Instrumental', { exact: true })).toBeVisible();
+    await expect(panel(page).getByText('Local', { exact: true })).toBeVisible();
 
     // 重载：记录还在 IndexedDB 里，资料库里的匹配窗口照样认出它。
     await page.reload();
@@ -292,7 +294,7 @@ test('the library match dialog toggles the mark and the playing song follows in 
     await expect(metadataDialog(page)).toHaveCount(0);
     await expect.poll(() => storedSong(page)).toEqual({ markedPureMusic: false, matchedIsPureMusic: false, lyricsSource: null });
 
-    // 本地歌词就地回来：同一首、没有重新播放；回到播放页，本地页签不再读作「纯音乐」。
+    // 本地歌词就地回来：同一首、没有重新播放；回到播放页，本地文件来源仍可见。
     await expect.poll(async () => {
         const state = await playbackSnapshot(page);
         return { song: state.song, lines: state.lines, lyricSource: state.lyricSource, audioSrc: state.audioSrc };
@@ -300,7 +302,7 @@ test('the library match dialog toggles the mark and the playing song follows in 
     await page.goForward();
     await expect.poll(async () => (await playbackSnapshot(page)).view).toBe('player');
     await openLocalTab(page);
-    await expect(panel(page).getByTitle('Local', { exact: true })).toBeVisible();
+    await expect(panel(page).getByText('Local', { exact: true })).toBeVisible();
     await expect(panel(page).getByRole('button', { name: 'Instrumental', exact: true })).toHaveCount(0);
 });
 
@@ -370,5 +372,5 @@ test('saving a provider result that is pure music in the player window marks the
     await expectLyricsCleared(page);
     expect((await playbackSnapshot(page)).song).toBe('Midnight Train');
     await openLocalTab(page);
-    await expect(panel(page).getByTitle('Local / Instrumental', { exact: true })).toBeVisible();
+    await expect(panel(page).getByText('Local', { exact: true })).toBeVisible();
 });

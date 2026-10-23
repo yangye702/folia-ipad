@@ -79,7 +79,7 @@ const mountProbe = async (mount: (id: string) => Promise<unknown>, page: Page, s
 };
 
 const openArtist = async (page: Page, id: ArtistFixtureId) => {
-    expect(await page.evaluate(fixtureId => window.__libraryProbe!.openArtist(fixtureId), id)).toBe(true);
+    await expect.poll(() => page.evaluate(fixtureId => window.__libraryProbe!.openArtist(fixtureId), id)).toBe(true);
 };
 const artist = (page: Page) => page.evaluate(() => window.__libraryProbe!.artist());
 const back = (page: Page) => page.evaluate(() => window.__libraryProbe!.back());
@@ -444,7 +444,7 @@ for (const suite of SUITES) {
             const album = (await artist(page))!.albums[3];
             expect(album.link).toEqual({ source: 'online', providerId: PROBE_PROVIDER_A, type: 'album' });
 
-            expect(await page.evaluate(id => window.__libraryProbe!.openArtistAlbum(id), album.id)).toBe(true);
+            await expect.poll(() => page.evaluate(id => window.__libraryProbe!.openArtistAlbum(id), album.id)).toBe(true);
             await expect.poll(() => stack(page)).toEqual([main.name, artistAlbumName(3)]);
             expect(await topDescriptor(page)).toEqual({ source: 'online', providerId: PROBE_PROVIDER_A, type: 'album', id: album.id, name: album.name });
             await expect(artistLayer(page)).toHaveCount(0);
@@ -515,7 +515,7 @@ for (const suite of SUITES) {
             const filtered = artistAlbumIdsMatching(main, 'cedar');
             await expect.poll(async () => (await artist(page))?.albumIds).toEqual(filtered);
 
-            expect(await page.evaluate(id => window.__libraryProbe!.openArtistAlbum(id), filtered[0])).toBe(true);
+            await expect.poll(() => page.evaluate(id => window.__libraryProbe!.openArtistAlbum(id), filtered[0])).toBe(true);
             await expect.poll(() => stack(page)).toHaveLength(2);
             await back(page);
             await expect.poll(() => stack(page)).toEqual([main.name]);

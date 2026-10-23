@@ -83,6 +83,9 @@ test('typing on the wall goes into the seam input, narrows the wall to a finite 
 
 test('the command palette filter still acts on the same query, with --play', async ({ page }) => {
     await openAllSongsInBravais(page);
+    // The list panel keeps the seam's own field visible while the palette edits the same query.
+    await stage(page).locator('[data-bravais-seam-action="list"]').click();
+    await expect(seamInput(page)).toBeVisible();
     // 列表里的 filter-view / Ctrl+F：bravais 没给锚点，命令面板用自己的浮层；写的是同一个浏览会话 query。
     const openPaletteFilter = () => expect.poll(async () => {
         await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
@@ -91,19 +94,30 @@ test('the command palette filter still acts on the same query, with --play', asy
     }).toBeGreaterThan(0);
     await openPaletteFilter();
     const paletteInput = palettePanel(page).getByRole('combobox');
+    await expect(collection(page)).toHaveAttribute('data-bravais-layer', /.+/);
+    const sessionKey = (await collection(page).getAttribute('data-bravais-layer'))!;
+    // Playing the filtered songs opens the player and unregisters the page's live filter owner.
+    // The same browse session must retain its query while the collection is off screen.
+    const query = () => page.evaluate(async key => {
+        const path = '/src/library/core/shared/useLibraryBrowseSessionStore.ts';
+        const { getLibraryBrowseSession } = await import(/* @vite-ignore */ path);
+        return getLibraryBrowseSession(key).query;
+    }, sessionKey);
     await paletteInput.fill('train');
     await expect(seamInput(page)).toHaveValue('train');
+    await expect.poll(query).toBe('train');
     await expect(collection(page)).toHaveAttribute('data-bravais-mode', 'finite');
     // 命令面板里的 Esc：清空过滤词并关上。
     await paletteInput.press('Escape');
     await expect(seamInput(page)).toHaveValue('');
+    await expect.poll(query).toBe('');
     await expect(collection(page)).toHaveAttribute('data-bravais-mode', 'infinite');
     // `--play` 只在命令面板的过滤里有：播放过滤出来的那些，过滤词本身留着。
     await openPaletteFilter();
     await paletteInput.fill('train --play');
     await paletteInput.press('Enter');
     await expect.poll(() => playbackSongName(page)).toBe('Midnight Train');
-    await expect(seamInput(page)).toHaveValue('train');
+    await expect.poll(query).toBe('train');
 });
 
 test('on the bravais home `s` is a filter character, `/` searches online, and Ctrl+K still opens the palette', async ({ page }) => {

@@ -28,6 +28,8 @@ interface ModeStepperRowProps<Value extends string> {
     /** 该模式专属的参数控件，没有时槽位保留占位。 */
     trailing?: React.ReactNode;
     moreLabel: string;
+    /** Optional touch-only hint for horizontal swipes on the mode title. */
+    swipeHint?: string;
     onOpenMore: () => void;
     /** Whether the row's picker is open; the section keeps it, so one clock serves both rows' pictures. */
     open: boolean;
@@ -44,6 +46,7 @@ const ModeStepperRow = <Value extends string>({
     caption,
     trailing,
     moreLabel,
+    swipeHint,
     onOpenMore,
     open,
     onOpenChange,
@@ -51,11 +54,43 @@ const ModeStepperRow = <Value extends string>({
     const canStep = options.length > 1;
     const reduced = useKitReducedMotion();
     const triggerRef = useRef<HTMLButtonElement>(null);
+    const touchGestureRef = useRef<{ pointerId: number; x: number; y: number } | null>(null);
+    const suppressTriggerClickRef = useRef(false);
     // 0 表示不是箭头触发的（从小图里选或外部改），此时只淡入不滑动。
     const [stepDirection, setStepDirection] = useState<-1 | 0 | 1>(0);
     const selectedLabel = options.find(option => option.value === value)?.label ?? value;
 
     const enterOffset = reduced ? 0 : stepDirection * STEP_ENTER_OFFSET_PX;
+
+    const handleTouchStart = (event: React.PointerEvent<HTMLButtonElement>) => {
+        suppressTriggerClickRef.current = false;
+        touchGestureRef.current = event.pointerType === 'touch' && canStep
+            ? { pointerId: event.pointerId, x: event.clientX, y: event.clientY }
+            : null;
+    };
+
+    const handleTouchEnd = (event: React.PointerEvent<HTMLButtonElement>) => {
+        const start = touchGestureRef.current;
+        touchGestureRef.current = null;
+        if (!start || start.pointerId !== event.pointerId) return;
+        const dx = event.clientX - start.x;
+        const dy = event.clientY - start.y;
+        if (Math.abs(dx) < 48 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
+        const direction = dx < 0 ? 1 : -1;
+        suppressTriggerClickRef.current = true;
+        event.preventDefault();
+        setStepDirection(direction);
+        onStep(direction);
+    };
+
+    const handleTriggerClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+        if (suppressTriggerClickRef.current) {
+            suppressTriggerClickRef.current = false;
+            event.preventDefault();
+            return;
+        }
+        onOpenChange(!open);
+    };
 
     const handleSelect = (nextValue: Value) => {
         setStepDirection(0);
@@ -72,21 +107,25 @@ const ModeStepperRow = <Value extends string>({
             disabled={!canStep}
             whileTap={canStep && !reduced ? { scale: 0.82, x: direction * 2 } : undefined}
             transition={kitTransition('fast', reduced)}
-            className="st-t-fast flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[color:var(--st-t3)] transition-colors hover:bg-[var(--st-fill)] hover:text-[color:var(--st-t1)] disabled:cursor-not-allowed disabled:opacity-40"
+            className={`st-t-fast flex h-7 w-7 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 [@media(pointer:coarse)]:row-start-1 ${direction === -1 ? '[@media(pointer:coarse)]:col-start-1' : '[@media(pointer:coarse)]:col-start-3'} shrink-0 items-center justify-center rounded-lg text-[color:var(--st-t3)] transition-colors hover:bg-[var(--st-fill)] hover:text-[color:var(--st-t1)] disabled:cursor-not-allowed disabled:opacity-40`}
             aria-label={`${caption} ${direction === -1 ? '−' : '+'}`}
         >
-            {direction === -1 ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
+            {direction === -1 ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
         </motion.button>
     );
 
     return (
-        <div className="flex min-h-14 items-center gap-1">
+        <div className="flex min-h-14 items-center gap-1 [@media(pointer:coarse)]:grid [@media(pointer:coarse)]:grid-cols-[44px_minmax(0,1fr)_44px]">
             {renderStepButton(-1)}
 
             <button
                 ref={triggerRef}
                 type="button"
-                onClick={() => onOpenChange(!open)}
+                onPointerDown={handleTouchStart}
+                onPointerUp={handleTouchEnd}
+                onPointerCancel={() => { touchGestureRef.current = null; }}
+                onClick={handleTriggerClick}
+                style={{ touchAction: 'pan-y' }}
                 className={`st-t-fast flex h-12 min-w-0 flex-1 items-center gap-1.5 rounded-[10px] pl-1.5 pr-2 text-left transition-colors hover:bg-[var(--st-fill)] ${open ? 'bg-[var(--st-fill)]' : ''}`}
                 aria-label={caption}
                 aria-haspopup="true"
@@ -105,6 +144,7 @@ const ModeStepperRow = <Value extends string>({
                     <span className="min-w-0">
                         <span className="block text-[11.5px] leading-[15px] text-[color:var(--st-t3)]">{caption}</span>
                         <span className="block truncate text-sm leading-[19px]">{selectedLabel}</span>
+                        {swipeHint && <span aria-hidden="true" className="hidden [@media(pointer:coarse)]:block truncate text-[10px] text-[color:var(--st-t3)]">{swipeHint}</span>}
                     </span>
                 </motion.span>
                 <ChevronDown size={14} className={`st-t-move shrink-0 text-[color:var(--st-t3)] transition-transform ${open ? 'rotate-180' : ''}`} />
@@ -115,7 +155,7 @@ const ModeStepperRow = <Value extends string>({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={kitTransition('move', reduced)}
-                className="flex shrink-0 items-center justify-end gap-1"
+                className="flex shrink-0 items-center justify-end gap-1 [@media(pointer:coarse)]:col-span-3 [@media(pointer:coarse)]:row-start-2 [@media(pointer:coarse)]:flex-wrap"
             >
                 {trailing}
             </motion.div>

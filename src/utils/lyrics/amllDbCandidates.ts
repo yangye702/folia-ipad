@@ -1,4 +1,5 @@
 import type { AmllDbPlatform, SongResult } from '../../types';
+import * as OpenCC from 'opencc-js';
 import type { AmllApiSearchParams, AmllApiSongItem } from './providers/amllApi';
 
 // src/utils/lyrics/amllDbCandidates.ts
@@ -7,6 +8,16 @@ import type { AmllApiSearchParams, AmllApiSongItem } from './providers/amllApi';
 const QUERY_SEPARATOR = /\s+-\s+/u;
 // 不含 /：本地歌手已在入库时按 / 拆分，剩下的 / 多半是名字的一部分（如 AC/DC）
 const ARTIST_SEPARATOR = /\s*[,，、&]\s*|\s+(?:feat\.?|ft\.?)\s+/iu;
+
+const toTraditional = OpenCC.Converter({ from: 'cn', to: 't' });
+const toSimplified = OpenCC.Converter({ from: 't', to: 'cn' });
+
+/** Search both simplified and traditional titles/artist names without asking the listener to retype. */
+export const lyricChineseVariants = (value: string): string[] => {
+    const input = value.normalize('NFC').trim();
+    if (!input) return [];
+    return [...new Set([input, toTraditional(input), toSimplified(input)].filter(Boolean))];
+};
 
 // 去掉歌名末尾的括号说明，如「Idol (TV Size)」→「Idol」。musicName 按包含匹配，带后缀就搜不到原曲
 const stripTitleSuffix = (title: string): string => (
@@ -23,18 +34,38 @@ export function buildAmllDbSearchQueries(query: string): AmllApiSearchParams[] {
     if (parts.length === 0) {
         return [];
     }
-    if (parts.length === 1) {
-        return [{ musicName: parts[0] }, { q: parts[0] }];
-    }
-
     const [musicName, artist] = parts;
     const baseName = stripTitleSuffix(musicName);
-    const artistName = artist.split(ARTIST_SEPARATOR)[0]?.trim();
-    const queries: AmllApiSearchParams[] = artistName ? [{ musicName, artistName }] : [];
-    if (artistName && baseName !== musicName) {
-        queries.push({ musicName: baseName, artistName });
+    // Preserve the original title before relaxing qualifiers like "(TV Size)".
+    // Each stage also searches simplified/traditional variants without manual retyping.
+    const originalNames = lyricChineseVariants(musicName);
+    const baseNames = lyricChineseVariants(baseName);
+    // Prefer the literal input and its qualifier-free title before trying
+    // script variants. Japanese names can contain convertible kanji too.
+    const names = [...new Set([musicName, baseName, ...originalNames, ...baseNames])];
+    if (parts.length === 1) {
+        // q matches lyric bodies too, so keep it behind targeted title lookup.
+        return [...names.map(name => ({ musicName: name })), { q: baseName }];
     }
-    queries.push({ musicName: baseName });
+
+    const artistName = artist.split(ARTIST_SEPARATOR)[0]?.trim();
+    const artists = artistName ? lyricChineseVariants(artistName) : [];
+    const queries: AmllApiSearchParams[] = [];
+    if (artistName && artists.length) {
+        // Preserve the exact artist when stripping e.g. (TV Size) / 【Live】:
+        // a Japanese title/artist must not suddenly become simplified Chinese.
+        const originalTitles = [...new Set([musicName, baseName])];
+        originalTitles.forEach(name => queries.push({ musicName: name, artistName }));
+        // For converted song titles, use the corresponding script version of
+        // the artist; do not reorder the user's original spelling.
+        for (const name of names) {
+            if (originalTitles.includes(name)) continue;
+            const variantIndex = Math.max(originalNames.indexOf(name), baseNames.indexOf(name));
+            queries.push({ musicName: name, artistName: artists[variantIndex] ?? artistName });
+        }
+    }
+    // The least restrictive search drops the artist, but retains script variants.
+    baseNames.forEach(name => queries.push({ musicName: name }));
     return queries;
 }
 

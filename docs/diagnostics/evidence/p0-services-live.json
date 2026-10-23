@@ -1,0 +1,56 @@
+{
+  "evidence": "real-third-party-via-local-handler-not-Vercel",
+  "rows": [
+    {
+      "operation": "/cloudsearch",
+      "time": "2026-10-20T03:28:26.448Z",
+      "status": 200,
+      "headers": {
+        "X-Folia-Proxy-Phase": "upstream-response",
+        "X-Folia-Upstream-Status": "200"
+      },
+      "code": 200,
+      "count": 5,
+      "covers": 5,
+      "hasLyrics": false,
+      "elapsedMs": 2387
+    },
+    {
+      "operation": "/lyric/new",
+      "time": "2026-10-20T03:28:28.352Z",
+      "status": 200,
+      "headers": {
+        "X-Folia-Proxy-Phase": "upstream-response",
+        "X-Folia-Upstream-Status": "200"
+      },
+      "code": 200,
+      "hasLyrics": true,
+      "elapsedMs": 1398
+    },
+    {
+      "operation": "/song/detail",
+      "time": "2026-10-20T03:28:30.737Z",
+      "status": 200,
+      "headers": {
+        "X-Folia-Proxy-Phase": "upstream-response",
+        "X-Folia-Upstream-Status": "200"
+      },
+      "code": 200,
+      "hasLyrics": false,
+      "detailsCount": 1,
+      "elapsedMs": 1884
+    },
+    {
+      "operation": "/song/chorus",
+      "time": "2026-10-20T03:28:32.686Z",
+      "status": 200,
+      "headers": {
+        "X-Folia-Proxy-Phase": "upstream-response",
+        "X-Folia-Upstream-Status": "200"
+      },
+      "code": 200,
+      "hasLyrics": false,
+      "elapsedMs": 1448
+    }
+  ]
+}

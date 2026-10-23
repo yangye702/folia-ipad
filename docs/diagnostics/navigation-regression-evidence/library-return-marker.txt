@@ -1,0 +1,47 @@
+Source: retired exit-backdrop no longer exists; current cover carrier direction=out denotes reverse flight.
+
+Original marker RED:
+Running 2 tests using 1 worker
+
+(node:526877) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/2] [e2e] › test/ui/libraryNavigation.spec.ts:369:1 › [grid] browser back from a nested album plays the reverse transition
+  1) [e2e] › test/ui/libraryNavigation.spec.ts:369:1 › [grid] browser back from a nested album plays the reverse transition
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+    Call Log:
+    - Timeout 15000ms exceeded while waiting on the predicate
+
+      387 |     await page.goBack();
+      388 |     await expect.poll(async () => (await historyState(page)).stack).toEqual(['All Songs']);
+    > 389 |     await expect.poll(() => page.evaluate(() => Boolean((window as unknown as { __exitSeen?: boolean }).__exitSeen))).toBe(true);
+          |                                                                                                                       ^
+      390 |     await expect(page.locator('[data-folia-collection-morph="exit-backdrop"]')).toHaveCount(0, { timeout: 5_000 });
+      391 |     await expect(grid(page).getByText('Midnight Train').first()).toBeVisible();
+      392 | });
+        at /workspace/folia-ipad/test/ui/libraryNavigation.spec.ts:389:119
+
+    Error Context: ../scratch/settings-ui-green/libraryNavigation--grid-br-df8b7-lays-the-reverse-transition-e2e/error-context.md
+
+
+(node:527787) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+
+Updated current marker GREEN:
+Running 2 tests using 1 worker
+
+(node:529014) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/2] [e2e] › test/ui/libraryNavigation.spec.ts:369:1 › [grid] browser back from a nested album plays the reverse transition
+[2/2] [e2e] › test/ui/settingsHistory.spec.ts:22:1 › browser Back closes settings before leaving player; Forward restores settings
+  2 passed (59.2s)

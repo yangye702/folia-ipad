@@ -381,13 +381,13 @@ test('[grid] browser back from a nested album plays the reverse transition', asy
         const flag = window as unknown as { __exitSeen?: boolean };
         flag.__exitSeen = false;
         new MutationObserver(() => {
-            if (document.querySelector('[data-folia-collection-morph="exit-backdrop"]')) flag.__exitSeen = true;
+            if (document.querySelector('[data-folia-collection-morph="cover"][data-folia-collection-morph-direction="out"]')) flag.__exitSeen = true;
         }).observe(document.body, { childList: true, subtree: true });
     });
     await page.goBack();
     await expect.poll(async () => (await historyState(page)).stack).toEqual(['All Songs']);
     await expect.poll(() => page.evaluate(() => Boolean((window as unknown as { __exitSeen?: boolean }).__exitSeen))).toBe(true);
-    await expect(page.locator('[data-folia-collection-morph="exit-backdrop"]')).toHaveCount(0, { timeout: 5_000 });
+    await expect(page.locator('[data-folia-collection-morph="cover"][data-folia-collection-morph-direction="out"]')).toHaveCount(0, { timeout: 5_000 });
     await expect(grid(page).getByText('Midnight Train').first()).toBeVisible();
 });
 

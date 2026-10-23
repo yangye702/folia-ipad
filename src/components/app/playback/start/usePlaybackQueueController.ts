@@ -1,3 +1,4 @@
+import { diagnosticTrack, recordMediaDiagnostic, recordMediaDiagnosticError } from '../../../../utils/mediaSessionDiagnostics';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
 import type { MotionValue } from 'framer-motion';
@@ -472,6 +473,7 @@ export function usePlaybackQueueController({
         // out instead of replacing the song the user picked last.
         // An automix advance skips the hook (see `isAutomixAdvance`).
         const playSongCallId = ++playSongCallIdRef.current;
+        recordMediaDiagnostic('playSong.request', { callId: playSongCallId, track: diagnosticTrack(getPlaybackSongKey(requestedSong)) });
         // A route that empties the player while this play waits drops it too (`dropPlaysInFlight`).
         const droppedAtStart = playsDroppedSoFar();
         // No queue given, or the store's own (next / previous, a mod's playQueueItem, the FM top-up): the
@@ -557,6 +559,7 @@ export function usePlaybackQueueController({
             return liveQueue.length > 0 ? liveQueue : null;
         };
         const tellFailure = (shown: OnlineFailure | null, willAutoSkip: boolean) => {
+            recordMediaDiagnostic('playSong.failure', { callId: playSongCallId, willAutoSkip });
             notifyPlaybackFailed({ song, reason: shown?.case ?? null, phase: 'play', willAutoSkip });
         };
 
@@ -624,6 +627,7 @@ export function usePlaybackQueueController({
             try {
                 replacement = await omni.getSongReplacement(song);
             } catch (error) {
+                recordMediaDiagnosticError('playSong.replacement-error', error);
                 console.error('[App] Failed to load replacement song before dialog:', error);
                 lookupFailure = onlineFailureOf({ operation: 'audio', providerId }, { error });
             }
@@ -746,6 +750,7 @@ export function usePlaybackQueueController({
                 return;
             }
         } catch (error) {
+            recordMediaDiagnosticError('playSong.caught-error', error);
             if (!isLatestPlaybackRequest()) return;
             console.error('[App] Failed to fetch song URL:', error);
             presentOnlineFailure(onlineFailureOf({ operation: 'audio', providerId }, { error }));
@@ -860,6 +865,7 @@ export function usePlaybackQueueController({
             // The load has ended; a song still asked for that it left without lyrics may get some from a mod.
             if (askedSongKeyRef.current === songKey) supplyLyricsAfterEmptyLoad();
         } catch (error) {
+            recordMediaDiagnosticError('playSong.lyrics-error', error);
             console.warn('[App] Lyric fetch failed', error);
             setLyrics(null);
             setIsLyricsLoading(false);
@@ -870,6 +876,7 @@ export function usePlaybackQueueController({
             await restoreCachedThemeForSong(song);
             if (askedSongKeyRef.current !== songKey) return;
         } catch (error) {
+            recordMediaDiagnosticError('playSong.theme-error', error);
             console.warn('Theme load error', error);
         }
 
@@ -1039,7 +1046,8 @@ export function usePlaybackQueueController({
     ]);
 
     const handleNextTrack = useCallback(async (options?: NextTrackOptions) => {
-        if (isNowPlayingStageActive) return;
+        recordMediaDiagnostic('queue.enter', { action: 'next', stageActive: isNowPlayingStageActive, hasSong: Boolean(currentSong), queueLength: playQueue.length });
+        if (isNowPlayingStageActive) { recordMediaDiagnostic('queue.blocked', { reason: 'stage-active' }); return; }
 
         const stopAtQueueEnd = () => {
             if (audioRef.current) {
@@ -1051,6 +1059,7 @@ export function usePlaybackQueueController({
         // An emptied queue still has to stop playback at the end of the current track; returning
         // early here left the audio element `ended` while playerState stayed PLAYING.
         if (!currentSong || playQueue.length === 0) {
+            recordMediaDiagnostic('queue.blocked', { reason: 'missing-song-or-empty-queue' });
             if (options?.allowStopOnMissing) {
                 stopAtQueueEnd();
             }
@@ -1097,6 +1106,7 @@ export function usePlaybackQueueController({
 
         const nextIndex = nextQueueIndex(playQueue.length, currentIndex, indexLoopMode);
 
+        recordMediaDiagnostic('queue.target', { action: 'next', available: nextIndex >= 0 });
         if (nextIndex >= 0) {
             void playSong(playQueue[nextIndex], playQueue, isFmMode, {
                 shouldNavigateToPlayer,
@@ -1109,8 +1119,9 @@ export function usePlaybackQueueController({
     }, [audioRef, currentSong, endHeldTransition, getDisplaySong, isFmMode, isNowPlayingStageActive, loopMode, playQueue, playSong, setPlayQueue, setPlayerState, shouldNavigateToPlayerOnTrackChange]);
 
     const handlePrevTrack = useCallback(() => {
-        if (isNowPlayingStageActive) return;
-        if (!currentSong || playQueue.length === 0) return;
+        recordMediaDiagnostic('queue.enter', { action: 'prev', stageActive: isNowPlayingStageActive, hasSong: Boolean(currentSong), queueLength: playQueue.length });
+        if (isNowPlayingStageActive) { recordMediaDiagnostic('queue.blocked', { reason: 'stage-active' }); return; }
+        if (!currentSong || playQueue.length === 0) { recordMediaDiagnostic('queue.blocked', { reason: 'missing-song-or-empty-queue' }); return; }
 
         // Same as handleNextTrack, and more visibly wrong without it: stepping back from the track
         // a blend has already advanced to lands on the one the listener is hearing, so "previous"
@@ -1121,6 +1132,7 @@ export function usePlaybackQueueController({
         // Nor does Personal FM jump back from its first track to the newest one at the queue's end.
         const prevIndex = prevQueueIndex(playQueue.length, currentIndex, queueLoopMode(loopMode, isFmMode));
 
+        recordMediaDiagnostic('queue.target', { action: 'previous', available: prevIndex >= 0 });
         if (prevIndex >= 0) {
             void playSong(playQueue[prevIndex], playQueue, isFmMode, {
                 shouldNavigateToPlayer: shouldNavigateToPlayerOnTrackChange,

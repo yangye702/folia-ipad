@@ -8,7 +8,7 @@ import '../../dev/probes/homeBehavior/probeApi';
 // 实测反馈 1 的组件用例（homeBehavior 探针 + setSuite('bravais')）：
 // - Lattice 的墙面外观设置（灯光、叠色）作用到 bravais 根节点，三档透光下熄灯不涂黑窗；
 // - 右下角共享工具按钮（components/wall/WallToolsButton）：点按打开面板、滑动打开命令面板、Esc 只收面板；面板分三组——
-//   顶部一排纯图标快捷格（定位、队列洗牌、生成主题、队列、前往 Lattice、前往播放页：墙面工具宿主 wallToolsHost——探针里是
+//   定位按钮在工具上方；顶部一排纯图标快捷格（队列洗牌、生成主题、队列、前往 Lattice、前往播放页：墙面工具宿主 wallToolsHost——探针里是
 //   只记账的 probeWallToolsHost——与 onOpenLattice）、音量滑条（应用的音量 store）、墙面外观（透光、叠色、灯）；
 // - 左上角隐藏式返回（WallBackButton concealed）：热区 / 键盘聚焦出现；首页根层有歌时回到播放页、没有歌时不画，
 //   集合层上与缝里的 ‹ 同一个返回（先关面板再退层）；
@@ -140,7 +140,9 @@ test.describe('[bravais-only] wall chrome and shared appearance settings', () =>
         await tools(page).click();
         const menu = panel(page);
         await expect(menu).toBeVisible();
-        await expect(menu.getByRole('menuitem', { name: 'Locate the playing song', exact: true })).toBeVisible();
+        // Locate is a dedicated dock button above the tools, outside the menu.
+        await expect(page.getByRole('button', { name: 'Locate the playing song on this page', exact: true })).toHaveCount(0);
+        await expect(menu.getByRole('menuitem', { name: 'Locate the playing song', exact: true })).toHaveCount(0);
         await expect(menu.getByRole('menuitemcheckbox', { name: 'Poster lighting', exact: true })).toBeChecked();
         await expect(menu.getByRole('menuitemcheckbox', { name: 'Poster focus tint', exact: true })).toBeChecked();
 
@@ -182,6 +184,8 @@ test.describe('[bravais-only] wall chrome and shared appearance settings', () =>
         await page.keyboard.press('Escape');
         await expect(menu).toHaveCount(0);
         await openCard(page);
+        await page.evaluate(() => window.__homeProbe!.setNowPlaying('online:probe:loaded'));
+        await expect(page.getByRole('button', { name: 'Locate the playing song on this page', exact: true })).toBeVisible();
         await tools(page).click();
         await expect(panel(page)).toBeVisible();
         await page.keyboard.press('Escape');
@@ -204,11 +208,13 @@ test.describe('[bravais-only] wall chrome and shared appearance settings', () =>
     test('the tools panel groups one-shot actions on top, the volume below them and the wall appearance last', async ({ mount, page }) => {
         await mountBravais(mount, page);
         await page.evaluate(() => window.__homeProbe!.setLattice(true));
+        await openCard(page);
+        await page.evaluate(() => window.__homeProbe!.setNowPlaying('online:probe:loaded'));
         await tools(page).click();
         const menu = panel(page);
         await expect(menu).toBeVisible();
 
-        // 顺序：快捷格一排（六格）→ 音量 → 「墙面外观」小标题 → 透光 → 叠色 → 灯与帮助。
+        // 顺序：快捷格一排（五格）→ 音量 → 「墙面外观」小标题 → 透光 → 叠色 → 灯与帮助。
         const order = await menu.evaluate(node => [...node.children].map(child => {
             if (child.classList.contains('lattice-tools-quick')) {
                 return `quick:${[...child.querySelectorAll<HTMLElement>('[data-wall-tools-quick]')].map(button => button.dataset.wallToolsQuick).join(',')}`;
@@ -219,7 +225,7 @@ test.describe('[bravais-only] wall chrome and shared appearance settings', () =>
             return child.textContent?.trim().split(/\s/)[0] ?? '';
         }));
         expect(order).toEqual([
-            'quick:locate-playing,shuffle-queue,generate-theme,queue,open-lattice,open-player',
+            'quick:shuffle-queue,generate-theme,queue,open-lattice,open-player',
             'slider',
             'heading',
             'Wall',
@@ -228,9 +234,9 @@ test.describe('[bravais-only] wall chrome and shared appearance settings', () =>
         ]);
         await expect(menu.getByRole('separator', { name: 'Wall appearance', exact: true })).toBeAttached();
         // 快捷格是纯图标：可访问名是全名，格子里没有字，tooltip 带按键提示。
-        await expect(quick(page, 'locate-playing')).toHaveAccessibleName('Locate the playing song');
-        await expect(quick(page, 'locate-playing')).toHaveText('');
-        await expect(quick(page, 'locate-playing')).toHaveAttribute('title', /: \+ C/);
+        await expect(page.getByRole('button', { name: 'Locate the playing song on this page', exact: true })).toHaveAccessibleName('Locate the playing song on this page');
+        await expect(page.getByRole('button', { name: 'Locate the playing song on this page', exact: true })).toHaveText('');
+        await expect(page.getByRole('button', { name: 'Locate the playing song on this page', exact: true })).toHaveAttribute('title', 'Locate the playing song on this page');
         await expect(quick(page, 'shuffle-queue')).toHaveAccessibleName('Shuffle the queue');
         await expect(quick(page, 'shuffle-queue')).toHaveAttribute('title', /: \+ R/);
         await expect(quick(page, 'generate-theme')).toHaveAccessibleName('Generate a theme for this song');

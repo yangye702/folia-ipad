@@ -1,6 +1,9 @@
 
 
 export default {
+  "qqLyricSearch": {
+    "timeout": "Pencarian QQ kehabisan waktu. Coba lagi nanti.","network": "Permintaan pencarian QQ gagal. Coba lagi.", "http": "Proksi pencarian QQ mengembalikan kesalahan HTTP.", "upstream": "QQ Music menolak pencarian.", "invalid-response": "Format respons pencarian QQ tidak sesuai.", "diagnostics": "Diagnostik pencarian lirik QQ", "hint": "Khusus debug: 30 pencarian terakhir, kueri, status HTTP proksi, kode QQ dan jumlah hasil. HTTP sukses tidak membuktikan QQ menerima permintaan. Tanpa kredensial atau respons mentah. Pilih teks jika penyalinan gagal. Hapus qqLyricDebug dari URL untuk menyembunyikan panel.", "copy": "Salin diagnostik", "select": "Pilih teks diagnostik"},
+  "mediaDiagnostics": {"controlCenter": "Pusat Kontrol", "lockScreen": "Layar Kunci", "entry": "Diagnostik media", "close": "Tutup", "copy": "Salin log", "disable": "Nonaktifkan dan hapus diagnostik", "select": "Pilih log"},
   "libraryBravais": {
     "suiteName": "Dinding Bravais",
     "homeTitle": "Pustaka",
@@ -3283,6 +3286,9 @@ export default {
     "unknownAlbum": "Album Tidak Dikenal"
   },
   "localMusic": {
+    "matchDiagnostics": "Diagnostik pencocokan",
+    "copyMatchDiagnostics": "Salin diagnostik",
+    "matchFailure": "{{source}} · {{stage}}: {{kind}}",
     "foldersAndPlaylists": "Folder",
     "albums": "Album",
     "artists": "Artis",
@@ -3456,8 +3462,13 @@ export default {
     "startAutoMatch": "Cocokkan {{count}} lagu",
     "selectAllSongs": "Pilih semua",
     "deselectAllSongs": "Batal pilih semua",
+    "matchSourceUnavailable": "{{source}} tidak tersedia untuk batch ini; permintaan berulang dilewati ({{reason}})",
+    "recoveringMetadata": "Menunggu sumber pulih dan mencoba item yang belum selesai (maksimal dua putaran)…",
     "matchingMetadata": "Mencocokkan info lagu...",
     "autoMatchStatus": {
+      "matched-cover-missing": "Informasi cocok; sampul tepercaya tidak ditemukan",
+      "cancelled": "Dibatalkan",
+      "low-confidence": "Keyakinan kandidat rendah",
       "matched": "Cocok",
       "matched-cover-failed": "Metadata cocok; cache sampul gagal",
       "no-match": "Tidak ada kandidat yang cocok",

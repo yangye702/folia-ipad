@@ -27,6 +27,7 @@ import { usePlaybackStore } from '../stores/usePlaybackStore';
 import { resolvePlaybackSurface, usePlaybackEntryViewStore, type PlaybackEntryView } from '../stores/usePlaybackEntryViewStore';
 import { setStatusMessage } from '../stores/useStatusMessageStore';
 import i18n from '../i18n/config';
+import { bindSettingsNavigationHistory, restoreSettingsFromHistory } from './settingsNavigationHistory';
 
 // src/hooks/useAppNavigation.ts
 
@@ -209,6 +210,7 @@ export function useAppNavigation() {
     }, [finishCollectionTraversal]);
 
     const restoreHistoryState = useCallback((state: NavigationHistoryState) => {
+        restoreSettingsFromHistory(state);
         localStorage.setItem(LAST_APP_VIEW_KEY, state.view);
         // Before the view: the wall reads what it shows when it is put up.
         if (state.view === 'lattice') useAppViewStore.getState().setLatticeSource(state.latticeSource ?? 'queue');
@@ -337,11 +339,13 @@ export function useAppNavigation() {
             restoreHistoryState(state);
         };
 
+        const unbindSettingsHistory = bindSettingsNavigationHistory(historyJournal);
         window.addEventListener('popstate', handlePopState);
         return () => {
             cancelDeferredLattice();
             finishCollectionTraversal();
             window.removeEventListener('popstate', handlePopState);
+            unbindSettingsHistory();
         };
     }, []);
 

@@ -40,6 +40,8 @@ export interface CollectionResourceSnapshot {
     readonly status: CollectionLoadStatus;
     /** 已取得的曲目；每次变化都是新数组，从不原地修改。 */
     readonly tracks: SongResult[];
+    /** Whether these retained tracks reached the end of their read, including after a later read fails. */
+    readonly tracksComplete?: boolean;
     readonly error: CollectionLoadError | null;
     readonly sync: CollectionSyncState;
     /** 在线集合的详情（封面、简介、总数等），没有时为 null。 */

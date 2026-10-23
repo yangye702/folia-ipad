@@ -1,3 +1,4 @@
+import { onlineCoverDisplayUrl } from '../../../utils/onlineCoverDisplayUrl';
 import type { TFunction } from 'i18next';
 import { LocalLibraryGroup, LocalPlaylist, LocalSong } from '../../../types';
 import { sortLocalAlbumSongs, sortLocalFolderSongs } from '../../../utils/localSongSorting';
@@ -30,10 +31,10 @@ const getLocalCoverUrl = (songs: LocalSong[], coverAssetUrl: LocalCoverAssetUrlR
 
     const localCoverUrl = coverAssetUrl(preferredSong.localCoverAssetId, 512) || undefined;
     if (preferredSong.useOnlineCover) {
-        return preferredSong.onlineMetadata?.coverUrl || localCoverUrl;
+        return onlineCoverDisplayUrl(preferredSong.onlineMetadata?.coverUrl) || localCoverUrl;
     }
 
-    return localCoverUrl || preferredSong.onlineMetadata?.coverUrl;
+    return localCoverUrl || onlineCoverDisplayUrl(preferredSong.onlineMetadata?.coverUrl);
 };
 
 /** 文件夹页签最前面那张虚拟的「全部歌曲」卡的 id。 */

@@ -181,7 +181,8 @@ test('queue command parses the batch syntax and stages a preview', async ({ page
 
 /** Seed playable audio and lyrics so queue tests exercise playback without a configured provider. */
 const mockQueueAudio = async (page: import('@playwright/test').Page) => {
-    const samples = 8_000 * 60;
+    // The cached media must cover the advertised whole-song duration.
+    const samples = 8_000 * (QUEUE_FIXTURE[0].durationMs / 1000);
     const wav = Buffer.alloc(44 + samples * 2);
     wav.write('RIFF', 0);
     wav.writeUInt32LE(wav.length - 8, 4);
@@ -292,6 +293,19 @@ test('queue smoothly centers the playing song after Enter', async ({ page }) => 
     await scroller.evaluate(node => {
         const element = node as HTMLElement;
         const positions: number[] = [];
+        const calls: Array<{ at: number; top?: number; behavior?: ScrollBehavior }> = [];
+        const nativeScrollTo = element.scrollTo.bind(element);
+        element.scrollTo = (options: number | ScrollToOptions = {}, y?: number) => {
+            calls.push({ at: performance.now(), ...(typeof options === 'number' ? { top: y } : options) });
+            element.dataset.scrollCalls = JSON.stringify(calls);
+            if (typeof options === 'number') nativeScrollTo(options, y ?? 0);
+            else nativeScrollTo(options);
+        };
+        const longTasks: Array<{ startTime: number; duration: number }> = [];
+        new PerformanceObserver(list => {
+            for (const entry of list.getEntries()) longTasks.push({ startTime: entry.startTime, duration: entry.duration });
+            element.dataset.scrollLongTasks = JSON.stringify(longTasks.slice(-10));
+        }).observe({ entryTypes: ['longtask'] });
         element.addEventListener('scroll', () => {
             positions.push(element.scrollTop);
             element.dataset.scrollPositions = JSON.stringify(positions);
@@ -303,12 +317,14 @@ test('queue smoothly centers the playing song after Enter', async ({ page }) => 
     await page.keyboard.press('Enter');
     await expect.poll(async () => (await readStore(page, 'currentSong') as { id: number })?.id).toBe(6);
     await expect(scroller).toHaveAttribute('data-scroll-complete', 'true');
-    const { finalTop, positions } = await scroller.evaluate(node => ({
+    const { finalTop, positions, calls, longTasks } = await scroller.evaluate(node => ({
         finalTop: node.scrollTop,
         positions: JSON.parse((node as HTMLElement).dataset.scrollPositions || '[]') as number[],
+        calls: JSON.parse((node as HTMLElement).dataset.scrollCalls || '[]'),
+        longTasks: JSON.parse((node as HTMLElement).dataset.scrollLongTasks || '[]'),
     }));
     expect(finalTop).toBeGreaterThan(0);
-    expect(positions.some(top => top > 0 && top < finalTop)).toBe(true);
+    expect(positions.some(top => top > 0 && top < finalTop), JSON.stringify({ finalTop, positions, calls, longTasks })).toBe(true);
     const viewport = (await scroller.boundingBox())!;
     const playingRow = (await palette(page).locator('button[data-active="true"]').boundingBox())!;
     expect(Math.abs(playingRow.y + playingRow.height / 2 - viewport.y - viewport.height / 2)).toBeLessThan(60);

@@ -1,8 +1,11 @@
 import type { LocalSong, LyricProviderSource, SongResult } from '../types';
 import type { LocalSongMetadataSource } from '../types/localLibrary';
 import { getProviderSongMetadata } from './onlineMusic/songMetadata';
-import { getLyricSourceAccess } from '../utils/lyrics/lyricMatchSources';
+import { searchMatchingSource, getLyricSourceAccess } from '../utils/lyrics/lyricMatchSources';
+import { isAutomaticMetadataCandidateReliable } from './metadataMatchPolicy';
+import { recordMatchDiagnostic, MatchFailure } from './matchingDiagnostics';
 import { calculateMatchScoreDetails } from '../utils/lyrics/matchScore';
+import { MatchingSearchSession } from './matchingSearchSession';
 import { buildLyricSearchQuery } from '../utils/lyrics/searchQuery';
 import {
     getMatchResultAlbumId,
@@ -35,6 +38,7 @@ export interface OnlineMetadataCandidate {
     titleMatched: boolean;
     durationMatched: boolean | null;
     raw: SongResult;
+    incompleteSearchError?: unknown;
 }
 
 const stripAudioExtension = (fileName: string) => fileName.replace(/\.(mp3|flac|m4a|wav|ogg|opus|aac)$/i, '');
@@ -61,7 +65,8 @@ export const normalizeOnlineMetadataCandidate = (
     target: OnlineMetadataSearchTarget,
 ): OnlineMetadataCandidate => {
     const details = calculateMatchScoreDetails(target, result);
-    const albumName = getMatchResultAlbumName(result).trim();
+    const rawAlbumName = getMatchResultAlbumName(result).trim();
+    const albumName = /^unknown album$/i.test(rawAlbumName) ? '' : rawAlbumName;
     const albumId = getMatchResultAlbumId(result);
     return {
         source,
@@ -87,7 +92,9 @@ export const normalizeLyricMatchMetadataCandidate = (
     result: SongResult,
     target: OnlineMetadataSearchTarget,
 ): OnlineMetadataCandidate => {
-    const source: OnlineMetadataSource = lyricSource === 'amll'
+    // Non-platform lyric databases never have their metadata applied to the local song.
+    // Use a platform-shaped candidate only to satisfy the match window's common contract.
+    const source: OnlineMetadataSource = lyricSource === 'amll' || lyricSource === 'lrclib'
         ? result.amllDbPlatform === 'qq' ? 'qq' : 'netease'
         : lyricSource;
     return normalizeOnlineMetadataCandidate(source, result, target);
@@ -100,41 +107,25 @@ const throwIfAborted = (signal?: AbortSignal) => {
     throw error;
 };
 
-// Stops waiting immediately when a provider client cannot receive AbortSignal directly.
-const waitForProvider = async <T>(request: Promise<T>, signal?: AbortSignal): Promise<T> => {
-    if (!signal) return await request;
-    throwIfAborted(signal);
-    return await new Promise<T>((resolve, reject) => {
-        const abort = () => {
-            const error = new Error('Metadata matching was cancelled');
-            error.name = 'AbortError';
-            reject(error);
-        };
-        signal.addEventListener('abort', abort, { once: true });
-        request.then(
-            value => {
-                signal.removeEventListener('abort', abort);
-                resolve(value);
-            },
-            error => {
-                signal.removeEventListener('abort', abort);
-                reject(error);
-            },
-        );
-    });
-};
-
 export async function searchOnlineMetadata(
     source: OnlineMetadataSource,
     query: string,
     target: OnlineMetadataSearchTarget,
-    options: { limit?: number; signal?: AbortSignal } = {},
+    options: { limit?: number; signal?: AbortSignal; session?: MatchingSearchSession; accept?: (songs: SongResult[]) => boolean } = {},
 ): Promise<OnlineMetadataCandidate[]> {
     const safeQuery = query.trim();
     if (!safeQuery) return [];
     throwIfAborted(options.signal);
     const limit = options.limit ?? 10;
-    const results = await waitForProvider(getLyricSourceAccess(source).search(safeQuery, limit, target), options.signal);
+    let results: SongResult[];
+    try {
+        results = await searchMatchingSource(source, safeQuery, limit, target, { ...options, session: options.session ?? new MatchingSearchSession() });
+        if (!Array.isArray(results)) throw new MatchFailure('invalid-response', 'search', source);
+        recordMatchDiagnostic({ stage: 'search', source, outcome: results.length ? 'success' : 'empty', count: results.length });
+    } catch (error) {
+        recordMatchDiagnostic({ stage: 'search', source, error });
+        throw error;
+    }
     throwIfAborted(options.signal);
     return results
         .map(result => normalizeOnlineMetadataCandidate(source, result, target))
@@ -142,28 +133,56 @@ export async function searchOnlineMetadata(
         .slice(0, limit);
 }
 
-// Preserves the established NetEase-to-QQ fallback and appends KuGou as the final provider-backed source.
+// Keeps provider order, but never accepts a title alone or lets a coverless result end a cover search.
 export async function findAutomaticOnlineMetadataCandidate(
     song: LocalSong,
     signal?: AbortSignal,
+    options: { intent?: 'metadata' | 'cover'; excludedCoverUrls?: string[]; session?: MatchingSearchSession } = {},
 ): Promise<OnlineMetadataCandidate | null> {
     const target = buildLocalSongMetadataSearchTarget(song);
     const query = buildLocalSongMetadataSearchQuery(song);
-    let neteaseCandidates: OnlineMetadataCandidate[] = [];
-    try {
-        neteaseCandidates = await searchOnlineMetadata('netease', query, target, { limit: 10, signal });
-    } catch (error) {
-        if ((error as Error).name === 'AbortError') throw error;
-        console.warn('[LocalMusic] NetEase metadata search failed, falling back to QQ:', error);
+    const session = options.session ?? new MatchingSearchSession();
+    const errors: unknown[] = [];
+    const failedSources: string[] = [];
+    let hadCandidates = false;
+    let fallback: OnlineMetadataCandidate | null = null;
+    for (const source of ['netease', 'qq', 'kugou'] as const) {
+        throwIfAborted(signal);
+        try {
+            const queries = getLyricSourceAccess(source).handlesQueryFallback ? [query] : [...new Set([
+                query, buildLyricSearchQuery(target.title, target.artist), buildLyricSearchQuery(target.title),
+            ].filter(Boolean))];
+            // Broaden only successful but insufficient searches, never a refused/broken endpoint.
+            for (const variant of queries) {
+                const candidates = await searchOnlineMetadata(source, variant, target, { limit: 20, signal, session,
+                    accept: results => results.some(result => {
+                        const candidate = normalizeOnlineMetadataCandidate(source, result, target);
+                        return isAutomaticMetadataCandidateReliable(target, candidate, options.intent)
+                            && (options.intent !== 'cover' || Boolean(candidate.coverUrl && !options.excludedCoverUrls?.includes(candidate.coverUrl)));
+                    }),
+                });
+                hadCandidates ||= candidates.length > 0;
+                const reliable = candidates.filter(candidate => isAutomaticMetadataCandidateReliable(target, candidate, options.intent));
+                if (options.intent === 'cover') {
+                    const withCover = reliable.find(candidate => candidate.coverUrl && !options.excludedCoverUrls?.includes(candidate.coverUrl));
+                    if (withCover) return withCover;
+                } else if (reliable.length) {
+                    const withCover = reliable.find(candidate => candidate.coverUrl && isAutomaticMetadataCandidateReliable(target, candidate, 'cover'));
+                    if (withCover) return withCover;
+                    // Artwork from a different release must not leak through a metadata-only fallback.
+                    fallback ??= { ...reliable[0], coverUrl: undefined };
+                }
+                // Reliable identity with no picture is a reason to try another source, not broaden the same query.
+                if (reliable.length) break;
+            }
+        } catch (error) {
+            if ((error as Error).name === 'AbortError') throw error;
+            errors.push(error);
+            failedSources.push(source);
+        }
     }
-    if (neteaseCandidates[0]?.titleMatched) return neteaseCandidates[0];
-    try {
-        const qqCandidates = await searchOnlineMetadata('qq', query, target, { limit: 10, signal });
-        if (qqCandidates[0]?.titleMatched) return qqCandidates[0];
-    } catch (error) {
-        if ((error as Error).name === 'AbortError') throw error;
-        console.warn('[LocalMusic] QQ metadata search failed, falling back to KuGou:', error);
-    }
-    const kugouCandidates = await searchOnlineMetadata('kugou', query, target, { limit: 10, signal });
-    return kugouCandidates[0]?.titleMatched ? kugouCandidates[0] : null;
+    if (fallback) return errors.length ? { ...fallback, incompleteSearchError: new MatchFailure('partial-search-failure', 'search', failedSources.join(', '), errors) } : fallback;
+    if (errors.length) throw new MatchFailure('partial-search-failure', 'search', failedSources.join(', '), errors);
+    if (hadCandidates) throw new MatchFailure('low-confidence', 'candidate');
+    return null;
 }

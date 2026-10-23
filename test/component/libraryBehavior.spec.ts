@@ -155,17 +155,24 @@ const playFocused = async (page: Page, renderer: Renderer) => {
 };
 
 /** bravais：打开缝里当前这一层的列表面板（已经开着就不动；换层时上一层的面板可能还在翻走，不算）。 */
-const openBravaisList = async (page: Page) => {
-    const layerKey = await page.locator('[data-library-stage="bravais"]').getAttribute('data-bravais-layer');
+const openBravaisList = async (page: Page, kind: 'collection' | 'artist' = 'collection') => {
+    const surface = page.locator(`[data-library-surface="${kind}"][data-library-renderer="bravais"]`);
+    await expect(surface).toHaveAttribute('data-bravais-layer', /.+/);
+    const layerKey = await surface.getAttribute('data-bravais-layer');
+    await expect(page.locator('[data-library-stage="bravais"]')).toHaveAttribute('data-bravais-layer', layerKey!);
     const panel = page.locator(`[data-bravais-list="${layerKey}"]`);
     if (await panel.count() === 0) await page.locator('[data-bravais-seam-action="list"]').click();
     await expect(panel).toBeVisible();
 };
 
 /** bravais：等墙上的翻牌放完（移除的两段、过滤、数据到达）——翻牌期间聚焦卡会被收起。 */
-const waitForBravaisWall = (page: Page) => (
-    expect(page.locator('[data-library-stage="bravais"][data-bravais-settling]')).toHaveCount(0)
-);
+const waitForBravaisWall = async (page: Page, kind: 'collection' | 'artist' = 'collection') => {
+    const stage = page.locator('[data-library-stage="bravais"]');
+    const surface = page.locator(`[data-library-surface="${kind}"][data-library-renderer="bravais"]`);
+    await expect(surface).toHaveAttribute('data-bravais-layer', /.+/);
+    await expect(stage).toHaveAttribute('data-bravais-layer', (await surface.getAttribute('data-bravais-layer'))!);
+    await expect(stage).not.toHaveAttribute('data-bravais-settling');
+};
 
 /** bravais：经列表面板定位一个条目（相机飞到离缝最近的一份并展开聚焦卡），返回那张聚焦卡所在的磁贴。 */
 const focusBravaisEntry = async (page: Page, itemKey: string, occurrence = 0) => {
@@ -264,7 +271,7 @@ test.describe(`[${renderer}] online paging and cache`, () => {
     test('a private playlist says so instead of showing an empty grid; an empty one shows no error', async ({ mount, page }) => {
         await mountProbe(mount, page, renderer);
         await open(page, 'online-private');
-        await expect(page.getByText('This playlist is not public, so the current music source cannot read its contents')).toBeVisible();
+        await expect(page.getByText('This playlist is not public', { exact: true })).toBeVisible();
         expect(await scopeCount(page)).toBe(0);
 
         await back(page);
@@ -1060,6 +1067,7 @@ test.describe(`[${renderer}] nested opens from collection entries`, () => {
     );
     /** 把焦点挪离第一项再播放它：返回这一项的条目键（同时把焦点写进了会话）。 */
     const focusAwayFromFirst = async (page: Page) => {
+        if (renderer === 'bravais') await waitForBravaisWall(page);
         await pressOnGrid(page, renderer === 'tui' ? 'ArrowDown' : 'ArrowRight');
         await page.waitForTimeout(400);
         await clearLog(page);
@@ -1073,6 +1081,7 @@ test.describe(`[${renderer}] nested opens from collection entries`, () => {
         await expect.poll(() => stack(page)).toEqual([rootName]);
         await waitForRenderer(page, renderer);
         await waitForScope(page, scope);
+        if (renderer === 'bravais') await waitForBravaisWall(page);
         await page.waitForTimeout(400);
         await clearLog(page);
         await playFocused(page, renderer);
@@ -1232,6 +1241,7 @@ test.describe(`[${renderer}] done and leave`, () => {
             await waitForScope(page, expectedPlayableIndexes(fixture['online-public'].rawIndexes, query).length);
             await page.waitForTimeout(400);
         }
+        if (renderer === 'bravais') await waitForBravaisWall(page);
         await pressOnGrid(page, renderer === 'tui' ? 'ArrowDown' : 'ArrowRight');
         await page.waitForTimeout(400);
         await clearLog(page);
@@ -1330,7 +1340,7 @@ test.describe('done clears every suite\'s layout records', () => {
 });
 
 // 浏览器后退（探针的 back() 就是 popstate 那条路：先通知「将要弹栈」，再改 store）与应用内返回一样跑网格的 beforeBack：
-// 嵌套返回时 hero 收回、卡片散开（退场层 data-folia-collection-morph="exit-backdrop"）。P4.5 之前 popstate 绕过宿主，
+// 嵌套返回时 hero 收回、卡片散开（退场层 data-folia-collection-morph="cover" + direction="out"）。P4.5 之前 popstate 绕过宿主，
 // 这一层直接切走、没有转场。
 test.describe('suite backdrop', () => {
     test('the host follows grid motion settings and uses a neutral TUI backdrop', async ({ mount, page }) => {
@@ -1372,12 +1382,20 @@ test.describe('suite backdrop', () => {
 });
 
 test.describe('browser back and the suite transitions', () => {
+    test.beforeEach(async ({ page }) => {
+        // A reverse cover flight needs the probe's opt-in pictures; bare fixture cards cannot fly.
+        await page.addInitScript(() => {
+            const url = new URL(window.location.href);
+            url.searchParams.set('covers', '1');
+            window.history.replaceState(window.history.state, '', url);
+        });
+    });
     const watchExitLayer = (page: Page) => page.evaluate(() => {
         const flag = window as unknown as { __exitSeen?: number };
         flag.__exitSeen = 0;
         let present = false;
         new MutationObserver(() => {
-            const now = Boolean(document.querySelector('[data-folia-collection-morph="exit-backdrop"]'));
+            const now = Boolean(document.querySelector('[data-folia-collection-morph="cover"][data-folia-collection-morph-direction="out"]'));
             if (now && !present) flag.__exitSeen = (flag.__exitSeen ?? 0) + 1;
             present = now;
         }).observe(document.body, { childList: true, subtree: true });
@@ -1392,6 +1410,7 @@ test.describe('browser back and the suite transitions', () => {
         await waitForScope(page, PROBE_ALBUM.rawIndexes.length);
         // 等嵌套层的级联入场落定，退场才有 hero 可量。
         await page.waitForTimeout(1500);
+        await expect(page.locator('[data-folia-active-grid]').locator('..').locator('img').first()).toBeVisible();
     };
 
     test('[grid] browser back from a nested album plays the reverse transition', async ({ mount, page }) => {
@@ -1401,7 +1420,7 @@ test.describe('browser back and the suite transitions', () => {
         await back(page);
         await expect.poll(() => stack(page)).toEqual(['Public Playlist']);
         await expect.poll(() => exitLayersSeen(page)).toBe(1);
-        await expect(page.locator('[data-folia-collection-morph="exit-backdrop"]')).toHaveCount(0, { timeout: 5_000 });
+        await expect(page.locator('[data-folia-collection-morph="cover"][data-folia-collection-morph-direction="out"]')).toHaveCount(0, { timeout: 5_000 });
         await waitForScope(page, expectedPlayableIndexes(fixture['online-public'].rawIndexes).length);
     });
 
@@ -1413,7 +1432,7 @@ test.describe('browser back and the suite transitions', () => {
         await pressOnGrid(page, 'Escape');
         await expect.poll(() => stack(page)).toEqual(['Public Playlist']);
         await expect.poll(() => exitLayersSeen(page)).toBe(1);
-        await expect(page.locator('[data-folia-collection-morph="exit-backdrop"]')).toHaveCount(0, { timeout: 5_000 });
+        await expect(page.locator('[data-folia-collection-morph="cover"][data-folia-collection-morph-direction="out"]')).toHaveCount(0, { timeout: 5_000 });
         await page.waitForTimeout(300);
         expect(await exitLayersSeen(page)).toBe(1);
     });
@@ -2258,7 +2277,7 @@ test.describe('[bravais-only] N1 fold', () => {
             await expect.poll(() => stack(page)).toEqual(['Public Playlist', PROBE_ALBUM.name, 'Probe Artist']);
             await expect(artistAnchor).toHaveCount(1);
             await expect.poll(() => layerKey(page)).toBe(artistKey);
-            await waitForBravaisWall(page);
+            await waitForBravaisWall(page, 'artist');
             await page.waitForTimeout(400);
         };
         const expectAlbumBack = async (album: string) => {
@@ -2290,11 +2309,11 @@ test.describe('[bravais-only] N1 fold', () => {
         // 歌手页上点热门歌曲的这张专辑（正好是上一层）：折成一次返回，与上面的返回一样——不按 push 翻、不翻两次。
         await openArtist();
         const songEntry = `song:${onlinePlaybackKey(PROBE_PROVIDER_A, onlineSongId('artop', 22))}`;
-        await openBravaisList(page);
+        await openBravaisList(page, 'artist');
         await page.locator(`[data-bravais-list-row="${songEntry}"]`).click();
         const songCard = page.locator(`[data-bravais-focus-card="${songEntry}"]`);
         await expect(songCard).toBeVisible();
-        await waitForBravaisWall(page);
+        await waitForBravaisWall(page, 'artist');
         await watchStage(page);
         await songCard.getByRole('button', { name: PROBE_ALBUM.name, exact: true }).dispatchEvent('click');
         const foldWatch = await expectAlbumBack(album);

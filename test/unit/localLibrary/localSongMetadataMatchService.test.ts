@@ -91,14 +91,14 @@ describe('localSongMetadataMatchService', () => {
         }));
     });
 
-    it('restores imported metadata while allowing an independently selected online cover', async () => {
+    it('keeps confirmed metadata while allowing an independently selected online cover', async () => {
         await applyOnlineMetadataCandidate(song('cover-only'), candidate, {
             mode: 'manual',
             useOnlineMetadata: false,
             useOnlineCover: true,
         });
         expect(applyLocalSongMatchSelection).toHaveBeenCalledWith(expect.objectContaining({
-            metadata: 'imported',
+            metadata: 'keep',
             cover: 'online',
             lyrics: 'keep',
         }));
@@ -143,4 +143,74 @@ describe('localSongMetadataMatchService', () => {
         expect(result.cancelled).toBe(true);
         expect(applyLocalSongMatchSelection).not.toHaveBeenCalled();
     });
+});
+
+describe('batch lifecycle isolation', () => {
+    it('cancels an older batch before a replacement can apply its result', async () => {
+        vi.clearAllMocks();
+        let release!: (value: typeof candidate) => void;
+        vi.mocked(findAutomaticOnlineMetadataCandidate).mockImplementationOnce(() => new Promise(resolve => { release = resolve; })).mockResolvedValue(candidate);
+        const first = batchAutoMatchLocalSongMetadata([song('old')]);
+        await Promise.resolve();
+        const second = batchAutoMatchLocalSongMetadata([song('new')]);
+        release(candidate);
+        const [a, b] = await Promise.all([first, second]);
+        expect(a.cancelled).toBe(true);
+        expect(b.cancelled).toBe(false);
+        expect(applyLocalSongMatchSelection).not.toHaveBeenCalledWith(expect.objectContaining({ songId: 'old' }));
+    });
+    it('keeps independent successful results when another song search fails', async () => {
+        vi.clearAllMocks();
+        vi.mocked(findAutomaticOnlineMetadataCandidate).mockRejectedValueOnce(Object.assign(new Error('fixture refusal'), { kind: 'upstream' })).mockResolvedValue(candidate);
+        const result = await batchAutoMatchLocalSongMetadata([song('bad'), song('good')]);
+        expect(result.updates.map(update => update.status).sort()).toEqual(['failed', 'matched']);
+    });
+});
+
+it('recovers a temporary search failure inside one batch and reports a final success only once', async () => {
+    vi.useFakeTimers();
+    try {
+        const { appDatabase } = await import('@/services/appDatabase');
+        const readLocalSong = vi.spyOn(appDatabase.local_music, 'get');
+        vi.mocked(readLocalSong).mockResolvedValue(song('recover'));
+        vi.mocked(findAutomaticOnlineMetadataCandidate).mockRejectedValueOnce(new TypeError('offline')).mockResolvedValue(candidate);
+        const onUpdate = vi.fn();
+        const result = batchAutoMatchLocalSongMetadata([song('recover')], { onUpdate });
+        await vi.runAllTimersAsync();
+        expect((await result).updates).toMatchObject([{ songId: 'recover', status: 'matched', attempts: 2 }]);
+        expect(onUpdate).toHaveBeenCalledOnce();
+    } finally { vi.useRealTimers(); }
+});
+it('does not repeat successful work in a recovery pass', async () => {
+    vi.useFakeTimers();
+    try {
+        const { appDatabase } = await import('@/services/appDatabase');
+        const readLocalSong = vi.spyOn(appDatabase.local_music, 'get');
+        vi.mocked(readLocalSong).mockImplementation(async id => song(String(id)));
+        const calls = new Map<string, number>();
+        vi.mocked(findAutomaticOnlineMetadataCandidate).mockImplementation(async item => {
+            const count = (calls.get(item.id) ?? 0) + 1; calls.set(item.id, count);
+            if (item.id === 'flaky' && count === 1) throw new TypeError('offline');
+            return candidate;
+        });
+        const pending = batchAutoMatchLocalSongMetadata([song('good'), song('flaky')]);
+        await vi.runAllTimersAsync();
+        expect((await pending).updates.every(update => update.status === 'matched')).toBe(true);
+        expect(calls.get('good')).toBe(1);
+        expect(calls.get('flaky')).toBe(2);
+    } finally { vi.useRealTimers(); }
+});
+
+it('cancels during automatic backoff without applying or starting a recovery write', async () => {
+    vi.useFakeTimers();
+    try {
+        vi.mocked(findAutomaticOnlineMetadataCandidate).mockRejectedValue(new TypeError('temporary fixture'));
+        vi.mocked(applyLocalSongMatchSelection).mockClear();
+        const controller = new AbortController();
+        const result = batchAutoMatchLocalSongMetadata([song('backoff-cancel')], { signal: controller.signal });
+        setTimeout(() => controller.abort(), 500);
+        await vi.runAllTimersAsync();
+        expect((await result).updates).toMatchObject([{ songId: 'backoff-cancel', status: 'cancelled' }]);
+        expect(applyLocalSongMatchSelection).not.toHaveBeenCalled();
+    } finally { vi.useRealTimers(); }
 });

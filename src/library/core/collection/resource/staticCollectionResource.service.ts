@@ -8,7 +8,7 @@ import { createCollectionResourceState } from './collectionResourceState.service
 // 曲目变了就换一个新资源，所以它不需要「重新加载」。
 
 export const createStaticCollectionResource = (key: string, tracks: SongResult[]): CollectionResource => {
-    const state = createCollectionResourceState(key, 'static', { status: 'ready', tracks });
+    const state = createCollectionResourceState(key, 'static', { status: 'ready', tracks, tracksComplete: true });
     const commitTracks = (next: SongResult[]) => state.set({ tracks: next }, 'urgent');
 
     return {

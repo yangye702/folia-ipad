@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { installBaseState, mockNeteaseApi, openApp } from './helpers/appFixtures';
 
 // test/ui/bravaisSettingsGroup.spec.ts
-// 界面设置的「Bravais 墙面」分组（2026-10-09，用户要求 bravais 独有的设置都整理到这里）：
+// Home 设置的「Bravais 墙面」分组（2026-10-09，用户要求 bravais 独有的设置都整理到这里）：
 // - bravais 生效时，分组紧跟在「资料库界面」后面，里面是透光三档、部分透明时的每块窗数与集合叠页边开关；
 //   「资料库界面」那一节只剩 suite 的选择；
 // - 切换都写进 useLibraryWallLookStore 并持久化，叠页边开关立刻作用到墙（stage 根节点的 has-stack-edges）；
@@ -25,41 +25,41 @@ const bootHome = async (page: Page, suite: 'bravais' | 'grid') => {
     await openApp(page);
 };
 
-const openGeneralSettings = (page: Page, anchorId?: string) => page.evaluate(async (anchor) => {
+const openHomeSettings = (page: Page, anchorId?: string) => page.evaluate(async (anchor) => {
     const path = '/src/stores/useSettingsModalStore.ts';
     const { useSettingsModalStore } = await import(/* @vite-ignore */ path);
-    useSettingsModalStore.getState().openSettings('options', 'general', null, anchor ?? null);
+    useSettingsModalStore.getState().openSettings('options', 'home', null, anchor ?? null);
 }, anchorId);
 
-const group = (page: Page) => page.locator('[data-bravais-settings]');
+const group = (page: Page) => page.locator('[data-settings-anchor="bravaisSettings"]');
 
 test('the Bravais group holds the transparency, the windows per block and the stack edges', async ({ page }) => {
     await bootHome(page, 'bravais');
     const stage = page.locator('[data-library-stage="bravais"]');
     await expect(stage).toHaveClass(/\bhas-stack-edges\b/);
-    await openGeneralSettings(page, 'bravaisSettings');
+    await openHomeSettings(page, 'bravaisSettings');
 
     await expect(page.getByRole('heading', { name: 'Bravais wall', exact: true })).toBeVisible();
     await expect(group(page)).toBeVisible();
     // 透光与窗数搬进了分组；「资料库界面」只剩 suite 的选择。
-    await expect(group(page).locator('[data-library-wall-look-settings]')).toHaveCount(1);
-    await expect(page.locator('[data-library-wall-look-settings]')).toHaveCount(1);
-    await expect(page.locator('[data-library-suite-option="bravais"]')).toHaveAttribute('aria-checked', 'true');
-    await expect(group(page).locator('[data-library-suite-option]')).toHaveCount(0);
+    await expect(group(page).locator('[data-settings-row="libraryWallLook"]')).toHaveCount(1);
+    await expect(page.locator('[data-settings-row="libraryWallLook"]')).toHaveCount(1);
+    await expect(page.getByRole('group', { name: 'Library interface', exact: true }).getByRole('button', { name: 'Bravais wall', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect(group(page).getByRole('group', { name: 'Library interface', exact: true })).toHaveCount(0);
     // 分组在「资料库界面」那一节之后。
     const order = await page.evaluate(() => {
-        const suite = document.querySelector('[data-library-suite-option]')!;
-        const bravais = document.querySelector('[data-bravais-settings]')!;
+        const suite = document.querySelector('[data-settings-anchor="librarySuite"]')!;
+        const bravais = document.querySelector('[data-settings-anchor="bravaisSettings"]')!;
         return Boolean(suite.compareDocumentPosition(bravais) & Node.DOCUMENT_POSITION_FOLLOWING);
     });
     expect(order).toBe(true);
 
     // 透光：部分透明时才有每块窗数。
-    await group(page).locator('[data-library-wall-look="solid"]').click();
-    await expect(group(page).locator('[data-library-wall-windows]')).toHaveCount(0);
-    await group(page).locator('[data-library-wall-look="partial"]').click();
-    await expect(group(page).locator('[data-library-wall-windows]')).toHaveCount(6);
-    await group(page).locator('[data-library-wall-windows="4"]').click();
+    await group(page).getByRole('button', { name: 'Solid', exact: true }).click();
+    await expect(group(page).getByRole('group', { name: 'Windows per block', exact: true }).getByRole('button')).toHaveCount(0);
+    await group(page).getByRole('button', { name: 'Partly see-through', exact: true }).click();
+    await expect(group(page).getByRole('group', { name: 'Windows per block', exact: true }).getByRole('button')).toHaveCount(6);
+    await group(page).getByRole('group', { name: 'Windows per block', exact: true }).getByRole('button', { name: '4', exact: true }).click();
     expect(await page.evaluate(() => [localStorage.getItem('library_wall_look'), localStorage.getItem('library_wall_windows_per_block')])).toEqual(['partial', '4']);
     await expect(stage).toHaveAttribute('data-bravais-look', 'partial');
 
@@ -76,12 +76,12 @@ test('the Bravais group holds the transparency, the windows per block and the st
 
 test('the Bravais group stays out of the grid interface and appears once bravais is chosen', async ({ page }) => {
     await bootHome(page, 'grid');
-    await openGeneralSettings(page, 'librarySuite');
-    await expect(page.locator('[data-library-suite-option="grid"]')).toHaveAttribute('aria-checked', 'true');
+    await openHomeSettings(page, 'librarySuite');
+    await expect(page.getByRole('group', { name: 'Library interface', exact: true }).getByRole('button', { name: 'Grid', exact: true })).toHaveAttribute('aria-pressed', 'true');
     await expect(group(page)).toHaveCount(0);
     await expect(page.getByRole('heading', { name: 'Bravais wall', exact: true })).toHaveCount(0);
 
-    await page.locator('[data-library-suite-option="bravais"]').click();
+    await page.getByRole('group', { name: 'Library interface', exact: true }).getByRole('button', { name: 'Bravais wall', exact: true }).click();
     await expect(group(page)).toBeVisible();
     await expect(page.getByRole('switch', { name: 'Collection stack edges' })).toBeVisible();
 });
@@ -90,7 +90,7 @@ test('the Bravais group stays out of the grid interface and appears once bravais
 test('the Bravais group switches the info strip material and the backdrop', async ({ page }) => {
     await bootHome(page, 'bravais');
     const stage = page.locator('[data-library-stage="bravais"]');
-    await openGeneralSettings(page, 'bravaisSettings');
+    await openHomeSettings(page, 'bravaisSettings');
     await expect(group(page)).toBeVisible();
 
     // 信息条始终透明默认开（2026-10-09）：先关掉，下面的实色预设才作用到缝。
@@ -102,11 +102,11 @@ test('the Bravais group switches the info strip material and the backdrop', asyn
     expect(await page.evaluate(() => localStorage.getItem('library_wall_seam_clear'))).toBe('false');
 
     // 预设：8 个色样，默认主题纸色；点「纯白印刷」写进存储，墙上的缝换样式。
-    const options = group(page).locator('[data-bravais-seam-style-option]');
+    const options = group(page).getByRole('group', { name: 'Info strip style', exact: true }).getByRole('button');
     await expect(options).toHaveCount(8);
-    await expect(group(page).locator('[data-bravais-seam-style-option="paper"]')).toHaveAttribute('aria-checked', 'true');
-    await group(page).locator('[data-bravais-seam-style-option="white"]').click();
-    await expect(group(page).locator('[data-bravais-seam-style-option="white"]')).toHaveAttribute('aria-checked', 'true');
+    await expect(group(page).getByRole('button', { name: 'Theme paper', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await group(page).getByRole('button', { name: 'White print', exact: true }).click();
+    await expect(group(page).getByRole('button', { name: 'White print', exact: true })).toHaveAttribute('aria-pressed', 'true');
     await expect(stage).toHaveAttribute('data-bravais-seam-style', 'white');
     expect(await page.evaluate(() => localStorage.getItem('library_wall_seam_style'))).toBe('white');
 
@@ -116,11 +116,11 @@ test('the Bravais group switches the info strip material and the backdrop', asyn
     await expect(clear).toHaveAttribute('aria-checked', 'true');
     await expect(stage).toHaveClass(/\bhas-clear-seam\b/);
     await expect(stage).toHaveAttribute('data-bravais-seam-style', 'clear');
-    await expect(group(page).locator('[data-bravais-seam-style-option="dots"]')).toBeDisabled();
+    await expect(group(page).getByRole('button', { name: 'Dot grid', exact: true })).toBeDisabled();
     expect(await page.evaluate(() => [localStorage.getItem('library_wall_seam_clear'), localStorage.getItem('library_wall_seam_style')])).toEqual(['true', 'white']);
     await clear.click();
     await expect(stage).toHaveAttribute('data-bravais-seam-style', 'white');
-    await expect(group(page).locator('[data-bravais-seam-style-option="dots"]')).toBeEnabled();
+    await expect(group(page).getByRole('button', { name: 'Dot grid', exact: true })).toBeEnabled();
 
     // 墙后画面：两个开关默认关，切换写进存储。
     for (const [name, key] of [['Lyrics behind the wall', 'library_wall_backdrop_lyrics'], ['Blur behind the wall', 'library_wall_backdrop_blur']] as const) {

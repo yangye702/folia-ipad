@@ -17,8 +17,10 @@ const HIDE_DEV_OVERLAYS = fileURLToPath(new URL('./helpers/hideDevOverlays.css',
 
 
 test.describe('frontend screenshot coverage', () => {
+  test.use({ colorScheme: 'light' });
   test('captures the Netease playlist home view', async ({ page }) => {
-    await installBaseState(page, { neteaseMode: 'logged-in' });
+    // Keep native desktop pointer queries: the broad legacy media stub enables the timed touch tutorial.
+    await installBaseState(page, { neteaseMode: 'logged-in', preserveNativeMediaQueries: true });
     await mockNeteaseApi(page, 'logged-in');
 
     await openApp(page);
@@ -36,6 +38,7 @@ test.describe('frontend screenshot coverage', () => {
     await installBaseState(page, {
       neteaseMode: 'logged-in',
       navidromeEnabled: true,
+      preserveNativeMediaQueries: true,
     });
     await mockNeteaseApi(page, 'logged-in');
     await mockNavidromeApi(page);
@@ -56,6 +59,7 @@ test.describe('frontend screenshot coverage', () => {
     await installBaseState(page, {
       neteaseMode: 'guest',
       localImportFixture,
+      preserveNativeMediaQueries: true,
     });
     await mockNeteaseApi(page, 'guest');
 

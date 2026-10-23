@@ -36,7 +36,7 @@ export const createNavidromeCollectionResource = (
             failed = true;
         }
         if (disposed || current !== generation) return;
-        state.set(failed ? { status: 'error', tracks, error: NAVIDROME_READ_FAILED } : { status: 'ready', tracks, error: null }, 'urgent');
+        state.set(failed ? { status: 'error', tracks, tracksComplete: false, error: NAVIDROME_READ_FAILED } : { status: 'ready', tracks, tracksComplete: true, error: null }, 'urgent');
     };
 
     let started = false;

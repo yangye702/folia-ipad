@@ -1,0 +1,47 @@
+Named settings anchor initialization regression
+
+RED (before 2-field initialPage fix):
+npm warn Unknown project config "allow-remote". This will stop working in the next major version of npm.
+npm warn Unknown project config "onnxruntime-node-install". This will stop working in the next major version of npm.
+
+Running 1 test using 1 worker
+
+(node:694606) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/1] [e2e] › test/ui/settingsHistory.spec.ts:75:1 › a named settings anchor opens its target before history and Forward retains the later page
+  1) [e2e] › test/ui/settingsHistory.spec.ts:75:1 › a named settings anchor opens its target before history and Forward retains the later page
+
+    Error: expect(locator).toHaveCount(expected) failed
+
+    Locator:  getByRole('dialog', { name: 'Settings', exact: true }).locator('[data-settings-row="playbackEntryViewChoice"]').getByRole('button')
+    Expected: 3
+    Received: 0
+    Timeout:  15000ms
+
+    Call log:
+      - Expect "toHaveCount" getByRole('dialog', { name: 'Settings', exact: true }).locator('[data-settings-row="playbackEntryViewChoice"]').getByRole('button') with timeout 15000ms
+      - waiting for getByRole('dialog', { name: 'Settings', exact: true }).locator('[data-settings-row="playbackEntryViewChoice"]').getByRole('button')
+        34 × locator resolved to 0 elements
+           - unexpected value "0"
+
+
+      80 |     });
+      81 |     const playerRow = dialog(page).locator('[data-settings-row="playbackEntryViewChoice"]');
+    > 82 |     await expect(playerRow.getByRole('button')).toHaveCount(3);
+         |                                                 ^
+      83 |     await expect(playerRow).toBeVisible();
+      84 |     await dialog(page).getByRole('button', { name: 'Lyrics', exact: true }).tap();
+      85 |     await expect(dialog(page).getByRole('button', { name: 'Lyrics', exact: true })).toHaveAttribute('aria-current', 'page');
+        at /workspace/folia-ipad/test/ui/settingsHistory.spec.ts:82:49
+
+    Error Context: test-results/settingsHistory-a-named-se-364c5-ward-retains-the-later-page-e2e/error-context.md
+
+
+  1 failed
+    [e2e] › test/ui/settingsHistory.spec.ts:75:1 › a named settings anchor opens its target before history and Forward retains the later page
+GREEN: navigation-followup-ui.json, 2026-10-23T06:59:17.682Z
+All 6 settings history cases passed, including new anchor/Forward ownership case.
+Overall follow-up 28 passed / 1 unrelated Navidrome locator failure, subsequently 1/1 passed.
+Machine evidence: ../navigation-regression-final-browser.json

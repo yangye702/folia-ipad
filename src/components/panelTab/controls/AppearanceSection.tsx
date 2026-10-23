@@ -10,7 +10,7 @@ import {
 import { resolveVisualizerBackgroundMode } from '../../../stores/visualizerSettingsPersistence';
 import { useVisualizerModeStepper } from '../../../hooks/useVisualizerModeStepper';
 import { QuickControlChip, QuickControlToggle } from '../../shared/QuickControlChip';
-import { WholeWord } from 'lucide-react';
+import { WholeWord, Sparkles, Eye, EyeOff } from 'lucide-react';
 import { openCommandPaletteCommand } from '../../../stores/useAppViewStore';
 import { useLyricSegmentationStore } from '../../../stores/useLyricSegmentationStore';
 import { LYRIC_SEGMENTATION_COMMAND_ID } from '../../command-palette/commands/lyricSegmentationCommand';
@@ -21,13 +21,14 @@ import BackgroundPicture from '../../visualizer/preview/BackgroundPicture';
 import { LyricPreviewProvider, type LyricPreviewLook } from '../../visualizer/preview/LyricPreviewContext';
 import LyricStylePicture from '../../visualizer/preview/LyricStylePicture';
 import { usePreviewClock } from '../../visualizer/preview/usePreviewClock';
-import { backgroundTuningActions } from '../../visualizer/tuningRegistry';
+import { backgroundTuningActions, getVisualizerTuning } from '../../visualizer/tuningRegistry';
 import { useVisualizerBackgroundConfig } from '../../visualizer/useVisualizerBackgroundConfig';
 import { useVisualizerTunings } from '../../visualizer/useVisualizerTunings';
 import { useTypographySettingsStore } from '../../../stores/useTypographySettingsStore';
 import { useVisualizerSettingsStore } from '../../../stores/useVisualizerSettingsStore';
 import { useSettingsModalStore } from '../../../stores/useSettingsModalStore';
 import { selectDisplayPlayerState, usePlaybackStore } from '../../../stores/usePlaybackStore';
+import { usePlayerChromeSettingsStore } from '../../../stores/usePlayerChromeSettingsStore';
 import { usePonderStore } from '../../../stores/usePonderStore';
 import { Toggle, type PictureState } from '../../modal/settings/kit';
 
@@ -54,6 +55,22 @@ interface AppearanceSectionProps {
 
 const ANIMATION_INTENSITIES: Theme['animationIntensity'][] = ['calm', 'normal', 'chaotic'];
 
+// No new rendering engine: quick iPad scenes only pair two registered Folia
+// effects. The existing effect picker and individual settings remain intact.
+const IPAD_SCENES: Array<{
+    id: string;
+    labelZh: string;
+    labelEn: string;
+    mode: VisualizerMode;
+    background: VisualizerBackgroundMode;
+    intensity: Theme['animationIntensity'];
+}> = [
+    { id: 'glow', labelZh: '流光', labelEn: 'Glow', mode: 'classic', background: 'latent', intensity: 'normal' },
+    { id: 'stage', labelZh: '舞台', labelEn: 'Stage', mode: 'lumiere', background: 'common', intensity: 'normal' },
+    { id: 'pv', labelZh: '文字 PV', labelEn: 'Lyric PV', mode: 'sonnet', background: 'sora', intensity: 'normal' },
+    { id: 'cover', labelZh: '封面律动', labelEn: 'Cover Beat', mode: 'classic', background: 'latent', intensity: 'normal' },
+];
+
 const drawStyle = (mode: VisualizerMode, state: PictureState) => <LyricStylePicture mode={mode} {...state} />;
 const drawBackground = (mode: VisualizerBackgroundMode, state: PictureState) => <BackgroundPicture mode={mode} {...state} />;
 const drawStyleGlyph = (mode: VisualizerMode) => <VisualizerModeGlyph mode={mode} size={18} />;
@@ -73,7 +90,7 @@ const AppearanceSection: React.FC<AppearanceSectionProps> = ({
     onToggleTransparentPlayerBackground,
     onClosePanel,
 }) => {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const openSettings = useSettingsModalStore(state => state.openSettings);
     // Only the modes whose typography is built from word segmentation get the chip; the registry
     // says which, so adding such a mode does not mean editing a list here.
@@ -81,6 +98,10 @@ const AppearanceSection: React.FC<AppearanceSectionProps> = ({
     const hasSavedSegmentation = useLyricSegmentationStore(state => Boolean(state.record));
     const visualizerBackgroundMode = useVisualizerSettingsStore(state => state.visualizerBackgroundMode);
     const setVisualizerBackgroundMode = useVisualizerSettingsStore(state => state.handleSetVisualizerBackgroundMode);
+    const setLatentBackgroundTuning = useVisualizerSettingsStore(state => state.handleSetLatentBackgroundTuning);
+    const latentColorSource = useVisualizerSettingsStore(state => state.latentBackgroundTuning.colorSource);
+    const hideProgressBar = usePlayerChromeSettingsStore(state => state.hidePlayerProgressBar);
+    const setHideProgressBar = usePlayerChromeSettingsStore(state => state.handleToggleHidePlayerProgressBar);
 
     const visualizerOptions = useMemo(
         () => VISUALIZER_REGISTRY.map(entry => ({
@@ -154,6 +175,52 @@ const AppearanceSection: React.FC<AppearanceSectionProps> = ({
         });
     };
 
+    const chooseIpadScene = (scene: (typeof IPAD_SCENES)[number]) => {
+        onVisualizerModeChange(scene.mode);
+        if (scene.id === 'cover') {
+            // Original Latent shader follows embedded or local cover colors.
+            // Without cover art it falls back to the existing theme palette.
+            setLatentBackgroundTuning({
+                colorSource: 'cover-only',
+                displayMode: 'both',
+                enhancedBeatResponse: true,
+                // A clearly perceptible iPad preset: slow ambient drift at rest
+                // and stronger, but bounded, shader motion with live audio.
+                // Reuses Folia's original shader/audio bands, without a new loop.
+                ditheringSpeed: 0.25,
+                ditheringAudioSpeed: 1.8,
+                ditheringOpacity: 0.48,
+                ditheringSize: 2.5,
+                meshSpeed: 0.18,
+                meshAudioSpeed: 1.9,
+                meshDistortion: 0.74,
+                meshSwirl: 0.56,
+            });
+        } else if (scene.id === 'glow') {
+            // Make the paired cover scene reversible when returning to Glow.
+            setLatentBackgroundTuning({ colorSource: 'cover-theme' });
+        }
+        setVisualizerBackgroundMode(scene.background);
+        if (theme.animationIntensity !== scene.intensity) {
+            onThemeChange({ ...theme, animationIntensity: scene.intensity });
+        }
+        changeOpenPicker(null);
+        onClosePanel?.();
+    };
+
+    const tuningAdapter = getVisualizerTuning(visualizerMode);
+    const visualizerQuickControls = tuningAdapter && getVisualizerRegistryEntry(visualizerMode).renderQuickControls?.({
+        t,
+        isDaylight,
+        theme,
+        tuning: (visualizerTunings as unknown as Record<string, unknown>)[visualizerMode],
+        onTuningChange: patch => {
+            const settings = useVisualizerSettingsStore.getState() as unknown as Record<string, unknown>;
+            const setter = settings[tuningAdapter.settingsSetterKey];
+            if (typeof setter === 'function') setter(patch);
+        },
+    });
+
     const backgroundQuickControls = getVisualizerBackgroundRegistryEntry(resolvedBackgroundMode).renderQuickControls?.({
         // The backgrounds' tunings as they are saved, and the store's actions for them (an action needs no subscription).
         config: { ...pictureBackground, common: { ...pictureBackground.common, useCoverColorBg } },
@@ -168,6 +235,54 @@ const AppearanceSection: React.FC<AppearanceSectionProps> = ({
 
     return (
         <div>
+            {/* Original Folia visualizer modes, combined as optional one-tap scenes.
+                This row is visible only on touch devices, never a new default. */}
+            <div className="hidden [@media(pointer:coarse)]:block mb-3 rounded-xl border border-[var(--st-line)] bg-[var(--st-fill)]/30 p-3">
+                <div className="mb-2 flex items-center gap-2 text-xs font-medium text-[color:var(--st-t2)]">
+                    <Sparkles size={15} aria-hidden="true" />
+                    <span>{i18n.resolvedLanguage?.startsWith('zh') ? 'iPad 氛围速切' : 'iPad visual scenes'}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                    {IPAD_SCENES.map(scene => {
+                        const active = visualizerMode === scene.mode
+                            && resolvedBackgroundMode === scene.background
+                            && (scene.id === 'cover' ? latentColorSource === 'cover-only'
+                                : scene.id === 'glow' ? latentColorSource !== 'cover-only' : true);
+                        return (
+                            <button
+                                key={scene.id}
+                                type="button"
+                                aria-pressed={active}
+                                onClick={() => chooseIpadScene(scene)}
+                                className={`min-h-11 rounded-lg border px-2 py-2 text-center text-xs font-medium transition-[background-color,border-color] active:scale-[0.98] ${active
+                                    ? 'border-[color:var(--st-t2)] bg-[var(--st-fill2)] text-[color:var(--st-t1)]'
+                                    : 'border-[var(--st-line)] bg-transparent text-[color:var(--st-t2)]'}`}
+                            >
+                                {i18n.resolvedLanguage?.startsWith('zh') ? scene.labelZh : scene.labelEn}
+                            </button>
+                        );
+                    })}
+                </div>
+                <button
+                    type="button"
+                    aria-pressed={hideProgressBar}
+                    onClick={() => {
+                        setHideProgressBar(!hideProgressBar);
+                        onClosePanel?.();
+                    }}
+                    className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-[var(--st-line)] px-3 py-2 text-xs font-medium text-[color:var(--st-t2)] transition-colors hover:bg-[var(--st-fill)]"
+                >
+                    {hideProgressBar ? <Eye size={16} aria-hidden="true" /> : <EyeOff size={16} aria-hidden="true" />}
+                    {i18n.resolvedLanguage?.startsWith('zh')
+                        ? (hideProgressBar ? '恢复播放控制条' : '纯净画面 · 隐藏进度条')
+                        : (hideProgressBar ? 'Show playback bar' : 'Focus view · hide playback bar')}
+                </button>
+                <p className="mt-1.5 text-[10px] text-[color:var(--st-t3)]">
+                    {i18n.resolvedLanguage?.startsWith('zh')
+                        ? '可从右下角重新打开面板恢复控制条；使用主屏幕 App 可隐藏 Safari 地址栏。'
+                        : 'Reopen the right panel to restore controls; Home Screen app hides Safari chrome.'}
+                </p>
+            </div>
             {/* 思索「歌词样式」的埋点：两行一起算，因为那一章讲的就是歌词和背景各选各的。 */}
             <div data-ponder="lyric-style">
                 <LyricPreviewProvider
@@ -186,6 +301,7 @@ const AppearanceSection: React.FC<AppearanceSectionProps> = ({
                         renderGlyph={drawStyleGlyph}
                         renderPicture={drawStyle}
                         caption={t('ui.animationMode')}
+                        swipeHint={i18n.resolvedLanguage?.startsWith('zh') ? '左右滑动切换' : 'Swipe to switch'}
                         moreLabel={t('ui.moreSettings')}
                         onOpenMore={openVisualizerSettings}
                         open={openPicker === 'style'}
@@ -198,6 +314,7 @@ const AppearanceSection: React.FC<AppearanceSectionProps> = ({
                                     title={`${t('ui.animationIntensity')}: ${t(`animation.${theme.animationIntensity}`)}`}
                                     onClick={cycleAnimationIntensity}
                                 />
+                                {visualizerQuickControls}
                                 {usesWordSegmentation && (
                                     <QuickControlToggle
                                         active={hasSavedSegmentation}
@@ -223,6 +340,7 @@ const AppearanceSection: React.FC<AppearanceSectionProps> = ({
                         renderGlyph={drawBackgroundGlyph}
                         renderPicture={drawBackground}
                         caption={t('options.visualizerBackgroundMode')}
+                        swipeHint={i18n.resolvedLanguage?.startsWith('zh') ? '左右滑动切换' : 'Swipe to switch'}
                         moreLabel={t('ui.moreSettings')}
                         onOpenMore={openBackgroundSettings}
                         open={openPicker === 'background'}

@@ -27,7 +27,7 @@ describe('coverCache', () => {
     const createObjectUrlSpy = vi.spyOn(URL, 'createObjectURL');
 
     beforeEach(() => {
-        getFromCacheMock.mockReset();
+        getFromCacheMock.mockReset().mockResolvedValue(null);
         saveToCacheMock.mockReset();
         removeFromCacheMock.mockReset();
         readCoverAssetMock.mockReset().mockResolvedValue(null);
@@ -55,7 +55,8 @@ describe('coverCache', () => {
 
     it('reuses cached cover URLs without fetching', async () => {
         const blob = new Blob(['cached']);
-        getFromCacheMock.mockResolvedValueOnce(blob);
+        getFromCacheMock.mockResolvedValueOnce({ backend: 'opfs', mimeType: 'image/png', size: blob.size, updatedAt: 1, sourceUrl: 'https://img.test/cover.png' });
+        readCoverAssetMock.mockResolvedValueOnce(blob);
 
         await expect(loadCachedOrFetchCover('cover_2', 'https://img.test/cover.png')).resolves.toBe('blob:cached-cover');
         expect(globalThis.fetch).not.toHaveBeenCalled();
@@ -73,9 +74,9 @@ describe('coverCache', () => {
         globalThis.fetch = fetchMock as unknown as typeof fetch;
 
         await expect(loadCachedOrFetchCover('cover_3', 'https://img.test/fresh.png')).resolves.toBe('blob:cached-cover');
-        expect(fetchMock).toHaveBeenCalledWith('https://img.test/fresh.png', { mode: 'cors' });
-        expect(writeCoverAssetMock).toHaveBeenCalledWith('cover_3', blob);
-        expect(saveToCacheMock).toHaveBeenCalledWith('cover_3', descriptor);
+        expect(fetchMock).toHaveBeenCalledWith('https://img.test/fresh.png', expect.objectContaining({ mode: 'cors', signal: expect.any(AbortSignal) }));
+        expect(writeCoverAssetMock).toHaveBeenCalledWith(expect.stringMatching(/^cover_3_/), blob);
+        expect(saveToCacheMock).toHaveBeenCalledWith('cover_3', expect.objectContaining({ ...descriptor, sourceUrl: expect.any(String), assetKey: expect.any(String) }), { throwOnError: true });
         expect(createObjectUrlSpy).toHaveBeenCalledWith(blob);
     });
 
@@ -84,7 +85,7 @@ describe('coverCache', () => {
         getFromCacheMock.mockRejectedValueOnce(new Error('cache failed'));
 
         await expect(loadCachedOrFetchCover('cover_4', 'https://img.test/fallback.png')).resolves.toBe('https://img.test/fallback.png');
-        expect(warnSpy).toHaveBeenCalled();
+        expect(warnSpy).not.toHaveBeenCalled();
 
         warnSpy.mockRestore();
     });
@@ -95,9 +96,9 @@ describe('coverCache', () => {
         writeCoverAssetMock.mockResolvedValue(descriptor);
         globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, blob: vi.fn().mockResolvedValue(blob) }) as typeof fetch;
         await expect(cacheLocalSongOnlineCover('song-id', 'https://img.test/matched.png')).resolves.toBe(true);
-        expect(removeFromCacheMock).toHaveBeenCalledWith('cover_local_song-id');
-        expect(removeCoverAssetMock).toHaveBeenCalledWith('cover_local_song-id');
-        expect(saveToCacheMock).toHaveBeenCalledWith('cover_local_song-id', descriptor);
+        expect(removeFromCacheMock).not.toHaveBeenCalled();
+        expect(removeCoverAssetMock).not.toHaveBeenCalled();
+        expect(saveToCacheMock).toHaveBeenCalledWith('cover_local_song-id', expect.objectContaining({ ...descriptor, sourceUrl: expect.any(String), assetKey: expect.any(String) }), { throwOnError: true });
     });
 
     it('fetches QQ cover blobs through the same-origin proxy in web builds', async () => {
@@ -111,9 +112,9 @@ describe('coverCache', () => {
         await expect(cacheLocalSongOnlineCover('qq-song', coverUrl)).resolves.toBe(true);
         expect(fetchMock).toHaveBeenCalledWith(
             `/api/lyric-proxy?url=${encodeURIComponent(coverUrl)}`,
-            { mode: 'cors' },
+            expect.objectContaining({ mode: 'cors', signal: expect.any(AbortSignal) }),
         );
-        expect(saveToCacheMock).toHaveBeenCalledWith('cover_local_qq-song', descriptor);
+        expect(saveToCacheMock).toHaveBeenCalledWith('cover_local_qq-song', expect.objectContaining({ ...descriptor, sourceUrl: expect.any(String), assetKey: expect.any(String) }), { throwOnError: true });
     });
 
     it('fetches KuGou cover blobs through the same-origin proxy in web builds', async () => {
@@ -127,12 +128,49 @@ describe('coverCache', () => {
         await expect(cacheLocalSongOnlineCover('kugou-song', coverUrl)).resolves.toBe(true);
         expect(fetchMock).toHaveBeenCalledWith(
             `/api/lyric-proxy?url=${encodeURIComponent(coverUrl)}`,
-            { mode: 'cors' },
+            expect.objectContaining({ mode: 'cors', signal: expect.any(AbortSignal) }),
         );
-        expect(saveToCacheMock).toHaveBeenCalledWith('cover_local_kugou-song', descriptor);
+        expect(saveToCacheMock).toHaveBeenCalledWith('cover_local_kugou-song', expect.objectContaining({ ...descriptor, sourceUrl: expect.any(String), assetKey: expect.any(String) }), { throwOnError: true });
+    });
+
+
+    it('preserves the old cover when replacement download fails', async () => {
+        globalThis.fetch = vi.fn().mockRejectedValue(new Error('offline')) as typeof fetch;
+        expect(await cacheLocalSongOnlineCover('protected', 'https://img.test/new.jpg')).toBe(false);
+        expect(removeFromCacheMock).not.toHaveBeenCalled();
+        expect(removeCoverAssetMock).not.toHaveBeenCalled();
+        expect(writeCoverAssetMock).not.toHaveBeenCalled();
+    });
+
+    it('preserves the offline display of a legacy cover without URL metadata', async () => {
+        const legacy = new Blob(['old artwork'], { type: 'image/png' });
+        getFromCacheMock.mockResolvedValue(legacy);
+        globalThis.fetch = vi.fn().mockRejectedValue(new Error('offline')) as typeof fetch;
+        await expect(loadCachedOrFetchCover('legacy', 'https://img.test/old.png')).resolves.toBe('blob:cached-cover');
+        expect(removeCoverAssetMock).not.toHaveBeenCalled();
+    });
+
+    it('does not reuse an old cover when the source URL changes', async () => {
+        getFromCacheMock.mockResolvedValue({ backend: 'opfs', mimeType: 'image/png', size: 3, updatedAt: 1, sourceUrl: 'https://img.test/old.png' });
+        readCoverAssetMock.mockResolvedValue(new Blob(['old'], { type: 'image/png' }));
+        globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, blob: async () => new Blob(['new'], { type: 'image/png' }) }) as typeof fetch;
+        await loadCachedOrFetchCover('cover_changed', 'https://img.test/new.png');
+        expect(fetch).toHaveBeenCalled();
     });
 
     afterEach(() => {
         globalThis.fetch = originalFetch;
+    });
+});
+
+describe('cover replacement commit boundary', () => {
+    it('keeps the previous pointer and bytes if saving the new descriptor fails', async () => {
+        vi.mocked(getFromCache).mockResolvedValue({ backend: 'opfs', mimeType: 'image/png', size: 1, updatedAt: 1, assetKey: 'old-key', sourceUrl: 'https://img.test/old.png' });
+        vi.mocked(writeCoverAsset).mockResolvedValue({ backend: 'opfs', mimeType: 'image/png', size: 2, updatedAt: 2 });
+        vi.mocked(saveToCache).mockRejectedValueOnce(new Error('quota'));
+        vi.mocked(removeCoverAsset).mockClear();
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(new Blob(['new'], { type: 'image/png' }))));
+        expect(await cacheLocalSongOnlineCover('commit', 'https://img.test/new.png')).toBe(false);
+        expect(removeCoverAsset).not.toHaveBeenCalledWith('old-key');
     });
 });

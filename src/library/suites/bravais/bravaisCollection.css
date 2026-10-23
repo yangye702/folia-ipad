@@ -119,6 +119,9 @@
 .bravais-seam-star:disabled { cursor: default; }
 /* fb10：星标在「播放全部 / 加入队列」那一行的末尾（靠右），不再单独占一行。 */
 .bravais-seam-actions .bravais-seam-star { margin-left: auto; }
+/* Keep the collection's star beside its scope actions at the seam's narrow width. */
+.bravais-seam-actions.is-scope { flex-wrap: nowrap; }
+.bravais-seam-actions.is-scope .bravais-chrome-button { min-width: 0; flex: 1; padding-inline: 8px; }
 
 .bravais-seam .bravais-seam-sync {
     display: inline-flex;

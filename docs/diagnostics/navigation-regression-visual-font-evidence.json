@@ -1,0 +1,165 @@
+{
+  "environment": {
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+    "fonts": [
+      {
+        "selector": "#body",
+        "fonts": [
+          {
+            "familyName": "Liberation Sans",
+            "postScriptName": "LiberationSans",
+            "isCustomFont": false,
+            "glyphCount": 18
+          }
+        ]
+      },
+      {
+        "selector": "#system",
+        "fonts": [
+          {
+            "familyName": "Noto Sans",
+            "postScriptName": "NotoSans-Bold",
+            "isCustomFont": false,
+            "glyphCount": 18
+          }
+        ]
+      }
+    ]
+  },
+  "diagnosticRuns": [
+    {
+      "path": "/tmp/folia-font-results.json",
+      "stats": {
+        "startTime": "2026-10-22T12:05:08.845Z",
+        "duration": 159218.072,
+        "expected": 2,
+        "skipped": 0,
+        "unexpected": 3,
+        "flaky": 0
+      },
+      "cases": [
+        {
+          "title": "captures the Netease playlist home view",
+          "status": "failed",
+          "differencePixels": "2877"
+        },
+        {
+          "title": "captures the Navidrome library view with mocked Subsonic responses",
+          "status": "failed",
+          "differencePixels": "3179"
+        },
+        {
+          "title": "captures the local library after importing a mocked folder",
+          "status": "failed",
+          "differencePixels": "3752"
+        },
+        {
+          "title": "[bravais] entering and leaving Lattice flips one wall into the other, with one tools button throughout",
+          "status": "passed",
+          "differencePixels": null
+        },
+        {
+          "title": "[bravais] the tools panel goes to Lattice through the host entry: the same flip handoff and the same tools button",
+          "status": "passed",
+          "differencePixels": null
+        }
+      ]
+    },
+    {
+      "path": "/tmp/folia-font-arial-results.json",
+      "stats": {
+        "startTime": "2026-10-22T23:06:32.605Z",
+        "duration": 121323.598,
+        "expected": 0,
+        "skipped": 0,
+        "unexpected": 3,
+        "flaky": 0
+      },
+      "cases": [
+        {
+          "title": "captures the Netease playlist home view",
+          "status": "failed",
+          "differencePixels": "1414"
+        },
+        {
+          "title": "captures the Navidrome library view with mocked Subsonic responses",
+          "status": "failed",
+          "differencePixels": "2270"
+        },
+        {
+          "title": "captures the local library after importing a mocked folder",
+          "status": "failed",
+          "differencePixels": "3075"
+        }
+      ]
+    }
+  ],
+  "snapshotReview": [
+    {
+      "file": "test/ui/app.screenshot.spec.ts-snapshots/local-library-linux.png",
+      "oldCommit": "d35499a9",
+      "oldDimensions": [
+        1440,
+        1100
+      ],
+      "newDimensions": [
+        1440,
+        1100
+      ],
+      "oldSha256": "9a228c7d30acf6c6cb9a9a021237eded3eadf88734a9d326be703df88bcc9af0",
+      "newSha256": "a16df327ac5b5fb241b40e97af7415d166aa5888c642a773852cf6322e8cf20b",
+      "review": "Reviewed original and updated image; valid artwork and card geometry preserved; local failed artwork renders Disc placeholder."
+    },
+    {
+      "file": "test/ui/app.screenshot.spec.ts-snapshots/navidrome-home-linux.png",
+      "oldCommit": "d35499a9",
+      "oldDimensions": [
+        1440,
+        1100
+      ],
+      "newDimensions": [
+        1440,
+        1100
+      ],
+      "oldSha256": "a90e8719243d3f4d1b5298eab84d5e143abff0e59f668651a6e89ae44befcdde",
+      "newSha256": "ea214ba99c70298a5e7a9bd775e277f1f2890cb94101b8d47397eb7bdca346d8",
+      "review": "Reviewed original and updated image; valid artwork and card geometry preserved; local failed artwork renders Disc placeholder."
+    },
+    {
+      "file": "test/ui/app.screenshot.spec.ts-snapshots/netease-home-linux.png",
+      "oldCommit": "d35499a9",
+      "oldDimensions": [
+        1440,
+        1100
+      ],
+      "newDimensions": [
+        1440,
+        1100
+      ],
+      "oldSha256": "8d30a90ec8ccc8d8b532c0114df3c1b537569f5725cbd3a48afa8d9f82f477ae",
+      "newSha256": "a75fca0c65e8cad881452ff6f2a014e47f1d1bb1f645fc67f438589ddcccc65f",
+      "review": "Reviewed original and updated image; valid artwork and card geometry preserved; local failed artwork renders Disc placeholder."
+    }
+  ],
+  "verification": {
+    "gridArtworkBrowser": {
+      "passed": 2,
+      "failed": 0,
+      "covers": [
+        "card/image failure placeholder",
+        "changed valid URL decodes",
+        "changed invalid URL restores placeholder"
+      ]
+    },
+    "relatedUnits": {
+      "passed": 39,
+      "failed": 0
+    },
+    "finalDesktopScreenshots": {
+      "passed": 3,
+      "failed": 0,
+      "maxDiffPixels": 600,
+      "durationMs": 39200
+    }
+  }
+}

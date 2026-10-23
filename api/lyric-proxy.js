@@ -2,6 +2,7 @@ import { URL } from 'url';
 // 当前文件：Vercel 歌词请求代理函数的 TypeScript 源文件。
 const CORS_HEADERS = {
     'Access-Control-Allow-Origin': '*',
+    'Access-Control-Expose-Headers': 'X-Folia-Proxy-Phase, X-Folia-Upstream-Status, X-Folia-Proxy-Error, Retry-After',
     'Access-Control-Allow-Methods': 'GET,OPTIONS,PATCH,DELETE,POST,PUT',
     'Access-Control-Allow-Headers': [
         'X-CSRF-Token',
@@ -33,7 +34,7 @@ const IGNORED_FORWARD_HEADERS = [
 ];
 function isAllowedLyricProxyHost(hostname) {
     return hostname === 'qq.com' || hostname.endsWith('.qq.com') ||
-        hostname === 'y.gtimg.cn' ||
+        hostname === 'y.gtimg.cn' || hostname === 'c1.kgimg.com' ||
         hostname === 'kugou.com' || hostname.endsWith('.kugou.com');
 }
 export default async function handler(req, res) {
@@ -44,16 +45,18 @@ export default async function handler(req, res) {
     if (req.method === 'OPTIONS') {
         return res.status(200).end();
     }
+    res.setHeader('X-Folia-Proxy-Phase', 'proxy-policy');
     const { url: targetUrlStr } = req.query;
     if (!targetUrlStr) {
         return res.status(400).json({ error: 'Missing url parameter' });
     }
+    let phase = 'upstream-connect';
     try {
         const targetUrl = new URL(targetUrlStr);
         const hostname = targetUrl.hostname;
         // Security check: only allow proxying to known lyric provider domains
         const isAllowed = isAllowedLyricProxyHost(hostname);
-        if (!isAllowed) {
+        if (!isAllowed || !['http:', 'https:'].includes(targetUrl.protocol) || hostname === 'c1.kgimg.com' && (targetUrl.protocol !== 'https:' || Boolean(targetUrl.port && targetUrl.port !== '443')) || targetUrl.username || targetUrl.password || (targetUrl.port && !['80', '443'].includes(targetUrl.port))) {
             return res.status(403).json({ error: 'Forbidden: Domain not allowed' });
         }
         // Filter headers to forward
@@ -71,6 +74,9 @@ export default async function handler(req, res) {
         const hasBody = ['POST', 'PUT', 'PATCH'].includes(req.method);
         const fetchOptions = {
             method: req.method,
+            redirect: 'manual',
+            // Leave time for the relay response to reach clients with a 12-second deadline.
+            signal: AbortSignal.timeout(8000),
             headers,
         };
         if (hasBody) {
@@ -81,11 +87,32 @@ export default async function handler(req, res) {
                 fetchOptions.body = req.body;
             }
         }
-        const response = await fetch(targetUrl.toString(), fetchOptions);
+        let currentUrl = targetUrl;
+        let response = await fetch(currentUrl.toString(), fetchOptions);
+        let redirects = 0;
+        while ([301, 302, 303, 307, 308].includes(response.status)) {
+            if (req.method !== 'GET' || ++redirects > 3)
+                return res.status(502).json({ error: 'Unsupported redirect' });
+            const location = response.headers.get('location');
+            const next = location ? new URL(location, currentUrl) : null;
+            if (!next || !isAllowedLyricProxyHost(next.hostname) || !['http:', 'https:'].includes(next.protocol)
+                || next.hostname === 'c1.kgimg.com' && next.protocol !== 'https:' || next.username || next.password
+                || next.port && !['80', '443'].includes(next.port))
+                return res.status(403).json({ error: 'Forbidden redirect' });
+            currentUrl = next;
+            response = await fetch(next.toString(), { ...fetchOptions, headers: {} });
+        }
+        phase = 'upstream-body';
+        res.setHeader('X-Folia-Proxy-Phase', 'upstream-response');
+        res.setHeader('X-Folia-Upstream-Status', String(response.status));
+        const retryAfter = response.headers.get('retry-after');
+        if (retryAfter && retryAfter.length <= 80 && (/^\d+$/.test(retryAfter) || Number.isFinite(Date.parse(retryAfter))))
+            res.setHeader('Retry-After', retryAfter);
         const contentType = response.headers.get('content-type') || '';
         // Forward response headers
         res.setHeader('Content-Type', contentType);
         if (contentType.includes('application/json')) {
+            phase = 'upstream-parse';
             const json = await response.json();
             return res.status(response.status).json(json);
         }
@@ -95,7 +122,12 @@ export default async function handler(req, res) {
         }
     }
     catch (error) {
-        console.error('Proxy request failed:', error);
-        return res.status(500).json({ error: 'Proxy request failed', details: String(error) });
+        const rawCode = error?.cause?.code ?? error?.code;
+        const safeCodes = ['ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED', 'ECONNRESET', 'ETIMEDOUT', 'ENETUNREACH', 'EHOSTUNREACH', 'UND_ERR_CONNECT_TIMEOUT', 'UND_ERR_HEADERS_TIMEOUT', 'UND_ERR_BODY_TIMEOUT', 'UND_ERR_SOCKET', 'ERR_TLS_CERT_ALTNAME_INVALID', 'CERT_HAS_EXPIRED', 'UNABLE_TO_VERIFY_LEAF_SIGNATURE', 'DEPTH_ZERO_SELF_SIGNED_CERT'];
+        if (rawCode && safeCodes.includes(rawCode))
+            res.setHeader('X-Folia-Proxy-Error', rawCode);
+        const failurePhase = error?.name === 'TimeoutError' ? 'upstream-timeout' : phase;
+        res.setHeader('X-Folia-Proxy-Phase', failurePhase);
+        return res.status(failurePhase === 'upstream-timeout' ? 504 : 502).json({ error: 'Proxy request failed', phase: failurePhase });
     }
 }

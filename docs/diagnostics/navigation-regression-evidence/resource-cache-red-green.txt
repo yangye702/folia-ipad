@@ -1,0 +1,44 @@
+Environment: isolated synthetic provider/cache; no user database access.
+
+RED cache-roundtrip:
+ RUN  v4.1.11 /workspace/folia-ipad
+
+ ❯ test/unit/library/core/onlineCollectionResource.test.ts (22 tests | 1 failed | 21 skipped) 12ms
+     × keeps an unfinished upstream read incomplete across its cache round trip and a failed reload 11ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/unit/library/core/onlineCollectionResource.test.ts > online collection resource: loading > keeps an unfinished upstream read incomplete across its cache round trip and a failed reload
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ test/unit/library/core/onlineCollectionResource.test.ts:142:55
+    140|         reopened.ensure(playlist({ trackCount: 150 }), {});
+    141|         await settle();
+    142|         expect(reopened.getSnapshot().tracksComplete).toBe(false);
+       |                                                       ^
+    143|         expect(cache.hasMore).toBe(true);
+    144|         vi.mocked(h.deps.getCollectionTracks).mockRejectedValueOnce(ne…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 21 skipped (22)
+   Start at  23:10:12
+   Duration  895ms (transform 496ms, setup 0ms, import 571ms, tests 12ms, environment 0ms)
+
+
+GREEN full resource suite:
+ RUN  v4.1.11 /workspace/folia-ipad
+
+
+ Test Files  1 passed (1)
+      Tests  22 passed (22)
+   Start at  23:11:21
+   Duration  1.42s (transform 910ms, setup 0ms, import 1.03s, tests 108ms, environment 0ms)

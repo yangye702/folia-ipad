@@ -1,4 +1,8 @@
 import React from 'react';
+import { Sparkles } from 'lucide-react';
+import { QuickControlChip, QuickControlToggle } from '../../shared/QuickControlChip';
+import type { VisualizerQuickControlsProps } from '../definition';
+import { DEFAULT_SONNET_TUNING, type SonnetTuning } from '../../../types';
 import { defineVisualizer } from '../definition';
 import SonnetSettingsPanel from './SonnetSettingsPanel';
 
@@ -47,6 +51,15 @@ export default defineVisualizer({
     // (see songHandover.ts / pixiRuntimeHost.ts). Remounting here would throw the WebGL
     // context away mid-transition and leave the frame empty for the whole rebuild.
     render: props => <VisualizerSonnet {...props} />,
+    renderQuickControls: ({ t, isDaylight, theme, tuning = DEFAULT_SONNET_TUNING, onTuningChange }: VisualizerQuickControlsProps<SonnetTuning>) => {
+        const frames = ['none', 'frame', 'full'] as const;
+        const labels = { none: 'options.sonnetOuterFrameNone', frame: 'options.sonnetOuterFrameFrame', full: 'options.sonnetOuterFrameFull' };
+        const frameLabel = t(labels[tuning.outerFrameMode]);
+        return <>
+            <QuickControlChip isDaylight={isDaylight} label={frameLabel} title={`${t('options.sonnetOuterFrameMode')}: ${frameLabel}`} onClick={() => onTuningChange({ outerFrameMode: frames[(frames.indexOf(tuning.outerFrameMode) + 1) % frames.length] })} />
+            <QuickControlToggle active={tuning.postProcessEnabled} theme={theme} label={t('options.sonnetPostProcessEnabled')} onToggle={() => onTuningChange({ postProcessEnabled: !tuning.postProcessEnabled })}><Sparkles size={14} /></QuickControlToggle>
+        </>;
+    },
     renderSettingsPanel: props => <SonnetSettingsPanel {...props} />,
     ownFontSizeNoticeKey: 'options.sonnetFontSizeAutoNotice',
 });

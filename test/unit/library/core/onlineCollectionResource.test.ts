@@ -87,6 +87,67 @@ const harness = (
 };
 
 describe('online collection resource: loading', () => {
+    it('keeps the completeness of retained tracks when a reload fails before replacing them', async () => {
+        const all = songs(70);
+        const h = harness(all);
+        const resource = createOnlineCollectionResource('complete-kept', h.deps);
+        resource.ensure(playlist(), {});
+        await settle();
+        expect(resource.getSnapshot().tracks).toEqual(all);
+        expect(resource.getSnapshot()).toMatchObject({ status: 'ready', tracksComplete: true });
+
+        vi.mocked(h.deps.getCollectionTracks).mockRejectedValueOnce(new Error('reload failed'));
+        resource.reload();
+        expect(resource.getSnapshot().status).toBe('loading');
+        await settle();
+        expect(resource.getSnapshot()).toMatchObject({ status: 'error', tracksComplete: true });
+        expect(resource.getSnapshot().tracks).toEqual(all);
+    });
+
+    it('marks a newly accepted partial page incomplete even after retaining a complete list', async () => {
+        const all = songs(70);
+        const h = harness(all);
+        const resource = createOnlineCollectionResource('partial-new', h.deps);
+        resource.ensure(playlist(), {});
+        await settle();
+        const next = songs(200);
+        vi.mocked(h.deps.getCollectionTracks)
+            .mockResolvedValueOnce(pageOf(next, 150, 0))
+            .mockRejectedValue(new Error('background failed'));
+        resource.reload();
+        await settle();
+        expect(resource.getSnapshot()).toMatchObject({ tracksComplete: false, sync: { status: 'interrupted' } });
+        expect(resource.getSnapshot().tracks).toHaveLength(150);
+    });
+
+    it('keeps an unfinished upstream read incomplete across its cache round trip and a failed reload', async () => {
+        const all = songs(150);
+        let cache: OnlineTracksCacheEntry = { tracks: [], snapshotTime: 0, schemaVersion: 0 };
+        const h = harness(all, {
+            getCollectionTracks: vi.fn(async () => ({ items: all, total: 150, hasMore: true, nextOffset: 150 })),
+            readCache: async () => cache,
+            writeCache: async (_key, tracks, snapshotTime, progress) => {
+                cache = { tracks, snapshotTime, schemaVersion: ONLINE_TRACKS_CACHE_SCHEMA_VERSION, ...progress };
+            },
+        });
+        const original = createOnlineCollectionResource('unfinished-cache', h.deps);
+        original.ensure(playlist({ trackCount: 150 }), {});
+        await settle();
+        expect(original.getSnapshot().tracksComplete).toBe(false);
+        original.dispose();
+
+        const reopened = createOnlineCollectionResource('unfinished-cache', h.deps);
+        reopened.ensure(playlist({ trackCount: 150 }), {});
+        await settle();
+        expect(reopened.getSnapshot().tracksComplete).toBe(false);
+        expect(cache.hasMore).toBe(true);
+        vi.mocked(h.deps.getCollectionTracks).mockRejectedValueOnce(new Error('reload failed'));
+        reopened.reload();
+        await settle();
+        expect(reopened.getSnapshot()).toMatchObject({ status: 'error', tracksComplete: false });
+        expect(reopened.getSnapshot().tracks).toEqual(all);
+    });
+
     it('uses a valid cache without asking for the first page, then fills the rest from the cached cursor', async () => {
         const all = songs(300);
         const h = harness(all, {}, { tracks: all.slice(0, 200), snapshotTime: TARGET_TIME, schemaVersion: ONLINE_TRACKS_CACHE_SCHEMA_VERSION, nextOffset: 200, hasMore: true, total: 300 });

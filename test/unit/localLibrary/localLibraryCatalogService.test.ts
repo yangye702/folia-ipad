@@ -53,6 +53,25 @@ describe('localLibraryCatalogService', () => {
         await appDatabase.delete();
     });
 
+    it('cover-only completion preserves identity, lyrics, and assignments', async () => {
+        const original = song('cover-only', { title: 'Confirmed', titleOrigin: 'manual-match', matchedLyrics: { lines: [] }, onlineMetadata: { source: 'netease', songId: 7, title: 'Confirmed', artists: [{ name: 'Confirmed Artist' }], album: { name: 'Confirmed Album' }, matchMode: 'manual', matchedAt: 1 } });
+        await assignImportedSongs([original]);
+        const before = await appDatabase.local_library_assignments.get(original.id);
+        await applyMatchedMetadata(original.id, {}, { lyricsOnly: true, songPatch: { useOnlineCover: true }, coverCandidate: { source: 'qq', songId: 'other', title: 'Other', artists: [{ name: 'Other' }], coverUrl: 'https://example.test/cover.jpg' } });
+        const stored = await appDatabase.local_music.get(original.id);
+        expect(stored?.title).toBe('Confirmed');
+        expect(stored?.onlineMetadata).toMatchObject({ source: 'netease', songId: 7, title: 'Confirmed', artists: [{ name: 'Confirmed Artist' }], coverUrl: 'https://example.test/cover.jpg' });
+        expect(stored?.matchedLyrics).toEqual(original.matchedLyrics);
+        expect(await appDatabase.local_library_assignments.get(original.id)).toEqual(before);
+    });
+
+    it('checks cancellation inside the write transaction', async () => {
+        await assignImportedSongs([song('cancel-write')]);
+        const controller = new AbortController(); controller.abort();
+        await expect(applyMatchedMetadata('cancel-write', { title: 'Wrong' }, { signal: controller.signal })).rejects.toMatchObject({ name: 'AbortError' });
+        expect((await appDatabase.local_music.get('cancel-write'))?.title).toBe('cancel-write');
+    });
+
     it('groups same-folder same-name albums even when track artists differ', async () => {
         await assignImportedSongs([
             song('one', { artist: 'Artist One' }),

@@ -1,7 +1,7 @@
 import md5 from 'blueimp-md5';
 import { OnlineProviderError } from '../../../types/onlineMusic';
 import { readProviderSessionValue, removeProviderSessionValue, writeProviderSessionValue } from '../providerStorage';
-import { lyricProxyWebUrl, requestLyricProxyOnDesktop } from '../../lyricProxy';
+import { readBrowserRequestFailure, readLyricProxyResponseFacts, lyricProxyWebUrl, requestLyricProxyOnDesktop } from '../../lyricProxy';
 import { withLoginRequestLimit } from '../login/loginRequestLimit';
 
 // src/services/onlineMusic/kugou/kugouTransport.ts
@@ -276,12 +276,16 @@ export const requestKugouAnonymousSearch = async (
 
     const targetUrl = new URL('http://complexsearch.kugou.com/v2/search/song');
     Object.entries(params).forEach(([key, value]) => targetUrl.searchParams.set(key, String(value)));
-    const requestUrl = typeof window !== 'undefined' && window.electron
+    const directSearch = typeof window !== 'undefined' && Boolean(window.electron);
+    const requestUrl = directSearch
         ? targetUrl.toString()
         : lyricProxyWebUrl(targetUrl.toString());
-    const response = await fetch(requestUrl, {
+    let response: Response;
+    try { response = await fetch(requestUrl, {
         method: 'GET',
-        credentials: 'omit',
+        signal: AbortSignal.timeout(12000),
+        // Keep site authentication for a protected same-origin relay; it strips cookies upstream.
+        credentials: directSearch ? 'omit' : 'same-origin',
         headers: {
             'User-Agent': 'Android14-1070-11070-201-0-SearchSong-wifi',
             'KG-Rec': '1',
@@ -290,22 +294,28 @@ export const requestKugouAnonymousSearch = async (
             mid,
             'x-router': 'complexsearch.kugou.com',
         },
-    });
-    if (!response.ok) {
-        throw new OnlineProviderError(
-            'network',
-            `KuGou anonymous search failed: ${response.status}`,
-            'kugou',
-        );
+    }); } catch (error) {
+        throw Object.assign(new OnlineProviderError('network', 'KuGou search request did not receive a response', 'kugou'), {
+            kind: (error as Error)?.name === 'TimeoutError' ? 'timeout' : 'network', stage: 'search-request', ...readBrowserRequestFailure(error),
+        });
     }
-    const body = await response.json();
+    const facts = readLyricProxyResponseFacts(response);
+    if (!response.ok) {
+        throw Object.assign(new OnlineProviderError(
+            'network', `KuGou anonymous search failed: ${response.status}`, 'kugou', undefined, response.status, facts.retryAfterMs,
+        ), facts, { kind: facts.proxyPhase === 'upstream-parse' ? 'invalid-response' : 'http', stage: 'search-response' });
+    }
+    let body: any;
+    try { body = await response.json(); } catch {
+        throw Object.assign(new OnlineProviderError('invalid-response', 'KuGou search returned unreadable JSON', 'kugou', undefined, response.status), facts, { stage: 'search-response' });
+    }
     const errorCode = Number(body?.error_code);
     if (Number.isFinite(errorCode) && errorCode !== 0 && errorCode !== 200) {
-        throw new OnlineProviderError(
-            'network',
+        throw Object.assign(new OnlineProviderError(
+            'unavailable',
             `KuGou anonymous search failed: ${errorCode}`,
-            'kugou',
-        );
+            'kugou', { code: errorCode }, response.status,
+        ), facts, { kind: 'upstream', stage: 'search-response' });
     }
     return body;
 };

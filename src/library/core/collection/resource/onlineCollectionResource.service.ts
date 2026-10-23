@@ -136,7 +136,7 @@ export const createOnlineCollectionResource = (key: string, deps: OnlineCollecti
             onPage: (nextTracks, nextOffset, hasMore) => {
                 const visible = withoutTombstones(nextTracks);
                 upstreamOffset = nextOffset;
-                state.set({ tracks: visible }, 'background');
+                state.set({ tracks: visible, tracksComplete: !hasMore }, 'background');
                 void deps.writeCache(cacheKey(), visible, tombstones.size ? 0 : targetTime, { nextOffset, hasMore, total: totalTracks });
             },
             ...(deps.wait ? { wait: deps.wait } : {}),
@@ -145,7 +145,7 @@ export const createOnlineCollectionResource = (key: string, deps: OnlineCollecti
         if (likedListRead) deps.endLikedListRead?.(likedListRead, result.items, result.status === 'complete' && result.whole);
 
         void deps.writeCache(cacheKey(), withoutTombstones(result.items), tombstones.size ? 0 : targetTime, {
-            nextOffset: result.offset, hasMore: result.status === 'failed', total: totalTracks,
+            nextOffset: result.offset, hasMore: result.status === 'failed' || !result.whole, total: totalTracks,
         });
 
         if (result.status === 'failed') {
@@ -160,7 +160,7 @@ export const createOnlineCollectionResource = (key: string, deps: OnlineCollecti
             }, 'urgent');
             return;
         }
-        state.set({ sync: { status: 'none' } }, 'urgent');
+        state.set({ sync: { status: 'none' }, tracksComplete: result.whole }, 'urgent');
     };
 
     // 从头加载：缓存有效就直接用（不完整时接着补页），否则取首页再补页。
@@ -189,7 +189,7 @@ export const createOnlineCollectionResource = (key: string, deps: OnlineCollecti
                 const tracks = withoutTombstones(cached.tracks);
                 upstreamOffset = cached.nextOffset!;
                 loading = false;
-                state.set({ status: 'ready', tracks }, 'urgent');
+                state.set({ status: 'ready', tracks, tracksComplete: !cached.hasMore }, 'urgent');
                 if (cached.hasMore) {
                     void startSync(tracks, targetTime, cached.total ?? collection.trackCount, upstreamOffset);
                 }
@@ -225,14 +225,14 @@ export const createOnlineCollectionResource = (key: string, deps: OnlineCollecti
             // The first page was the whole list.
             if (likedListRead && !hasMore) deps.endLikedListRead?.(likedListRead, responseTracks, true);
             if (responseTracks.length === 0 && !hasMore) {
-                state.set({ status: 'ready', tracks: [] }, 'urgent');
+                state.set({ status: 'ready', tracks: [], tracksComplete: true }, 'urgent');
                 return;
             }
 
             // 大歌单的整表更新交给 renderer 走 transition：打开的同时转场还在飞，不能把它堵住。
             const tracks = withoutTombstones(responseTracks);
             upstreamOffset = nextOffset || responseTracks.length;
-            state.set({ status: 'ready', tracks }, 'background');
+            state.set({ status: 'ready', tracks, tracksComplete: !hasMore }, 'background');
             void deps.writeCache(cacheKey(), tracks, targetTime, { nextOffset: upstreamOffset, hasMore, total });
             if (hasMore) {
                 void startSync(tracks, targetTime, total, upstreamOffset, likedListRead);
@@ -266,7 +266,7 @@ export const createOnlineCollectionResource = (key: string, deps: OnlineCollecti
             if (collectionRevision(next) !== state.get().revision) {
                 // 集合版本变了：已加载的曲目需要重新校验；详情先清掉，首页的总数会再填回来。
                 tombstones.clear();
-                state.set({ detail: null }, 'urgent');
+                state.set({ detail: null, tracksComplete: false }, 'urgent');
                 void load();
                 return;
             }
@@ -344,7 +344,7 @@ export const createOnlineCollectionResource = (key: string, deps: OnlineCollecti
             try {
                 const tracks = await loadAll();
                 if (disposed || generation !== loadGeneration) return false;
-                state.set({ status: 'ready', tracks }, 'urgent');
+                state.set({ status: 'ready', tracks, tracksComplete: true }, 'urgent');
                 return true;
             } catch (error) {
                 if (disposed || generation !== loadGeneration) return false;
