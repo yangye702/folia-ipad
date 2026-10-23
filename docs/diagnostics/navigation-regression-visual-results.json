@@ -1,0 +1,377 @@
+{
+  "startingCommit": "21c90350",
+  "olderComparisonCommit": "65226b86",
+  "originalOwnedFailureCount": 17,
+  "originalLatestPassed": 17,
+  "runs": [
+    {
+      "source": "/tmp/folia-visual-nonperf-results.json",
+      "stats": {
+        "startTime": "2026-10-22T23:10:33.452Z",
+        "duration": 195408.947,
+        "expected": 8,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      }
+    },
+    {
+      "source": "/tmp/folia-visual-screenshots-final-results.json",
+      "stats": {
+        "startTime": "2026-10-22T23:17:45.467Z",
+        "duration": 39167.060000000005,
+        "expected": 3,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      }
+    },
+    {
+      "source": "/tmp/folia-visual-motion-final.json",
+      "stats": {
+        "startTime": "2026-10-23T04:58:02.906Z",
+        "duration": 675679.662,
+        "expected": 72,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      }
+    }
+  ],
+  "cases": [
+    {
+      "file": "test/ui/app.screenshot.spec.ts",
+      "title": "captures the Netease playlist home view",
+      "originalLine": 20,
+      "originalError": "Error: expect(page).toHaveScreenshot(expected) failed\n\n  2916 pixels (ratio 0.01 of all image pixels) are different.\n\n  Snapshot: netease-home.png\n\nCall log:\n  - Expect \"toHaveScreenshot(netease-home.png)\" with timeout 15000ms\n    - verifying given screenshot expectation\n  - taking page screenshot\n    - disabled all CSS animations\n  - waiting for fonts to load...\n  - fonts loaded\n  - 2916 pixels (ratio 0.01 of all image pixels) are different.\n  -",
+      "latest": {
+        "status": "passed",
+        "durationMs": 12204,
+        "source": "/tmp/folia-visual-screenshots-final-results.json",
+        "error": null
+      }
+    },
+    {
+      "file": "test/ui/app.screenshot.spec.ts",
+      "title": "captures the Navidrome library view with mocked Subsonic responses",
+      "originalLine": 35,
+      "originalError": "Error: expect(page).toHaveScreenshot(expected) failed\n\n  3218 pixels (ratio 0.01 of all image pixels) are different.\n\n  Snapshot: navidrome-home.png\n\nCall log:\n  - Expect \"toHaveScreenshot(navidrome-home.png)\" with timeout 15000ms\n    - verifying given screenshot expectation\n  - taking page screenshot\n    - disabled all CSS animations\n  - waiting for fonts to load...\n  - fonts loaded\n  - 3219 pixels (ratio 0.01 of all image pixels) are different.",
+      "latest": {
+        "status": "passed",
+        "durationMs": 12057,
+        "source": "/tmp/folia-visual-screenshots-final-results.json",
+        "error": null
+      }
+    },
+    {
+      "file": "test/ui/app.screenshot.spec.ts",
+      "title": "captures the local library after importing a mocked folder",
+      "originalLine": 55,
+      "originalError": "Error: expect(page).toHaveScreenshot(expected) failed\n\n  3752 pixels (ratio 0.01 of all image pixels) are different.\n\n  Snapshot: local-library.png\n\nCall log:\n  - Expect \"toHaveScreenshot(local-library.png)\" with timeout 15000ms\n    - verifying given screenshot expectation\n  - taking page screenshot\n    - disabled all CSS animations\n  - waiting for fonts to load...\n  - fonts loaded\n  - 3791 pixels (ratio 0.01 of all image pixels) are different.\n ",
+      "latest": {
+        "status": "passed",
+        "durationMs": 12861,
+        "source": "/tmp/folia-visual-screenshots-final-results.json",
+        "error": null
+      }
+    },
+    {
+      "file": "test/ui/collectionOpenTransition.spec.ts",
+      "title": "back to the home surface: the card flies back onto the home card, which is shown again when it has landed",
+      "originalLine": 134,
+      "originalError": "Error: expect(received).toBeGreaterThan(expected)\n\nExpected: > 10\nReceived:   8",
+      "latest": {
+        "status": "passed",
+        "durationMs": 11443,
+        "source": "/tmp/folia-visual-motion-final.json",
+        "error": null
+      }
+    },
+    {
+      "file": "test/ui/dioramaSettings.spec.ts",
+      "title": "switches between clouds and corridor mode and keeps particle controls interactive",
+      "originalLine": 11,
+      "originalError": "Test timeout of 90000ms exceeded.",
+      "latest": {
+        "status": "passed",
+        "durationMs": 77845,
+        "source": "/tmp/folia-visual-nonperf-results.json",
+        "error": null
+      }
+    },
+    {
+      "file": "test/ui/wallHandoff.spec.ts",
+      "title": "[bravais] entering and leaving Lattice flips one wall into the other, with one tools button throughout",
+      "originalLine": 132,
+      "originalError": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: true\nReceived: false",
+      "latest": {
+        "status": "passed",
+        "durationMs": 14746,
+        "source": "/tmp/folia-visual-motion-final.json",
+        "error": null
+      }
+    },
+    {
+      "file": "test/ui/wallHandoff.spec.ts",
+      "title": "[bravais] the tools panel goes to Lattice through the host entry: the same flip handoff and the same tools button",
+      "originalLine": 176,
+      "originalError": "Error: expect(received).toBeLessThan(expected)\n\nExpected: < 0.5\nReceived:   52",
+      "latest": {
+        "status": "passed",
+        "durationMs": 12748,
+        "source": "/tmp/folia-visual-motion-final.json",
+        "error": null
+      }
+    },
+    {
+      "file": "test/ui/wallHandoff.spec.ts",
+      "title": "[bravais] a solid wall never brings the visualizer up during a handoff",
+      "originalLine": 256,
+      "originalError": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: true\nReceived: false",
+      "latest": {
+        "status": "passed",
+        "durationMs": 11939,
+        "source": "/tmp/folia-visual-motion-final.json",
+        "error": null
+      }
+    },
+    {
+      "file": "test/component/bravaisPerf.spec.ts",
+      "title": "the first screen and a whole-wall flip cost the same for 500 and 5000 tracks",
+      "originalLine": 50,
+      "originalError": "Error: expect(received).toBeLessThan(expected)\n\nExpected: < 400\nReceived:   648",
+      "latest": {
+        "status": "passed",
+        "durationMs": 24266,
+        "source": "/tmp/folia-visual-motion-final.json",
+        "error": null
+      }
+    },
+    {
+      "file": "test/component/gridEntrancePerf.spec.ts",
+      "title": "the cards keep flying in on the screen while the main thread is held",
+      "originalLine": 414,
+      "originalError": "Error: expect(received).toBeGreaterThan(expected)\n\nExpected: > 2\nReceived:   0",
+      "latest": {
+        "status": "passed",
+        "durationMs": 7377,
+        "source": "/tmp/folia-visual-motion-final.json",
+        "error": null
+      }
+    },
+    {
+      "file": "test/component/gridEntrancePerf.spec.ts",
+      "title": "a page opened for a flying cover puts a stand-in on its centred card, and takes it away",
+      "originalLine": 460,
+      "originalError": "Error: expect(received).not.toBeNull()\n\nReceived: null",
+      "latest": {
+        "status": "passed",
+        "durationMs": 4843,
+        "source": "/tmp/folia-visual-motion-final.json",
+        "error": null
+      }
+    },
+    {
+      "file": "test/component/lattice.spec.ts",
+      "title": "touch swipe coasts and a secondary pointer cannot replace the gesture",
+      "originalLine": 156,
+      "originalError": "Error: expect(received).toBeGreaterThan(expected)\n\nExpected: > 611\nReceived:   609",
+      "latest": {
+        "status": "passed",
+        "durationMs": 5304,
+        "source": "/tmp/folia-visual-motion-final.json",
+        "error": null
+      }
+    },
+    {
+      "file": "test/component/standInHandover.spec.ts",
+      "title": "nothing turns before the centred card has its picture",
+      "originalLine": 260,
+      "originalError": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: 0\nReceived: 0.304836",
+      "latest": {
+        "status": "passed",
+        "durationMs": 8497,
+        "source": "/tmp/folia-visual-motion-final.json",
+        "error": null
+      }
+    },
+    {
+      "file": "test/component/standInHandover.spec.ts",
+      "title": "a centred card that shows the same picture is not turned into: the stand-in fades over it",
+      "originalLine": 349,
+      "originalError": "Error: expect(received).toBeGreaterThan(expected)\n\nExpected: > 0\nReceived:   0",
+      "latest": {
+        "status": "passed",
+        "durationMs": 6277,
+        "source": "/tmp/folia-visual-motion-final.json",
+        "error": null
+      }
+    },
+    {
+      "file": "test/component/standInHandover.spec.ts",
+      "title": "a reading that comes after those 150 ms is still heeded where the stand-in has not given way yet",
+      "originalLine": 485,
+      "originalError": "Error: expect(received).toBeLessThan(expected)\n\nExpected: < 2849.399999976158\nReceived:   2952.099999964237",
+      "latest": {
+        "status": "passed",
+        "durationMs": 8855,
+        "source": "/tmp/folia-visual-motion-final.json",
+        "error": null
+      }
+    },
+    {
+      "file": "test/component/standInHandover.spec.ts",
+      "title": "tracks that come after the flight has landed: the stand-in waits for them, the cards fly in, and it turns over",
+      "originalLine": 666,
+      "originalError": "Error: expect(received).toBeNull()\n\nReceived: 26.8939",
+      "latest": {
+        "status": "passed",
+        "durationMs": 7577,
+        "source": "/tmp/folia-visual-motion-final.json",
+        "error": null
+      }
+    },
+    {
+      "file": "test/component/wallReflowMotion.spec.ts",
+      "title": "expanding, folding back and switching blocks all ride the Lattice spring, without overshoot",
+      "originalLine": 198,
+      "originalError": "Error: switch: old block -1,-1,2[1] -544→-408: 667–800ms vs 427ms\n\nexpect(received).toBeGreaterThanOrEqual(expected)\n\nExpected: >= 636.5999999999985\nReceived:    427",
+      "latest": {
+        "status": "passed",
+        "durationMs": 14969,
+        "source": "/tmp/folia-visual-motion-final.json",
+        "error": null
+      }
+    }
+  ],
+  "exclusiveMotion": {
+    "fileCounts": {
+      "test/ui/collectionOpenTransition.spec.ts": 2,
+      "test/ui/wallHandoff.spec.ts": 8,
+      "test/component/bravaisPerf.spec.ts": 4,
+      "test/component/gridEntrancePerf.spec.ts": 7,
+      "test/component/lattice.spec.ts": 30,
+      "test/component/standInHandover.spec.ts": 19,
+      "test/component/wallReflowMotion.spec.ts": 2
+    },
+    "stats": {
+      "startTime": "2026-10-23T04:58:02.906Z",
+      "duration": 675679.662,
+      "expected": 72,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "metrics": {
+      "bravaisFlip": {
+        "small": {
+          "mount": {
+            "firstTileMs": 42.59999998807871,
+            "worstFrameMs": 66.60000000000036,
+            "longTaskMaxMs": 56,
+            "loafMaxMs": 65.79999995231628,
+            "tiles": 77
+          },
+          "animation": {
+            "triggers": 3,
+            "peakAnimated": 35,
+            "maxOffscreen": 0
+          },
+          "counts": {
+            "tileRenders": 626,
+            "plateRedraws": 36,
+            "plateRedrawBlocks": 12,
+            "strayPlateRedraws": 12,
+            "platesAdded": 0,
+            "stageCommits": 44,
+            "stageCommitMs": 401.8999999165535,
+            "tilesAdded": 0
+          },
+          "motion": {
+            "frames": 158,
+            "fps": 49.12171615109591,
+            "mean": 20.35759493670886,
+            "p50": 16.69999999999891,
+            "p95": 33.29999999999927,
+            "p99": 83.29999999999927,
+            "max": 216.60000000000036,
+            "over20": 10,
+            "over33": 5,
+            "loafCount": 4,
+            "loafBlockingMs": 275,
+            "loafMaxMs": 235.5999999642372
+          }
+        },
+        "large": {
+          "mount": {
+            "firstTileMs": 56.19999996423576,
+            "worstFrameMs": 50,
+            "longTaskMaxMs": 0,
+            "loafMaxMs": 57.19999998807907,
+            "tiles": 77
+          },
+          "animation": {
+            "triggers": 3,
+            "peakAnimated": 35,
+            "maxOffscreen": 0
+          },
+          "counts": {
+            "tileRenders": 626,
+            "plateRedraws": 0,
+            "plateRedrawBlocks": 0,
+            "strayPlateRedraws": 0,
+            "platesAdded": 0,
+            "stageCommits": 54,
+            "stageCommitMs": 189.8999999165535,
+            "tilesAdded": 0
+          },
+          "motion": {
+            "frames": 180,
+            "fps": 55.96144877972952,
+            "mean": 17.869444444444444,
+            "p50": 16.700000000000728,
+            "p95": 16.799999999999272,
+            "p99": 66.59999999999854,
+            "max": 100,
+            "over20": 4,
+            "over33": 3,
+            "loafCount": 3,
+            "loafBlockingMs": 132.7,
+            "loafMaxMs": 117.19999998807907
+          }
+        }
+      },
+      "heldMainThread": {
+        "blockMs": 250,
+        "animations": [
+          {
+            "properties": [
+              "opacity",
+              "scale",
+              "translate"
+            ],
+            "playState": "running"
+          }
+        ],
+        "picturesInside": 8,
+        "placedInside": 5,
+        "moved": 90,
+        "seen": [
+          "55:0@0,0",
+          "78:0@0,0",
+          "100:1516@1141,514",
+          "122:28741@1153,506",
+          "144:29803@1129,506",
+          "164:31204@1105,506",
+          "197:36428@1071,509",
+          "230:38022@1063,508",
+          "270:38386@1058,509",
+          "302:38984@1056,509",
+          "324:38861@1054,508",
+          "340:39562@1053,509",
+          "360:39677@1052,509"
+        ]
+      }
+    }
+  }
+}

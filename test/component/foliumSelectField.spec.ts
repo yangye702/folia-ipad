@@ -2,7 +2,7 @@ import { expect, test } from './fixtures';
 
 // test/component/foliumSelectField.spec.ts
 // 模组 select 参数换成宿主 CustomSelect（#485）后真实浏览器里的几件事：compact 触发按钮与文本框等高、
-// 等宽；触发按钮的可访问名是「字段名 当前值」；鼠标按下选项时焦点移到选项上（focusin）不会提前收起菜单；
+// 等宽；触发按钮的可访问名是「字段名 当前值」；鼠标按下选项时焦点留在 combobox，不会提前收起菜单；
 // 拦 mousedown 的容器（命令面板）里点别处能收起；Escape 只关菜单，外层收不到。
 // 审查后补的：触发按钮是 select-only combobox，aria-activedescendant 跟着高亮项走（读屏靠它听到 ↑↓）；
 // Enter 落在当前值上只收起；长列表（虚拟化分支）用键盘打开时当前项滚进视野，鼠标打开不滚。
@@ -33,17 +33,19 @@ test.describe('Folium select field', () => {
             .toEqual(await look('[data-folium-entry] input[type="text"]'));
     });
 
-    test('a mouse pick lands: pressing an option moves focus onto it without closing the menu first', async ({ mount, page }) => {
+    test('a mouse pick lands while focus stays on the combobox until the menu closes', async ({ mount, page }) => {
         await mount('foliumSelectField');
         const select = page.getByRole('combobox', { name: 'Codec' });
         await select.click();
         const listbox = page.getByRole('listbox', { name: 'Codec' });
         const option = listbox.getByRole('option', { name: 'H.264', exact: true });
 
-        // Chromium 在按下时把焦点交给选项按钮并触发 focusin；菜单不能因此收起，否则松开时点不到选项。
+        // The select-only combobox owns focus; its active descendant identifies the pressed option.
         await option.hover();
         await page.mouse.down();
-        await expect(option).toBeFocused();
+        await expect(select).toBeFocused();
+        await expect(select).toHaveAttribute('aria-activedescendant', (await option.getAttribute('id'))!);
+        await expect(option).toHaveAttribute('data-active', 'true');
         await expect(listbox).toBeVisible();
         await page.mouse.up();
 

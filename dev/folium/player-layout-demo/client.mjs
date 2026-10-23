@@ -81,7 +81,7 @@ export function mountPlayerLayoutDemo(container, ctx) {
             for (const key of ['left', 'top', 'width', 'height']) box.style[key] = `${rect[key]}px`;
         }
     };
-    const off = ctx.subscribe(update);
+    const off = ctx.onChange(update);
     update();
     return () => { off(); chat.remove(); dialog.remove(); delete container.dataset.layoutDemoSnapshot; };
 }

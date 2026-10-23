@@ -5,8 +5,8 @@
 打包本目录为 ZIP 后通过模组管理安装并确认启用。无账号、网络请求或发送动作。
 
 清单 opt-in `experimental: ["player.layout"]`；完整示例 UI 挂在已有
-`stageLayers` 的 `app.overlay` 槽位，通过 `ui.stage` 权限追加。布局只读
-`mount(container, ctx)` 中的 `ctx.getLayout()`，用已有 `ctx.subscribe()` 接收通知，不查询宿主 DOM，
+`stageLayers` 的 `app.overlay` 槽位，通过 `stageLayers` 权限追加。布局只读
+`mount(container, ctx)` 中的 `ctx.getLayout()`，用已有 `ctx.onChange()` 接收通知，不查询宿主 DOM，
 也不重排、隐藏或替换原生控件。字体、圆角、颜色和避让算法全部由示例模组提供。
 
 人工检查：
@@ -26,5 +26,5 @@
 
 只有选用该实验能力的上下文订阅才启动测量，单独读取不会启动；没有订阅或首次测量前返回 `null`。
 示例先订阅再读取，并在快照为空时隐藏组件。几何通知合并到 80ms；
-`ctx.subscribe()` 还可能因主题等其他状态变化触发，示例比较快照引用避免重复布局。
+`ctx.onChange()` 还可能因主题等其他状态变化触发，示例比较快照引用避免重复布局。
 这不是逐帧动画同步接口。示例可因可用区域太小而隐藏组件。

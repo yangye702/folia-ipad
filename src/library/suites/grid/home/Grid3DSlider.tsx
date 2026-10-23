@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Disc } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { formatGridMapFolderTitle } from '../../../../utils/gridMapFolderPath';
-import { getSizedCoverUrl } from '../../../../utils/coverUrl';
+import { Grid3DArtwork } from './Grid3DArtwork';
 import { useHomeLayoutSettingsStore } from '../../../../stores/useHomeLayoutSettingsStore';
 import { useReducedMotionFor } from '../../../../hooks/useReducedMotionFor';
 import { hasBlockingWindow } from '../../../../utils/keyboardTargets';
@@ -838,7 +838,7 @@ export const Grid3DSlider: React.FC<Grid3DSliderProps> = ({
                                             style={{ width: coverSize, height: coverSize }}
                                         >
                                             {item.coverUrl && loadedIndices.has(index) ? (
-                                                <img src={getSizedCoverUrl(item.coverUrl, coverSize)} alt={typeof displayName === 'string' ? displayName : ''} loading="lazy" decoding="async" className="w-full h-full object-cover pointer-events-none select-none" />
+                                                <Grid3DArtwork key={`${item.coverUrl}:${coverSize}`} coverUrl={item.coverUrl} size={coverSize} alt={typeof displayName === 'string' ? displayName : ''} fullBleed />
                                             ) : (
                                                 <div className="w-full h-full bg-zinc-800/20 flex items-center justify-center">
                                                     <Disc size={64} className="opacity-20" />
@@ -854,7 +854,7 @@ export const Grid3DSlider: React.FC<Grid3DSliderProps> = ({
                                         >
                                             <div className="w-full aspect-square rounded-lg overflow-hidden bg-zinc-800/20 relative shadow-inner mb-4 flex items-center justify-center">
                                                 {item.coverUrl && loadedIndices.has(index) ? (
-                                                    <img src={getSizedCoverUrl(item.coverUrl, coverSize)} alt={typeof displayName === 'string' ? displayName : ''} loading="lazy" decoding="async" className="w-full h-full object-cover pointer-events-none select-none" />
+                                                    <Grid3DArtwork key={`${item.coverUrl}:${coverSize}`} coverUrl={item.coverUrl} size={coverSize} alt={typeof displayName === 'string' ? displayName : ''} />
                                                 ) : (
                                                     <Disc size={64} className="opacity-20" />
                                                 )}

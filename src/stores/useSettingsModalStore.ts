@@ -11,6 +11,7 @@ import i18n from '../i18n/config';
 import { normalizePinnedCommandIds, readPinnedCommandIds, writePinnedCommandIds, type PinnedCommandIds } from '../components/command-palette/pinnedCommandPreferences';
 import { applyAppLanguagePreference, readStoredAppLanguagePreference, type AppLanguagePreference } from '../i18n/config';
 import { setStatusMessage } from './useStatusMessageStore';
+import type { SettingsSectionId } from '../components/modal/settings/navigation/settingsNavModel';
 import type { SettingsAnchorId } from '../components/modal/settings/navigation/settingsAnchorModel';
 
 export type SettingsModalInitialTab = 'help' | 'options';
@@ -36,6 +37,13 @@ export type SettingsModalState = {
     initialAnchor?: { id: SettingsAnchorId; rowId?: string; seq: number } | null;
 };
 
+/** Ephemeral settings route; never persisted with library or user preferences. */
+export type SettingsPageSnapshot = {
+    tab: SettingsModalInitialTab;
+    section: SettingsSectionId;
+    subview: 'visualizer' | 'themePark' | 'lyricFilter' | 'globalLyricOffset' | 'aiHelp' | 'releaseNotes' | null;
+};
+
 // Separate from the retired guide key so people who saw the old carousel still receive the Ponder lesson.
 const LAST_SEEN_GUIDE_VERSION_STORAGE_KEY = 'folia_last_seen_ponder_onboarding_version';
 
@@ -44,6 +52,8 @@ export type SettingsModalUiState = {
     pinnedCommandIds: PinnedCommandIds;
     isSubSettingsViewOpen: boolean;
     settingsModalState: SettingsModalState;
+    settingsPage: SettingsPageSnapshot | null;
+    setSettingsPage: (page: SettingsPageSnapshot) => void;
     lastSeenGuideVersion: string | null;
     isUserGuideModalOpen: boolean;
     setLastSeenGuideVersion: (version: string) => void;
@@ -72,6 +82,8 @@ export const useSettingsModalStore = create<SettingsModalUiState>((set, get) => 
         initialVisualizerSection: null,
         initialAnchor: null,
     },
+    settingsPage: null,
+    setSettingsPage: (settingsPage) => set({ settingsPage }),
     lastSeenGuideVersion: typeof window !== 'undefined' ? localStorage.getItem(LAST_SEEN_GUIDE_VERSION_STORAGE_KEY) : null,
     isUserGuideModalOpen: false,
     setLastSeenGuideVersion: (version) => {
@@ -83,6 +95,7 @@ export const useSettingsModalStore = create<SettingsModalUiState>((set, get) => 
     setIsUserGuideModalOpen: (isOpen) => set({ isUserGuideModalOpen: isOpen }),
     setIsSubSettingsViewOpen: (open) => set({ isSubSettingsViewOpen: open }),
     openSettings: (initialTab = 'help', initialSubview = null, initialVisualizerSection = null, initialAnchorId = null, initialRowId = null) => set({
+        settingsPage: null,
         settingsModalState: {
             isOpen: true,
             initialTab,

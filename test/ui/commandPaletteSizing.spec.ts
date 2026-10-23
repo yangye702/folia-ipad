@@ -230,12 +230,12 @@ test('歌词分词 surface 接管面板后尺寸不变', async ({ page }) => {
     expect(await measure(page)).toEqual(baseline);
 });
 
-test('固定命令行的有无不影响面板与 body 的尺寸', async ({ browser }) => {
+test('固定命令行的有无不影响面板与 body 的尺寸', async ({ browser, baseURL }) => {
     // 两个 page 而不是在同一个 page 上重开：addInitScript 会累积，第二次 seed 不会覆盖第一次，
     // 只是排在它后面，这种依赖注册顺序的写法迟早会咬人。
     const viewport = { width: 1440, height: 1100 };
-    const pageWithout = await browser.newPage({ viewport });
-    const pageWith = await browser.newPage({ viewport });
+    const pageWithout = await browser.newPage({ viewport, baseURL });
+    const pageWith = await browser.newPage({ viewport, baseURL });
 
     await openPlayerPage(pageWithout, NO_PINNED_COMMANDS);
     await pressUntilPaletteOpens(pageWithout);

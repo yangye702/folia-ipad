@@ -1,0 +1,6 @@
+FINAL command: npm run test:unit -- --maxWorkers=2 --reporter=json --outputFile=/workspace/scratch/navigation-final-unit-default.json
+Default test timeout; no CLI override. All browser jobs finished before this run.
+Result: success=true; 9721 passed / 2 existing skipped / 0 failed.
+Test files: 857; duration: 216.39s.
+Existing jsdom @layer CSS parsing warnings did not cause failures.
+Earlier 278.67s run used --testTimeout=15000 and is historical only; final run above removes the override.

@@ -2,16 +2,16 @@ import { expect, test, type Page } from '@playwright/test';
 import { APP_VERSION, GUIDE_VERSION_STORAGE_KEY, waitForAppMounted } from '../helpers/appState';
 
 // test/ui/helpCommunity.spec.ts
-// 帮助页的「加入社区」：一颗胶囊，点开在 Discord 与 QQ 自助交流群之间选。Discord 打开邀请链接；
-// QQ 复制群号并在这一项上显示「已复制」（剪贴板 API 被拒时退回 execCommand）；Escape 只关菜单不关设置。
+// The Help support rows expose a Discord invite and a read-only QQ number with CopyValue.
+// Clipboard confirmation and refusal are announced through the row's live status; an absent API uses legacy copy.
 
 const QQ_GROUP_NUMBER = '372521584';
 const DISCORD_INVITE_URL = 'https://discord.com/invite/dMDBTHxeKd';
 
 test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
 
-const openHelp = async (page: Page, { denyClipboardApi = false } = {}) => {
-    await page.addInitScript(([version, guideKey, deny]) => {
+const openHelp = async (page: Page, { hideClipboardApi = false } = {}) => {
+    await page.addInitScript(([version, guideKey, hide]) => {
         localStorage.clear();
         localStorage.setItem('library_suite_prompt_seen', 'true');
         localStorage.setItem('i18nextLng', 'en');
@@ -24,10 +24,10 @@ const openHelp = async (page: Page, { denyClipboardApi = false } = {}) => {
             opened.push(String(url));
             return null;
         }) as typeof window.open;
-        if (deny) {
-            navigator.clipboard.writeText = () => Promise.reject(new DOMException('Write permission denied.', 'NotAllowedError'));
+        if (hide) {
+            Object.defineProperty(navigator.clipboard, 'writeText', { value: undefined, configurable: true });
         }
-    }, [APP_VERSION, GUIDE_VERSION_STORAGE_KEY, denyClipboardApi] as const);
+    }, [APP_VERSION, GUIDE_VERSION_STORAGE_KEY, hideClipboardApi] as const);
     await page.route('**/__mock_netease__/**', async (route) => {
         await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
     });
@@ -40,75 +40,68 @@ const openHelp = async (page: Page, { denyClipboardApi = false } = {}) => {
     });
 };
 
-const capsule = (page: Page) => page.getByRole('button', { name: 'Join the community', exact: true });
-const menu = (page: Page) => page.getByRole('menu', { name: 'Join the community' });
-const qqItem = (page: Page) => menu(page).getByRole('menuitem', { name: /QQ self-help group/ });
-const discordItem = (page: Page) => menu(page).getByRole('menuitem', { name: /Discord server/ });
+const discord = (page: Page) => page.getByRole('button', { name: 'Join the Discord community', exact: true });
+const qqRow = (page: Page) => page.locator('.st-row').filter({ has: page.getByText('QQ self-help group', { exact: true }) });
+const copyQq = (page: Page) => qqRow(page).getByRole('button', { name: 'Copy', exact: true });
 const readClipboard = (page: Page) => page.evaluate(() => navigator.clipboard.readText());
 const openedUrls = (page: Page) => page.evaluate(() => (window as unknown as { __opened: string[] }).__opened);
 
-test('one community capsule replaces the separate Discord and QQ buttons', async ({ page }) => {
+test('community support exposes a Discord action and the QQ group number with its copy button', async ({ page }) => {
     await openHelp(page);
-
-    await expect(capsule(page)).toBeVisible();
-    await expect(capsule(page)).toHaveAttribute('aria-expanded', 'false');
-    await expect(page.getByRole('button', { name: /Join our Discord/ })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /QQ self-help group/ })).toHaveCount(0);
-
-    await capsule(page).click();
-    await expect(capsule(page)).toHaveAttribute('aria-expanded', 'true');
-    await expect(discordItem(page)).toBeVisible();
-    await expect(qqItem(page)).toContainText(QQ_GROUP_NUMBER);
+    await expect(discord(page)).toBeVisible();
+    await expect(qqRow(page)).toContainText(QQ_GROUP_NUMBER);
+    await expect(copyQq(page)).toBeVisible();
+    await expect(page.getByRole('menu', { name: 'Join the community' })).toHaveCount(0);
 });
 
-test('the QQ option copies the group number and says so', async ({ page }) => {
+test('the QQ copy button copies the group number and announces confirmation', async ({ page }) => {
     await openHelp(page);
     await page.evaluate(() => navigator.clipboard.writeText(''));
-
-    await capsule(page).click();
-    await qqItem(page).click();
-
-    // 菜单留着，这一项换成「已复制」。
-    await expect(qqItem(page)).toContainText('Group number copied');
+    await copyQq(page).click();
+    await expect(qqRow(page).getByRole('status')).toHaveText('Copied');
     expect(await readClipboard(page)).toBe(QQ_GROUP_NUMBER);
-    // 约 1.8s 后变回群号。
-    await expect(qqItem(page)).toContainText(QQ_GROUP_NUMBER, { timeout: 4000 });
+    await expect(qqRow(page).getByRole('status')).toHaveText('', { timeout: 4000 });
+    await expect(qqRow(page)).toContainText(QQ_GROUP_NUMBER);
 });
 
-test('the Discord option opens the invite and closes the menu', async ({ page }) => {
+test('the Discord support action opens the invite and keeps Help available', async ({ page }) => {
     await openHelp(page);
-
-    await capsule(page).click();
-    await discordItem(page).click();
-
-    await expect(menu(page)).toHaveCount(0);
+    // Row delegates pointer activation from its visible label; the underlying button owns keyboard activation.
+    await page.getByText('Join the Discord community', { exact: true }).click();
     expect(await openedUrls(page)).toEqual([DISCORD_INVITE_URL]);
+    await discord(page).focus();
+    await page.keyboard.press('Enter');
+    expect(await openedUrls(page)).toEqual([DISCORD_INVITE_URL, DISCORD_INVITE_URL]);
+    await expect(discord(page)).toBeVisible();
+    await expect(copyQq(page)).toBeVisible();
 });
 
-test('Escape closes only the menu, and a click elsewhere closes it too', async ({ page }) => {
+test('copying leaves Help open and Escape closes the settings window', async ({ page }) => {
     await openHelp(page);
-
-    await capsule(page).click();
-    await expect(menu(page)).toBeVisible();
+    await copyQq(page).click();
+    await expect(qqRow(page).getByRole('status')).toHaveText('Copied');
+    await expect(discord(page)).toBeVisible();
     await page.keyboard.press('Escape');
-    await expect(menu(page)).toHaveCount(0);
-    // 设置还开着：胶囊仍在。
-    await expect(capsule(page)).toBeVisible();
-
-    await capsule(page).click();
-    await expect(menu(page)).toBeVisible();
-    await page.getByRole('button', { name: 'Need help?' }).hover();
-    await page.mouse.down();
-    await page.mouse.up();
-    await expect(menu(page)).toHaveCount(0);
+    await expect(discord(page)).toHaveCount(0);
+    await expect(page.locator('[data-folia-keyboard-window]')).toHaveCount(0);
 });
 
-test('copying falls back to execCommand when the clipboard API is refused', async ({ page }) => {
-    await openHelp(page, { denyClipboardApi: true });
-
-    await capsule(page).click();
-    await qqItem(page).click();
-
-    await expect(qqItem(page)).toContainText('Group number copied');
+test('copying falls back to execCommand when the clipboard write API is unavailable', async ({ page }) => {
+    await openHelp(page, { hideClipboardApi: true });
+    await copyQq(page).click();
+    await expect(qqRow(page).getByRole('status')).toHaveText('Copied');
     expect(await readClipboard(page)).toBe(QQ_GROUP_NUMBER);
+});
+
+test('a refused clipboard write announces failure and preserves the clipboard', async ({ page }) => {
+    await openHelp(page);
+    await page.evaluate(() => navigator.clipboard.writeText('unchanged clipboard'));
+    await page.evaluate(() => {
+        navigator.clipboard.writeText = () => Promise.reject(new DOMException('Write permission denied.', 'NotAllowedError'));
+    });
+    await copyQq(page).click();
+    await expect(qqRow(page).getByRole('status')).toHaveText('Copy failed, please try again');
+    expect(await readClipboard(page)).toBe('unchanged clipboard');
+    await expect(qqRow(page).getByRole('status')).toHaveText('', { timeout: 4000 });
+    await expect(copyQq(page)).toBeEnabled();
 });

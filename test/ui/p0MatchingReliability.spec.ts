@@ -60,8 +60,8 @@ test('manual metadata failures remain visible and diagnostics support touch sele
     await waitForAppMounted(page);
     await page.evaluate(async () => {
         const load = (name: string) => import(/* @vite-ignore */ name);
-        const [{ default: React }, client, { LocalSongMetadataMatchDialog }] = await Promise.all([load('/node_modules/.vite/deps/react.js'), load('/node_modules/.vite/deps/react-dom_client.js'), load('/src/components/modal/LocalSongMetadataMatchDialog.tsx')]);
-        (client.createRoot ?? client.default.createRoot)(document.body.appendChild(document.createElement('div'))).render(React.createElement(LocalSongMetadataMatchDialog, { song: { id: 'synthetic-ui', title: 'Synthetic', titleOrigin: 'import', fileName: 'synthetic.mp3', importedMetadata: { artistNames: ['Fixture Artist'] } }, isDaylight: true, onClose() {}, onChanged: async () => {} }));
+        const [{ default: React, createRoot }, { LocalSongMetadataMatchDialog }] = await Promise.all([load('/dev/probes/reactTestRuntime.ts'), load('/src/components/modal/LocalSongMetadataMatchDialog.tsx')]);
+        createRoot(document.body.appendChild(document.createElement('div'))).render(React.createElement(LocalSongMetadataMatchDialog, { song: { id: 'synthetic-ui', title: 'Synthetic', titleOrigin: 'import', fileName: 'synthetic.mp3', importedMetadata: { artistNames: ['Fixture Artist'] } }, isDaylight: true, onClose() {}, onChanged: async () => {} }));
     });
     const dialog = page.getByRole('dialog').last();
     await dialog.locator('form button').click();
@@ -85,10 +85,10 @@ test('turning online artwork off previews the same embedded source that is saved
     await waitForAppMounted(page);
     await page.evaluate(async () => {
         const load = (name: string) => import(/* @vite-ignore */ name);
-        const [{ default: React }, client, { LocalSongMetadataMatchDialog }, { appDatabase }] = await Promise.all([load('/node_modules/.vite/deps/react.js'), load('/node_modules/.vite/deps/react-dom_client.js'), load('/src/components/modal/LocalSongMetadataMatchDialog.tsx'), load('/src/services/appDatabase.ts')]);
+        const [{ default: React, createRoot }, { LocalSongMetadataMatchDialog }, { appDatabase }] = await Promise.all([load('/dev/probes/reactTestRuntime.ts'), load('/src/components/modal/LocalSongMetadataMatchDialog.tsx'), load('/src/services/appDatabase.ts')]);
         const song = { id: 'preview-fixture', fileName: 'fixture.mp3', filePath: '', title: 'Preview Fixture', titleOrigin: 'import', duration: 200000, fileSize: 1, mimeType: 'audio/mpeg', addedAt: 1, importedMetadata: { title: 'Preview Fixture', titleSource: 'embedded', artistNames: ['Artist'], albumName: 'Album' }, localCoverAssetId: `sha256:${'a'.repeat(64)}`, useOnlineCover: true, onlineMetadata: { source: 'qq', songId: 'old', title: 'Preview Fixture', artists: [{ name: 'Artist' }], coverUrl: 'https://y.gtimg.cn/old.png', matchMode: 'manual', matchedAt: 1 } };
         await appDatabase.local_music.put(song);
-        (client.createRoot ?? client.default.createRoot)(document.body.appendChild(document.createElement('div'))).render(React.createElement(LocalSongMetadataMatchDialog, { song, isDaylight: true, onClose() {}, onChanged: async () => {} }));
+        createRoot(document.body.appendChild(document.createElement('div'))).render(React.createElement(LocalSongMetadataMatchDialog, { song, isDaylight: true, onClose() {}, onChanged: async () => {} }));
     });
     const dialog = page.getByRole('dialog').last();
     await dialog.locator('form button').click();

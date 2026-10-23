@@ -17,14 +17,14 @@ test('iPad quick controls and settings fit touch and visible viewport', async ({
     const stage = baseline ? 'before' : 'after';
     await page.evaluate(async () => {
         const load = (name: string) => import(/* @vite-ignore */ name);
-        const [React, client, controls, themes] = await Promise.all([
-            load('/node_modules/.vite/deps/react.js'), load('/node_modules/.vite/deps/react-dom_client.js'),
+        const [React, controls, themes] = await Promise.all([
+            load('/dev/probes/reactTestRuntime.ts'),
             load('/src/components/shared/QuickControlChip.tsx'), load('/src/services/baseThemes.ts'),
         ]);
         const host = document.body.appendChild(document.createElement('div'));
         host.id = 'phase1-controls';
         Object.assign(host.style, { position: 'fixed', top: '20px', left: '20px', zIndex: '9999', display: 'flex', gap: '8px', background: '#444', padding: '16px' });
-        const createRoot = client.createRoot ?? client.default.createRoot;
+        const createRoot = React.createRoot;
         createRoot(host).render(React.default.createElement(React.default.Fragment, null,
             React.default.createElement(controls.QuickControlChip, { label: 'Frame', title: 'Phase1 frame', isDaylight: false, onClick: () => host.dataset.clicked = 'chip' }),
             React.default.createElement(controls.QuickControlToggle, { label: 'Phase1 effect', theme: themes.DEFAULT_THEME, active: true, onToggle: () => host.dataset.clicked = 'toggle' }, '★')));

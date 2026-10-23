@@ -32,7 +32,7 @@ const DemoLayer: React.FC = () => {
     useEffect(() => {
         activateLayoutDemo(createFoliumClientApi({
             id: 'player-layout-demo', name: 'Player layout example', version: '2.1.0', author: null, description: null,
-            permissions: ['ui.stage'], experimental: ['player.layout'], embedOrigins: [],
+            permissions: ['stageLayers'], experimental: ['player.layout'], embedOrigins: [],
             status: 'loaded', error: null, enabled: true, trustStale: false, devSource: false,
             signature: { status: 'unsigned', reason: null, keyId: null, keyLabel: null, signedAt: null },
             folia: null, hasMain: false, clientUrl: null,

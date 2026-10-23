@@ -24,11 +24,10 @@ test('QQ failures differ from zero matches and opt-in summaries can be selected 
     await waitForAppMounted(page);
     await page.evaluate(async () => {
         const load = (name: string) => import(/* @vite-ignore */ name);
-        const [{ default: React }, client, { useLyricMatchSearch }, { LyricMatchWindow }] = await Promise.all([
-            load('/node_modules/.vite/deps/react.js'), load('/node_modules/.vite/deps/react-dom_client.js'),
+        const [{ default: React, createRoot }, { useLyricMatchSearch }, { LyricMatchWindow }] = await Promise.all([
+            load('/dev/probes/reactTestRuntime.ts'),
             load('/src/components/modal/lyric-match/useLyricMatchSearch.ts'), load('/src/components/modal/lyric-match/LyricMatchWindow.tsx'),
         ]);
-        const createRoot = client.createRoot ?? client.default.createRoot;
         const song = { id: 'synthetic-search-target' };
         function Probe() {
             const search = useLyricMatchSearch(song, { title: '幸福不远', artist: '郭书瑶', album: '', durationMs: 0 }, { initialSource: 'qq' });

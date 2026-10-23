@@ -32,6 +32,7 @@ import SettingsSideList from './settings/navigation/SettingsSideList';
 import { settingsAnchorSubview } from './settings/navigation/settingsAnchorModel';
 import { buildSettingsNavGroups, findSettingsNavItem, type SettingsSectionId } from './settings/navigation/settingsNavModel';
 import { buildSettingsSearchEntries, searchSettings, type SettingsSearchEntry } from './settings/navigation/settingsNavSearch';
+import { useSettingsPageNavigation } from './settings/navigation/useSettingsPageNavigation';
 import { isSettingsSectionSubview, resolveInitialSettingsSection, sectionForSettingsSubview, writeLastSettingsSection } from './settings/navigation/settingsLastSection';
 import { useSettingsLanding, type SettingsLandingTarget } from './settings/navigation/useSettingsLanding';
 import { runsOnWindows } from '../../utils/platform';
@@ -276,14 +277,21 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     } = useVisualizerAssetStore(useShallow(selectVisualizerAssetSnapshot));
     const resolvedToggleTransparentPlayerBackground = onToggleTransparentPlayerBackground ?? onToggleTransparentPlayerBackgroundFromStore;
     const setIsSubSettingsViewOpen = useSettingsModalStore(state => state.setIsSubSettingsViewOpen);
-    // Help is a page of the same window, reached from the foot of the side list.
-    const [activeTab, setActiveTab] = useState<'help' | 'options'>(initialTab);
-    // A bare open (no subview, no anchor) restores the last section the user entered; any named target wins.
-    const [activeSettingsSection, setActiveSettingsSection] = useState<SettingsSectionId>(() => resolveInitialSettingsSection({
-        initialSubview,
-        hasInitialAnchor: initialAnchor !== null,
-        isElectron: hasElectronBridge(),
-    }));
+    // Browser and touch navigation share this ephemeral route; settings values remain in their stores.
+    const initialPage = useMemo(() => ({
+        tab: initialAnchor ? 'options' : initialTab,
+        section: (initialAnchor ? sectionForSettingsSubview(settingsAnchorSubview(initialAnchor.id)) : null) ?? resolveInitialSettingsSection({
+            initialSubview,
+            hasInitialAnchor: initialAnchor !== null,
+            isElectron: hasElectronBridge(),
+        }),
+        subview: (['visualizer', 'themePark', 'lyricFilter', 'globalLyricOffset'] as const)
+            .find(id => id === initialSubview) ?? null,
+    }), [initialTab, initialSubview, initialAnchor]);
+    const settingsNavigation = useSettingsPageNavigation(initialPage);
+    const { tab: activeTab, section: activeSettingsSection } = settingsNavigation.page;
+    const setActiveTab = settingsNavigation.setTab;
+    const setActiveSettingsSection = settingsNavigation.setSection;
     const [searchQuery, setSearchQuery] = useState('');
     const isSearching = searchQuery.trim() !== '';
     // The group or row the dialog is asked to land on, from outside (a command, a link) or a search hit.
@@ -321,36 +329,27 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     const settingsAnchorStore = useSettingsAnchorStore();
     const settingsAnchors = useSettingsAnchorList(settingsAnchorStore);
 
-    const [showVisPlayground, setShowVisPlayground] = useState(false);
-    const [showThemePark, setShowThemePark] = useState(false);
-    const [showLyricFilterSettings, setShowLyricFilterSettings] = useState(false);
-    const [showGlobalLyricOffset, setShowGlobalLyricOffset] = useState(false);
-    const [showAiHelpPrompt, setShowAiHelpPrompt] = useState(false);
-    const [showReleaseNotes, setShowReleaseNotes] = useState(false);
+    const showVisPlayground = settingsNavigation.page.subview === 'visualizer';
+    const showThemePark = settingsNavigation.page.subview === 'themePark';
+    const showLyricFilterSettings = settingsNavigation.page.subview === 'lyricFilter';
+    const showGlobalLyricOffset = settingsNavigation.page.subview === 'globalLyricOffset';
+    const showAiHelpPrompt = settingsNavigation.page.subview === 'aiHelp';
+    const showReleaseNotes = settingsNavigation.page.subview === 'releaseNotes';
+    const setShowVisPlayground = settingsNavigation.subview('visualizer');
+    const setShowThemePark = settingsNavigation.subview('themePark');
+    const setShowLyricFilterSettings = settingsNavigation.subview('lyricFilter');
+    const setShowGlobalLyricOffset = settingsNavigation.subview('globalLyricOffset');
+    const setShowAiHelpPrompt = settingsNavigation.subview('aiHelp');
+    const setShowReleaseNotes = settingsNavigation.subview('releaseNotes');
     const [, setAuthorClickCount] = useState(0);
     const [meowEasterEgg, setMeowEasterEgg] = useState<{ id: number; } | null>(null);
-    const shouldCloseModalOnSubviewBack = initialSubview !== null;
+    const shouldCloseModalOnSubviewBack = initialPage.subview !== null;
 
     useEffect(() => {
-        setActiveTab(initialTab);
-        setShowVisPlayground(initialSubview === 'visualizer');
-        setShowThemePark(initialSubview === 'themePark');
-        setShowLyricFilterSettings(initialSubview === 'lyricFilter');
-        setShowGlobalLyricOffset(initialSubview === 'globalLyricOffset');
-
-        const targetSection = sectionForSettingsSubview(initialSubview);
-        if (targetSection) {
-            // 这两个是播放页歌词区里的二级面板，关掉后应该落回它们的入口所在分区。
-            setActiveSettingsSection(targetSection);
-            // 只有真正进入某个分区页才记忆；二级面板和调参台不算「进入」分区。
-            if (isSettingsSectionSubview(initialSubview)) {
-                writeLastSettingsSection(targetSection, { isElectron: hasElectronBridge() });
-            }
-        } else {
-            setActiveSettingsSection(prev => prev || 'appearance');
+        if (isSettingsSectionSubview(initialSubview)) {
+            writeLastSettingsSection(initialSubview, { isElectron: hasElectronBridge() });
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [initialSubview, initialTab]);
+    }, [initialSubview]);
 
     // A request for one place in the settings: show the page settingsAnchorModel puts it on, then
     // land on it. Each request has its own seq, so naming the same place again lands again.
@@ -359,10 +358,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             return;
         }
         const section = sectionForSettingsSubview(settingsAnchorSubview(initialAnchor.id));
-        if (section) {
-            setActiveSettingsSection(section);
+        const restoredPage = window.history.state?.settings?.page;
+        if (!restoredPage) {
+            if (section) setActiveSettingsSection(section);
+            setActiveTab('options');
         }
-        setActiveTab('options');
         setSearchQuery('');
         // A request may name one row of the section; the section is where it lands while that row is not drawn.
         landOn(initialAnchor.rowId ?? initialAnchor.id, initialAnchor.id);

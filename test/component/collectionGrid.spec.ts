@@ -78,6 +78,7 @@ test('a collection stays where the listener scrolled to when further tracks arri
     const middle = await centred(page);
     expect(middle).not.toBe('Track 000');
     await page.setViewportSize({ width: 2100, height: 1000 });
+    await expect(page.locator('.theme-polaroid-card').first()).toHaveCSS('width', '280px');
     const spaced = await rest(page);
     expect(spaced).not.toEqual(further);
     expect(await centred(page)).toBe(middle);

@@ -44,7 +44,7 @@ for (const mode of ['sonnet', 'tempera', 'lumiere']) {
 test('nested Pixi filters render after a resize prunes their pass textures', async ({ page }) => {
     await page.goto('/dev-probe.html');
     const sizes = await page.evaluate(async () => {
-        const loadPixiUrl = '/src/components/visualizer/loadPixi.ts';
+        const loadPixiUrl = '/src/components/visualizer/pixi/loadPixi.ts';
         const { loadPixi } = await import(/* @vite-ignore */ loadPixiUrl);
         const pixi: typeof import('pixi.js') = await loadPixi();
         const app = new pixi.Application();

@@ -82,12 +82,14 @@ const startSampling = (page: Page) => page.evaluate(() => {
     const w = window as unknown as { __handoffSamples: unknown[]; __handoffStop: boolean; __handoffTools: Element | null };
     w.__handoffSamples = [];
     w.__handoffStop = false;
-    w.__handoffTools = document.querySelector('.lattice-tools');
+    // The final direct child holds the tools button; an optional locator sits above it.
+    // Its label changes from Wall tools to Lattice tools, while the button itself stays put.
+    w.__handoffTools = document.querySelector('.lattice-tools > div:last-child > button');
     const t0 = performance.now();
     const tick = () => {
         const stageNode = document.querySelector('[data-library-stage="bravais"]');
         const latticeNode = document.querySelector('.lattice-queue-root');
-        const tools = document.querySelector('.lattice-tools');
+        const tools = document.querySelector('.lattice-tools > div:last-child > button');
         const rect = tools?.getBoundingClientRect();
         w.__handoffSamples.push({
             t: performance.now() - t0,
@@ -124,7 +126,7 @@ const expectToolsSteady = (samples: Sample[], before: Sample['toolsRect']) => {
     }
 };
 
-const toolsRect = (page: Page) => page.locator('.lattice-tools').evaluate(node => {
+const toolsRect = (page: Page) => page.locator('.lattice-tools > div:last-child > button').evaluate(node => {
     const rect = node.getBoundingClientRect();
     return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
 });

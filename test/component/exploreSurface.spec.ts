@@ -540,7 +540,7 @@ test('explore tab opens with the songs last played in the app, newest first', as
     expect(await scrolled()).toBe(808);
     expect(await list.evaluate(element => element.scrollTop)).toBe(0);
     // At its end too, where a song that joins adds a column: 31 entries are six columns of lines, then 32 are seven.
-    for (let count = 0; count < 2; count += 1) await own.locator('[data-explore-scroll="right"]').click();
+    await own.locator('[data-explore-scroll="right"]').click();
     await expect.poll(scrolled).toBe(1616);
     expect(await row.evaluate(element => element.scrollWidth - element.clientWidth)).toBe(1616);
     await hear.click();
@@ -550,7 +550,8 @@ test('explore tab opens with the songs last played in the app, newest first', as
     await page.waitForTimeout(500);
     expect(await scrolled()).toBe(1616);
     expect(await row.evaluate(element => element.scrollWidth - element.clientWidth)).toBe(2020);
-    for (let count = 0; count < 2; count += 1) await own.locator('[data-explore-scroll="left"]').click();
+    // One arrow moves one viewport step. A second click during its smooth scroll changes the target.
+    await own.locator('[data-explore-scroll="left"]').click();
     await expect.poll(scrolled).toBe(808);
 
     // The record is kept, and where the list was left: the section is there again after the home screen was taken down.

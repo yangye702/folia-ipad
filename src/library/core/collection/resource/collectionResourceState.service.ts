@@ -25,6 +25,7 @@ export const createCollectionResourceState = (
         revision: '',
         status: 'idle',
         tracks: [],
+        tracksComplete: false,
         error: null,
         sync: { status: 'none' },
         detail: null,

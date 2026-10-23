@@ -1,0 +1,10 @@
+{
+  "kind": "local Production build; isolated touch Chromium; mocked API; not deployed Preview or iPad",
+  "checks": [
+    "Back closes settings before player",
+    "Forward reopens settings",
+    "touch Close returns to base player"
+  ],
+  "pageErrors": [],
+  "result": "passed"
+}

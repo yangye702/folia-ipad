@@ -2382,6 +2382,7 @@ export default function App() {
         libraryOccludesPlayer,
         hasLibraryOcclusionSettled,
         handoffKeepsVisualizer: wallHandoff.keepsVisualizer,
+        handoffActive: wallHandoff.active,
     });
     // 首页墙透出来的 visualizer 加模糊（bravais「墙后的画面」，stage 报告；只在首页墙露着时）。
     const libraryBackdropBlur = useLibraryPlayerOcclusionStore(state => selectLibraryPlayerBackdrop(state).blur);

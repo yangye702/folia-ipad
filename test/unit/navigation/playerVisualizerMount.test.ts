@@ -114,4 +114,29 @@ describe('shouldMountPlayerVisualizer', () => {
             handoffKeepsVisualizer: false,
         })).toBe(false);
     });
+
+    it('keeps the visualizer down during an opaque handoff before the home wall reports occlusion', () => {
+        expect(shouldMountPlayerVisualizer({
+            currentView: 'home',
+            hasLatticeExited: true,
+            shouldRevealHomeSurface: true,
+            libraryOccludesPlayer: false,
+            hasLibraryOcclusionSettled: false,
+            handoffActive: true,
+            handoffKeepsVisualizer: false,
+        })).toBe(false);
+    });
+
+    it('mounts a translucent handoff backdrop even while handoff suppression is active', () => {
+        expect(shouldMountPlayerVisualizer({
+            currentView: 'home',
+            hasLatticeExited: true,
+            shouldRevealHomeSurface: true,
+            libraryOccludesPlayer: true,
+            hasLibraryOcclusionSettled: false,
+            handoffActive: true,
+            handoffKeepsVisualizer: true,
+        })).toBe(true);
+    });
+
 });
